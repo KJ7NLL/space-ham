@@ -1,8 +1,8 @@
 //EFM32 blink test
 
-#ifndef LED_PIN
-#define LED_PIN     0
-#endif
+#define LED0_PIN     0
+#define LED1_PIN     1
+
 #ifndef LED_PORT
 #define LED_PORT    gpioPortB
 #endif
@@ -46,6 +46,7 @@ void Delay(uint32_t dlyTicks)
  *****************************************************************************/
 int main(void)
 {
+    int i;
     CHIP_Init();
 
     CMU_ClockEnable(cmuClock_GPIO, true);
@@ -53,20 +54,15 @@ int main(void)
     /* Setup SysTick Timer for 1 msec interrupts  */
     if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000)) while (1) ;
 
-    /* Initialize LED driver */
-    GPIO_PinModeSet(LED_PORT, LED_PIN, gpioModePushPull, 0);
+    // Initialize LED driver
+    GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
+    GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 1);
 
-    GPIO_PinOutSet(LED_PORT, LED_PIN);
-
-    printf("test");
-
-    /* Infinite blink loop */
-    while (1)
+    // 47 blink loop
+    for (i = 0; i < 47; i += 1)
     {
-        GPIO_PinOutToggle(LED_PORT, LED_PIN);
-        Delay(2000);
+        GPIO_PinOutToggle(LED_PORT, LED0_PIN);
+        GPIO_PinOutToggle(LED_PORT, LED1_PIN);
+        Delay(1000);
     }
 }
-
-
-

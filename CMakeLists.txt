@@ -34,7 +34,7 @@ if (NOT DEVICE)
     # set(DEVICE BGM13P22F512GA)
     set(BOARD BRD4180A)
     # set(BLE_LIB EFR32BG13P)
-    set(FLASH_ORIGIN 0x4000)
+    # set(FLASH_ORIGIN 0x4000)
 endif ()
 
 # ${JLINK_DEVICE} device model setting specifically for JLink. (Defaults to ${DEVICE} when not set)
