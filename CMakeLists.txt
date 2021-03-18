@@ -34,8 +34,9 @@ if (NOT DEVICE)
     # set(DEVICE BGM13P22F512GA)
     set(BOARD BRD4180A)
     # set(BLE_LIB EFR32BG13P)
-    # set(FLASH_ORIGIN 0x4000)
+    #set(FLASH_ORIGIN 0x0)
 endif ()
+
 
 # ${JLINK_DEVICE} device model setting specifically for JLink. (Defaults to ${DEVICE} when not set)
 # set(JLINK_DEVICE EFM32TG11BXXXF128)
@@ -56,6 +57,10 @@ endif ()
 # Add base libs (emlib, CMSIS, device files)
 include(${BASE_LOCATION}/toolchain/efm32-base.cmake)
 
+# Enable protocols / BLE if desired
+# Note this will overwrite the default linker files / may not behave in the manner you expect
+#set(USE_PROTOCOL 1)
+
 add_subdirectory(${BASE_LOCATION}/cmsis)
 add_subdirectory(${BASE_LOCATION}/emlib)
 add_subdirectory(${BASE_LOCATION}/device)
@@ -74,6 +79,8 @@ include_directories(${BASE_LOCATION}/include)
 
 # Generate executable and link
 add_executable(${PROJECT_NAME}
+	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetio.c
+	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetserial.c
         main.c)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
