@@ -15,11 +15,9 @@
 #define LED1_PIN 1
 
 // Receive data buf
-uint8_t bufrx[BUFLEN];
-uint8_t *buftx = NULL;
+unsigned char bufrx[BUFLEN];
+unsigned char *buftx = NULL;
 int buftxlen = 0, bufrxidx = 0;
-
-
 
 void initGpio(void)
 {
@@ -54,9 +52,11 @@ void initUsart1(void)
 
 	// Route USART1 TX and RX to PA5 and PA6 pins, respectively
 	GPIO->USARTROUTE[1].TXROUTE =
-		(gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) | (5 << _GPIO_USART_TXROUTE_PIN_SHIFT);
+		(gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) | (5 <<
+								 _GPIO_USART_TXROUTE_PIN_SHIFT);
 	GPIO->USARTROUTE[1].RXROUTE =
-		(gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) | (6 << _GPIO_USART_RXROUTE_PIN_SHIFT);
+		(gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) | (6 <<
+								 _GPIO_USART_RXROUTE_PIN_SHIFT);
 
 	// Enable RX and TX signals now that they have been routed
 	GPIO->USARTROUTE[1].ROUTEEN =
@@ -105,13 +105,13 @@ void USART1_TX_IRQHandler(void)
 	}
 }
 
-void print(uint8_t *s, int len)
+void print(unsigned char *s, int len)
 {
 	buftx = s;
 	buftxlen = len;
 	USART_IntEnable(USART1, USART_IEN_TXBL);
 	while (buftx != NULL)
-		EMU_EnterEM1();	
+		EMU_EnterEM1();
 
 }
 
@@ -129,7 +129,6 @@ int main(void)
 
 	// Enable receive data valid interrupt
 	USART_IntEnable(USART1, USART_IEN_RXDATAV);
-
 
 	print("Hello World", 11);
 	// Enable transmit buffer level interrupt
