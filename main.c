@@ -15,10 +15,9 @@
 #define LED1_PIN 1
 
 // Receive data buf
-unsigned char bufrx[BUFLEN] = {0};
-unsigned char bufecho[BUFLEN] = {0};
+unsigned char *bufrx = NULL;
 unsigned char *buftx = NULL;
-int buftxlen = 0, bufrxidx = 0, bufechorxidx = 0, bufechotxidx = 0;
+int buftxlen = 0, bufrxlen = 0;
 
 void initGpio(void)
 {
@@ -76,20 +75,19 @@ void initUsart1(void)
 void USART1_RX_IRQHandler(void)
 {
 	GPIO_PinOutToggle(LED_PORT, LED0_PIN);
-
-	// Get the character just received
-	if (bufecho[bufechorxidx] == 0)
+	if (bufrx != NULL && bufrxlen > 0)
 	{
-		bufecho[bufechorxidx] = USART1->RXDATA;
-		bufechorxidx++;
-		if (bufechorxidx >= BUFLEN)
+		*bufrx = USART1->RXDATA;
+		bufrx++;
+		bufrxlen--;
+
+		if (bufrxlen == 0)
 		{
-			bufechorxidx = 0;
+			bufrx = NULL;
 		}
 	}
-
-
-	USART_IntEnable(USART1, USART_IEN_TXBL);
+	else
+		USART_IntDisable(USART1, USART_IEN_RXDATAV);
 }
 
 void USART1_TX_IRQHandler(void)
@@ -101,50 +99,57 @@ void USART1_TX_IRQHandler(void)
 		buftx++;
 		buftxlen--;
 
+		GPIO_PinOutToggle(LED_PORT, LED1_PIN);
 		if (buftxlen == 0)
 		{
 			buftx = NULL;
 
+
+			/*
+			 * Need to disable the transmit buf level interrupt in this IRQ
+			 * handler when done or it will immediately trigger again upon exit
+			 * even though there is no data left to send.
+			 */
+			USART_IntDisable(USART1, USART_IEN_TXBL);
+			USART_IntClear(USART1, USART_IEN_TXBL);
 		}
-	}
-	else if (bufecho[bufechotxidx] != 0)
-	{
-		USART1->TXDATA = bufecho[bufechotxidx];
-		bufecho[bufechotxidx] = 0;
-		bufechotxidx++;
-		
-		if (bufechotxidx >= BUFLEN)
-		{
-			bufechotxidx = 0;
-		}
-	}
-	else
-	{
-		GPIO_PinOutToggle(LED_PORT, LED1_PIN);
-		/*
-		 * Need to disable the transmit buf level interrupt in this IRQ
-		 * handler when done or it will immediately trigger again upon exit
-		 * even though there is no data left to send.
-		 */
-		USART_IntDisable(USART1, USART_IEN_TXBL);
 	}
 
 }
 
-void print(char *s, int len)
+void serial_write(unsigned char *s, int len)
 {
 	buftx = s;
 	buftxlen = len;
+	
+	// Enable transmit buffer level interrupt
 	USART_IntEnable(USART1, USART_IEN_TXBL);
 	while (buftx != NULL)
 		EMU_EnterEM1();
 
 }
 
+void serial_read(unsigned char *s, int len)
+{
+	bufrx = s;
+	bufrxlen = len;
+
+	// Enable receive data valid interrupt
+	USART_IntEnable(USART1, USART_IEN_RXDATAV);
+	while (bufrx != NULL)
+		EMU_EnterEM1();
+
+}
+
+void print(char *s)
+{
+	serial_write(s, strlen(s));
+}
+
 void help()
 {
 	char *h =
-		"\r\n" 
+		"\x0c\r\n" 
 		"mv (phi|theta) <([+-]deg|n|e|s|w)>                    # moves antenna\r\n"
 		"cam (on|off)                                          # turns camera on or off\r\n"
 		"(help|?|h)                                            # list of commands\r\n"
@@ -152,13 +157,13 @@ void help()
 		"cal (theta|phi) <deg>                                 # Calibrates phi or theta\r\n"
 		"speed (theta|phi) (0-100)                             # 0 means stop\r\n"
 		"sat (load|track|list|search)                          # satellite commands\r\n";
-	print(h, strlen(h));
+	print(h);
 }
 
 int main(void)
 {
-	uint32_t i;
-
+	char buf[5];
+	
 	// Chip errata
 	CHIP_Init();
 
@@ -167,15 +172,11 @@ int main(void)
 	initGpio();
 	initUsart1();
 
-	// Enable receive data valid interrupt
-	USART_IntEnable(USART1, USART_IEN_RXDATAV);
-
-	//print("Hello World", 11);
 	help();
-	// Enable transmit buffer level interrupt
-	// USART_IntEnable(USART1, USART_IEN_TXBL);
+
 	while (1)
 	{
-		EMU_EnterEM1();
+		serial_read(buf, 1);
+		serial_write(buf, 1);
 	}
 }
