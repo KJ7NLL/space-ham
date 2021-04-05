@@ -1,3 +1,5 @@
+#include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
 
 #include "em_device.h"
@@ -100,21 +102,21 @@ void USART1_TX_IRQHandler(void)
 		buftxlen--;
 
 		GPIO_PinOutToggle(LED_PORT, LED1_PIN);
-		if (buftxlen == 0)
-		{
-			buftx = NULL;
-
-
-			/*
-			 * Need to disable the transmit buf level interrupt in this IRQ
-			 * handler when done or it will immediately trigger again upon exit
-			 * even though there is no data left to send.
-			 */
-			USART_IntDisable(USART1, USART_IEN_TXBL);
-			USART_IntClear(USART1, USART_IEN_TXBL);
-		}
 	}
 
+	if (buftxlen == 0)
+	{
+		buftx = NULL;
+
+
+		/*
+		 * Need to disable the transmit buf level interrupt in this IRQ
+		 * handler when done or it will immediately trigger again upon exit
+		 * even though there is no data left to send.
+		 */
+		USART_IntDisable(USART1, USART_IEN_TXBL);
+		USART_IntClear(USART1, USART_IEN_TXBL);
+	}
 }
 
 void serial_write(unsigned char *s, int len)
@@ -160,9 +162,74 @@ void help()
 	print(h);
 }
 
+enum KEYS 
+{
+	KEY_UP = 1, 
+	KEY_DN,
+	KEY_RT,
+	KEY_LT,
+	KEY_HOME,
+	KEY_END
+};
+
+unsigned char *vt102[] = 
+{
+	(unsigned char[]){KEY_UP, 0x1b, '[', 'A', 0},
+	(unsigned char[]){KEY_DN, 0x1b, '[', 'B', 0},
+	(unsigned char[]){KEY_RT, 0x1b, '[', 'C', 0},
+	(unsigned char[]){KEY_LT, 0x1b, '[', 'D', 0},
+	(unsigned char[]){KEY_HOME, 0x1b, '[', '1', '~', 0},
+	(unsigned char[]){KEY_END, 0x1b, 'O', 'F', 0},
+	NULL	 
+};
+
+void dump_vt_keys(char **keys)
+{
+	int i, j;
+	char buf[128];
+
+	for (i = 0; keys[i] != NULL; i++)
+	{
+		for (j = 0; keys[i][j] != 0; j++)
+		{
+			snprintf(buf, sizeof(buf)-1, "%02x %c\t", keys[i][j], keys[i][j]); 
+			print(buf);
+		}
+		print("\r\n");
+	}
+}
+
+int input(char *buf, int len)
+{
+	unsigned char in[10];
+
+	char c;
+
+	int i = 0, end = 0, pos = 0;
+	
+	c = 0;
+
+	while (end < len && c != '\r' && c != '\n')
+	{
+		serial_read(&c, 1);
+		
+		if (isprint(c))
+		{
+			serial_write(&c, 1);
+			buf[pos] = c;
+			pos++;
+			end++;
+		}
+	}
+
+	buf[end] = 0;
+	return end;
+}
+
 int main(void)
 {
-	char buf[5];
+	char buf[128];
+	char c;
 	
 	// Chip errata
 	CHIP_Init();
@@ -173,10 +240,14 @@ int main(void)
 	initUsart1();
 
 	help();
+//	dump_vt_keys(vt102);
 
 	while (1)
 	{
-		serial_read(buf, 1);
-		serial_write(buf, 1);
+		print("Zeke&Daddy@console ");
+		input(buf, sizeof(buf)-1);
+		print("\r\n");
+		print(buf);
+		print("\r\n");
 	}
 }
