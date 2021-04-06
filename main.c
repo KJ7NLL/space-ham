@@ -220,6 +220,20 @@ int input(char *buf, int len)
 			pos++;
 			end++;
 		}
+		else if (c == 8)	// Backspace
+		{  
+			if (end != 0)
+			{
+				serial_write("\x08 \x08", 3);
+				pos--;
+				end--;
+			}
+			else
+			{
+				// BEEP BEEP BEEEP
+				serial_write("\x07\x07\x07", 1);
+			}
+		}
 	}
 
 	buf[end] = 0;
