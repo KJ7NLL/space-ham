@@ -169,7 +169,10 @@ enum KEYS
 	KEY_RT,
 	KEY_LT,
 	KEY_HOME,
-	KEY_END
+	KEY_END,
+
+	// Start control characters at 1000
+	KEY_CTRL_C = 1003
 };
 
 unsigned char *vt102[] = 
@@ -183,29 +186,94 @@ unsigned char *vt102[] =
 	NULL	 
 };
 
-void dump_vt_keys(char **keys)
+int match(char *a, char *b)
 {
-	int i, j;
-	char buf[128];
+	int i = 0;
 
-	for (i = 0; keys[i] != NULL; i++)
+	if (strlen(a) != strlen(b))
 	{
-		for (j = 0; keys[i][j] != 0; j++)
-		{
-			snprintf(buf, sizeof(buf)-1, "%02x %c\t", keys[i][j], keys[i][j]); 
-			print(buf);
-		}
-		print("\r\n");
+		return 0;
 	}
+
+	for (i = 0; a[i]; i++)
+	{
+		if (a[i] != b[i])
+		{
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+int longest_length(char **a)
+{
+	int length = 0, i, n;
+
+	for (i = 0; a[i] != NULL; i++)
+	{
+		n = strlen(a[i]);
+		if (n > length)
+		{
+			length = n;
+		}
+	}
+
+	return length;
+}
+
+int esc_key(char **keys)
+{
+	unsigned char esc[7], c;
+	unsigned char buf[128];
+
+	int esc_maxidx;
+	int i, j, escidx = 0;
+	
+	esc_maxidx = longest_length(keys) - 2;
+
+	do
+	{
+		serial_read(&c, 1);
+		esc[escidx] = c;
+		escidx++;
+
+		esc[escidx + 1] = 0;
+			
+		if (c == 3)
+		{
+			return KEY_CTRL_C;
+		}
+		
+		for (i = 0; keys[i]; i++)
+		{
+			/*
+			 * keys[i] represents the escape code that we wish to match.
+			 * When esc_key() is called, the escape charecter 27 (0x1b) 
+			 * has already been read. The position keys[i][0] contains the
+			 * enum name (eg, KEY_UP) that we wish to return fron this function.
+			 * Since we need to match agenst the escape code read from the
+			 * terminal (esc), and since the first index is the enum, we
+			 * need to match esc against keys[i]+2.
+			 */
+			if (match(esc, keys[i]+2))
+			{
+				return keys[i][0];
+			}
+		}
+
+	} while (escidx < esc_maxidx && escidx < sizeof(esc)-1);
+
+	return 0;
 }
 
 int input(char *buf, int len)
 {
-	unsigned char in[10];
+	unsigned char s[128];
 
 	char c;
 
-	int i = 0, end = 0, pos = 0;
+	int i = 0, end = 0, pos = 0, key;
 	
 	c = 0;
 
@@ -217,8 +285,12 @@ int input(char *buf, int len)
 		{
 			serial_write(&c, 1);
 			buf[pos] = c;
+			
+			if (pos == end)
+			{
+				end++;
+			}
 			pos++;
-			end++;
 		}
 		else if (c == 8)	// Backspace
 		{  
@@ -231,7 +303,42 @@ int input(char *buf, int len)
 			else
 			{
 				// BEEP BEEP BEEEP
-				serial_write("\x07\x07\x07", 1);
+				serial_write("\x07\x07\x07", 3);
+			}
+		}
+		else if (c == 27)	// Escape
+		{
+			key = esc_key(vt102);
+			switch (key)
+			{
+				case KEY_LT:
+					if (pos > 0)
+					{
+						print("\x08");
+						pos--;
+					}
+					else
+					{
+						// BEEP BEEP BEEEP
+						serial_write("\x07\x07\x07", 3);
+					}
+
+					break;
+
+				case KEY_RT:
+					break;
+
+				case KEY_UP:
+					break;
+				
+				case KEY_DN:
+					break;
+
+				case KEY_HOME:
+					break;
+
+				case KEY_END:
+					break;
 			}
 		}
 	}
