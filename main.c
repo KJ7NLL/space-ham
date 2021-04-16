@@ -267,8 +267,19 @@ int esc_key(char **keys)
 	return 0;
 }
 
+void shift_right(char *s, int pos)
+{
+	int i;
+
+	for (i = strlen(s); i > pos; i--)
+	{
+		s[i] = s[i-1];
+	}
+}
+
 int input(char *buf, int len)
 {
+
 	unsigned char s[128];
 
 	char c;
@@ -284,13 +295,11 @@ int input(char *buf, int len)
 		if (isprint(c))
 		{
 			serial_write(&c, 1);
+
+			shift_right(buf, pos);
 			buf[pos] = c;
-			
-			if (pos == end)
-			{
-				end++;
-			}
-			pos++;
+			pos++;	
+			end++;
 		}
 		else if (c == 8)	// Backspace
 		{  
@@ -326,8 +335,18 @@ int input(char *buf, int len)
 					break;
 
 				case KEY_RT:
-					break;
+					if (pos < end)
+					{
+						serial_write(&buf[pos], 1);
+						pos++;
+					}
+					else
+					{
+						// BEEP BEEP BEEEP
+						serial_write("\x07\x07\x07", 3);
+					}
 
+					break;
 				case KEY_UP:
 					break;
 				
