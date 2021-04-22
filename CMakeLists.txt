@@ -75,13 +75,18 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 
 # Add project headers
 #include_directories(bsp)
-include_directories(${BASE_LOCATION}/include)
+include_directories(${BASE_LOCATION}/include
+	include
+	)
 
 # Generate executable and link
 add_executable(${PROJECT_NAME}
 	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetio.c
 	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetserial.c
-        main.c)
+        main.c
+	serial.c
+	strutil.c
+	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
 
