@@ -180,7 +180,7 @@ int esc_key(char **keys)
 			 * keys[i] represents the escape code that we wish to match.
 			 * When esc_key() is called, the escape charecter 27 (0x1b) 
 			 * has already been read. The position keys[i][0] contains the
-			 * enum name (eg, KEY_UP) that we wish to return fron this function.
+			 * enum name (eg, KEY_UP) that we wish to return fron this function
 			 * Since we need to match agenst the escape code read from the
 			 * terminal (esc), and since the first index is the enum, we
 			 * need to match esc against keys[i]+2.
@@ -196,8 +196,10 @@ int esc_key(char **keys)
 	return 0;
 }
 
-int input(char *buf, int len, struct linklist *history)
+int input(char *buf, int len, struct linklist **history)
 {
+	struct linklist *hist = *history;
+
 	char c;
 
 	int end = 0, pos = 0, key;
@@ -267,8 +269,24 @@ int input(char *buf, int len, struct linklist *history)
 					break;
 
 				case KEY_UP:
-					// strncpy(buf, history[histidx], len);
+					
+					if (hist != NULL)
+					{
+						strncpy(buf, hist->s, len);
+						while (pos != 0)
+						{
+							print("\x08 \x08");
+							pos--;
+						}
 
+						print(buf);
+						end = pos = strlen(buf);
+
+						if (hist->next != NULL)
+						{
+							hist = hist->next;
+						}
+					}
 					break;
 				
 				case KEY_DN:
@@ -284,6 +302,21 @@ int input(char *buf, int len, struct linklist *history)
 	}
 
 	buf[end] = 0;
+	
+	if (end > 0 && (*history == NULL || !match(buf, (*history)->s)))
+	{
+		hist = add_node(*history, buf);
+		if (hist != NULL)
+		{
+			*history = hist;
+		}
+		else
+		{
+			print("unable to allocate history node: ");
+			print(buf);
+			print("\r\n");
+		}
+	}
 	return end;
 }
 

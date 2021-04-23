@@ -86,6 +86,7 @@ add_executable(${PROJECT_NAME}
         main.c
 	serial.c
 	strutil.c
+	linklist.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})

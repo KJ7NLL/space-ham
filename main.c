@@ -48,7 +48,6 @@ void initCmu(void)
 void help()
 {
 	char *h =
-		"\x0c\r\n" 
 		"mv (phi|theta) <([+-]deg|n|e|s|w)>                    # moves antenna\r\n"
 		"cam (on|off)                                          # turns camera on or off\r\n"
 		"(help|?|h)                                            # list of commands\r\n"
@@ -59,9 +58,18 @@ void help()
 	print(h);
 }
 
+void dump_history(struct linklist *history)
+{
+	while (history != NULL)
+	{
+		print(history->s);
+		print("\r\n");
+		history = history->next;
+	}
+}
 int main(void)
 {
-	struct linklist _history, *history = &_history;
+	struct linklist *history = NULL, *tmp;
 	char buf[128];
 	char c;
 	
@@ -73,15 +81,28 @@ int main(void)
 	initGpio();
 	initUsart1();
 
+	print("\x0c\r\n");
 	help();
-//	dump_vt_keys(vt102);
 
 	while (1)
 	{
 		print("Zeke&Daddy@console ");
-		input(buf, sizeof(buf)-1, history);
+		input(buf, sizeof(buf)-1, &history);
+		
 		print("\r\n");
-		print(buf);
-		print("\r\n");
+		if (match(buf, "history") || match(buf, "hist"))
+		{
+			dump_history(history);
+		}
+		else if (match(buf, "h") || match(buf, "?") || match(buf, "help"))
+		{
+			help();
+		}
+		else
+		{
+			print("Unkown command: ");
+			print(buf);
+			print("\r\n\n");
+		}
 	}
 }

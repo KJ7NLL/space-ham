@@ -7,4 +7,4 @@ void print(char *s);
 void print_back(char *s);
 
 int esc_key(char **keys);
-int input(char *buf, int len, struct linklist *history);
+int input(char *buf, int len, struct linklist **history);
