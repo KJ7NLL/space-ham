@@ -206,6 +206,7 @@ int input(char *buf, int len, struct linklist **history)
 	
 	c = 0;
 
+	buf[0] = 0;
 	while (end < len && c != '\r' && c != '\n')
 	{
 		serial_read(&c, 1);
@@ -272,24 +273,51 @@ int input(char *buf, int len, struct linklist **history)
 					
 					if (hist != NULL)
 					{
-						strncpy(buf, hist->s, len);
-						while (pos != 0)
+						// Clear the existing input text
+						print(&buf[pos]);
+						while (end != 0)
 						{
 							print("\x08 \x08");
-							pos--;
+							end--;
 						}
-
-						print(buf);
-						end = pos = strlen(buf);
-
-						if (hist->next != NULL)
+						
+						// Skip items in history that match the current buffer
+						while (hist->next != NULL && match(hist->s, buf))
 						{
 							hist = hist->next;
 						}
+
+						// Update and print the buffer from history
+						strncpy(buf, hist->s, len);
+						print(buf);
+						end = pos = strlen(buf);
 					}
 					break;
 				
 				case KEY_DN:
+
+					if (hist != NULL)
+					{
+						// Clear the existing input text
+						print(&buf[pos]);
+						while (end != 0)
+						{
+							print("\x08 \x08");
+							end--;
+						}
+
+						// Skip items in history that match the current buffer
+						while (hist->prev != NULL && match(hist->s, buf))
+						{
+							hist = hist->prev;
+						}
+
+						// Update and print the buffer from history
+						strncpy(buf, hist->s, len);
+						print(buf);
+						end = pos = strlen(buf);
+
+					}
 					break;
 
 				case KEY_HOME:
