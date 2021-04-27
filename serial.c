@@ -25,6 +25,7 @@ enum KEYS
 	KEY_LT,
 	KEY_HOME,
 	KEY_END,
+	KEY_DEL,
 
 	// Start control characters at 1000
 	KEY_CTRL_C = 1003
@@ -38,6 +39,7 @@ char *vt102[] =
 	(char[]){KEY_LT, 0x1b, '[', 'D', 0},
 	(char[]){KEY_HOME, 0x1b, '[', '1', '~', 0},
 	(char[]){KEY_END, 0x1b, 'O', 'F', 0},
+	(char[]){KEY_DEL, 0x1b, '[', '3', '~', 0},
 	NULL	 
 };
 
@@ -141,15 +143,37 @@ void print(char *s)
 	serial_write(s, strlen(s));
 }
 
-void print_back(char *s)
+void print_lots(char c, int n)
 {
 	int i = 0;
 
-	serial_write(s, strlen(s));
-	for (i = strlen(s); i > 0; i--)
+	for (i = n; i > 0; i--)
 	{
-		print("\x08");
+		serial_write(&c, 1);
 	}
+}
+
+void print_bs(int n)
+{
+	print_lots('\x08', n);
+}
+
+void print_back(char *s)
+{
+	int len = strlen(s);
+
+	serial_write(s, len);
+	print_bs(len);
+}
+
+
+// Print the string s, followed by n occurances of c, then
+// backspace to the beginning
+void print_back_more(char *s, char c, int n)
+{
+	print(s);
+	print_lots(c, n);
+	print_bs(n + strlen(s));
 }
 
 int esc_key(char **keys)
@@ -224,11 +248,14 @@ int input(char *buf, int len, struct linklist **history)
 		}
 		else if (c == 8)	// Backspace
 		{  
-			if (end != 0)
+			if (end != 0 && pos != 0)
 			{
 				serial_write("\x08 \x08", 3);
+				shift_left(buf, pos - 1);
 				pos--;
 				end--;
+				buf[end] = 0;
+				print_back_more(&buf[pos], ' ', 1);
 			}
 			else
 			{
@@ -241,6 +268,22 @@ int input(char *buf, int len, struct linklist **history)
 			key = esc_key(vt102);
 			switch (key)
 			{
+				case KEY_DEL:
+					if (end != 0 && pos != end)
+					{
+						shift_left(buf, pos);
+						end--;
+						buf[end] = 0;
+						print_back_more(&buf[pos], ' ', 1);
+					}
+					else
+					{
+						// BEEP BEEP BEEEP
+						serial_write("\x07\x07\x07", 3);
+					}
+
+					break;
+
 				case KEY_LT:
 					if (pos > 0)
 					{
@@ -321,9 +364,15 @@ int input(char *buf, int len, struct linklist **history)
 					break;
 
 				case KEY_HOME:
+					
+					print_bs(pos);
+					pos = 0;
 					break;
 
 				case KEY_END:
+					
+					print(&buf[pos]);
+					pos = end;
 					break;
 			}
 		}

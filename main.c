@@ -98,7 +98,18 @@ int main(void)
 		{
 			help();
 		}
-		else
+		else if (match(buf, "debug-keys"))
+		{
+			print("press CTRL+C to end\r\n");
+			c = 0;
+			while (c != 3)
+			{
+				serial_read(&c, 1);
+				sprintf(buf, "you typed: %3d (0x%02x): '%c'\r\n", c, c, isprint(c) ? c : '?');
+				print(buf);
+			}
+		}
+		else if (!match(buf, ""))
 		{
 			print("Unkown command: ");
 			print(buf);

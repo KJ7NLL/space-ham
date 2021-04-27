@@ -36,6 +36,15 @@ int longest_length(char **a)
 	return length;
 }
 
+void shift_left(char *s, int pos)
+{
+	int i;
+
+	for (i = pos; i < strlen(s) - 1; i++)
+	{
+		s[i] = s[i+1];
+	}
+}
 
 void shift_right(char *s, int pos)
 {
