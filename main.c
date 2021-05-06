@@ -1,3 +1,5 @@
+#include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -12,6 +14,7 @@
 #include "linklist.h"
 #include "serial.h"
 #include "strutil.h"
+#include "iadc.h"
 
 // Size of the buf for received data
 #define BUFLEN  80
@@ -28,7 +31,7 @@ void initGpio(void)
 	// Configure PA6 as an input (RX)
 	GPIO_PinModeSet(gpioPortA, 6, gpioModeInput, 0);
 
-	// Configure PB4 as output and set high (VCOM_ENABLE)
+	// Configure PD4 as output and set high (VCOM_ENABLE)
 	// comment out next line to disable VCOM
 	GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
 
@@ -42,7 +45,6 @@ void initCmu(void)
 	// Enable clock to GPIO and USART1
 	CMU_ClockEnable(cmuClock_GPIO, true);
 	CMU_ClockEnable(cmuClock_USART1, true);
-
 }
 
 void help()
@@ -67,7 +69,20 @@ void dump_history(struct linklist *history)
 		history = history->next;
 	}
 }
-int main(void)
+
+void status()
+{
+	char s[128];
+	int i;
+
+	for (i = 0; i < IADC_NUM_INPUTS; i++)
+	{
+		sprintf(s, "iadc[%d]: %f\r\n", i, iadc_get_result(i));
+		print(s);
+	}
+}
+
+int main()
 {
 	struct linklist *history = NULL, *tmp;
 	char buf[128];
@@ -80,9 +95,15 @@ int main(void)
 	initCmu();
 	initGpio();
 	initUsart1();
+	initIADC();
 
 	print("\x0c\r\n");
 	help();
+	
+	/*
+	void initIADC(void);
+	double get_result(int i);
+	*/
 
 	while (1)
 	{
@@ -109,6 +130,12 @@ int main(void)
 				print(buf);
 			}
 		}
+		
+		else if (match(buf, "status") || match(buf, "stat"))
+		{
+			status();
+		}
+		// This must be the last else if:
 		else if (!match(buf, ""))
 		{
 			print("Unkown command: ");

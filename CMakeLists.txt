@@ -69,7 +69,7 @@ add_subdirectory(${BASE_LOCATION}/hardware)
 
 # This is normally set in efm32-base.cmake, but libraries may modify it so set
 # it after libraries/subdirectories have been added
-set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map -Wl,--gc-sections -Wl,-v")
+set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map -Wl,--gc-sections -Wl,-v -u _printf_float")
 
 ##### Files #####
 
@@ -83,15 +83,18 @@ include_directories(${BASE_LOCATION}/include
 add_executable(${PROJECT_NAME}
 	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetio.c
 	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetserial.c
+	#main_gpio_conf_s2.c
+	#main_gpio_periph_s2.c
         main.c
 	serial.c
 	strutil.c
 	linklist.c
+	iadc.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} ${LIBS} emlib cmsis device)
+target_link_libraries(${PROJECT_NAME} ${LIBS} m emlib cmsis device)
 
 # Link optional libraries if available
 if (${HAS_HARDWARE})
