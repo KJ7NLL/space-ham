@@ -49,7 +49,7 @@ void initIADC(void)
 
 	// Scan initialization Set the SCANFIFODVL flag when 4 entries in the scan
 	// FIFO are valid; Not used as an interrupt or to wake up LDMA; flag is ignored
-	initScan.dataValidLevel = _IADC_SCANFIFOCFG_DVL_VALID4;
+	initScan.dataValidLevel = _IADC_SCANFIFOCFG_DVL_VALID2;
 
 	// Tag FIFO entry with scan table entry id.
 	initScan.showId = true;
@@ -58,38 +58,13 @@ void initIADC(void)
 
 	// Theta
 	initScanTable.entries[0].posInput = iadcPosInputPortDPin2;
+	initScanTable.entries[0].includeInScan = true;
+	initScanTable.entries[0].negInput = iadcNegInputGnd;
 
 	// Phi
 	initScanTable.entries[1].posInput = iadcPosInputPortDPin3;
-
-	initScanTable.entries[2].posInput = iadcPosInputVddio;
-
-	initScanTable.entries[3].posInput = iadcPosInputDvdd;
-
-	// Initialize scan tabe to use ground as the negative input
-	for (i = 0; i < IADC_NUM_INPUTS; i++)
-	{
-		// FIFO is only 4 entries deep
-		if (i < 4)
-		{
-			initScanTable.entries[i].includeInScan = true;
-		}
-		else
-		{
-			initScanTable.entries[i].includeInScan = false;
-		}
-
-		if (i <= 1)
-		{
-			initScanTable.entries[i].negInput = iadcNegInputGnd;
-		}
-		else
-		{
-			// When measuring a supply, PINNEG needs to be odd
-			initScanTable.entries[i].negInput =
-				iadcNegInputGnd | 1;
-		}
-	}
+	initScanTable.entries[1].includeInScan = true;
+	initScanTable.entries[1].negInput = iadcNegInputGnd;
 
 	// Initialize IADC
 	IADC_init(IADC0, &init, &initAllConfigs);
@@ -120,6 +95,7 @@ void IADC_IRQHandler(void)
 
 	GPIO_PinOutSet(gpioPortB, 0);
 	// Get ADC results
+	int i = 0;
 	while (IADC_getScanFifoCnt(IADC0))
 	{
 		// Read data from the scan FIFO
@@ -127,27 +103,11 @@ void IADC_IRQHandler(void)
 
 		// Calculate input voltage: For single-ended the result range is 0 to +Vref, i.e.,
 		// for Vref = AVDD = 3.30V, 12 bits represents 3.30V full scale IADC range.
-		scan_result[result.id] = result.data * 3.3 / 0xFFF;
-
-		// Supply voltages other than vddlv (decouple) are connected through a 1/4 voltage divider
-		if ((result.id >= 2) && (result.id <= 6))
-		{
-			scan_result[result.id] *= 4;
-		}
+		// Really we should use result.id instead of i, but for some reason, result.id is always 0.
+		// Hopefully the scan results are always in order (they seem to be).
+		scan_result[i] = result.data * 3.3 / 0xFFF;
+		i++;
 	}
-
-#if IADC_NUM_INPUTS > 4
-	if (result.id == 3)
-	{
-		// Configure scan mask to measure second set of table entries
-		IADC_setScanMask(IADC0, 0x00F0);
-	}
-	else
-	{
-		// Configure scan mask to measure first set of table entries
-		IADC_setScanMask(IADC0, 0x000F);
-	}
-#endif
 
 	// Start next IADC conversion
 	IADC_clearInt(IADC0, IADC_IF_SCANTABLEDONE);
@@ -159,9 +119,9 @@ double iadc_get_result(int i)
 {
 	double r;
 
-	//NVIC_DisableIRQ(IADC_IRQn);
+	NVIC_DisableIRQ(IADC_IRQn);
 	r = scan_result[i];
-	//NVIC_EnableIRQ(IADC_IRQn);
+	NVIC_EnableIRQ(IADC_IRQn);
 	
 	return r;
 }

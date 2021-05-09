@@ -77,7 +77,7 @@ void status()
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
-		sprintf(s, "iadc[%d]: %f\r\n", i, iadc_get_result(i));
+		sprintf(s, "iadc[%d]: %f\r\n", i, (float)iadc_get_result(i));
 		print(s);
 	}
 }
@@ -99,6 +99,7 @@ int main()
 
 	print("\x0c\r\n");
 	help();
+	status();
 	
 	/*
 	void initIADC(void);
@@ -107,7 +108,7 @@ int main()
 
 	while (1)
 	{
-		print("Zeke&Daddy@console ");
+		print("[Zeke&Daddy@console]# ");
 		input(buf, sizeof(buf)-1, &history);
 		
 		print("\r\n");

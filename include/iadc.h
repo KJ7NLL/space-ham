@@ -3,7 +3,7 @@
 #define CLK_ADC_FREQ              10000000	// CLK_ADC - 10MHz max in
 
 // Number of scan channels
-#define IADC_NUM_INPUTS 4
+#define IADC_NUM_INPUTS 2
 
 // When changing GPIO port/pins below, make sure to change xBUSALLOC macro's
 // accordingly.
