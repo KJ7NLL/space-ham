@@ -90,6 +90,7 @@ add_executable(${PROJECT_NAME}
 	strutil.c
 	linklist.c
 	iadc.c
+	pwm.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})

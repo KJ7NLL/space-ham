@@ -15,6 +15,7 @@
 #include "serial.h"
 #include "strutil.h"
 #include "iadc.h"
+#include "pwm.h"
 
 // Size of the buf for received data
 #define BUFLEN  80
