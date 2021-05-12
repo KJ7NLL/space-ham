@@ -120,7 +120,7 @@ void initTimer(TIMER_TypeDef *timer, int cc, int port, int pin)
 	TIMER_Init(timer, &timerInit);
 
 	// Route Timer0 CC0 output to PA6
-	//timer_cc_route(timer, cc, port, pin);
+	timer_cc_route(timer, cc, port, pin);
 
 	// Configure CC Channel 0
 	TIMER_InitCC(timer, cc, &timerCCInit);
