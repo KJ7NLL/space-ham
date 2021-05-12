@@ -35,6 +35,12 @@ void initGpio(void)
 	// Configure PD4 as output and set high (VCOM_ENABLE)
 	// comment out next line to disable VCOM
 	GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
+	
+	// pwm ports
+	GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
+	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 1);
+	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 1);
+	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 1);
 
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
@@ -46,6 +52,7 @@ void initCmu(void)
 	// Enable clock to GPIO and USART1
 	CMU_ClockEnable(cmuClock_GPIO, true);
 	CMU_ClockEnable(cmuClock_USART1, true);
+	CMU_ClockEnable(cmuClock_TIMER0, true);
 }
 
 void help()
@@ -97,6 +104,7 @@ int main()
 	initGpio();
 	initUsart1();
 	initIADC();
+	initTimer(TIMER0, 0, gpioPortC, 0);
 
 	print("\x0c\r\n");
 	help();
