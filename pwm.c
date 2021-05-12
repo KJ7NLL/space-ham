@@ -19,7 +19,14 @@ void TIMER0_IRQHandler(void)
 	TIMER_IntClear(TIMER0, flags);
 
 	// Update CCVB to alter duty cycle starting next period
-	//duty_cycle = iadc_get_result(0) / 3.3;
+	duty_cycle = iadc_get_result(0) / 3.3;
+	if (duty_cycle > 0.96)
+		duty_cycle = 1.0;
+
+	if (duty_cycle < 0.04)
+		duty_cycle = 0;
+
+
 	TIMER_CompareBufSet(TIMER0, 0, (uint32_t) (top_value * duty_cycle));
 }
 
