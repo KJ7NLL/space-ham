@@ -37,10 +37,10 @@ void initGpio(void)
 	GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
 	
 	// pwm ports
-	GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
-	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 1);
-	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 1);
-	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 1);
+	GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 0);
 
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
@@ -141,6 +141,18 @@ int main()
 			}
 		}
 		
+		else if (!match(buf, "dir-left"))
+		{
+			timer_cc_route(TIMER0, 0, gpioPortC, 0);
+			GPIO_PinOutClear(gpioPortC, 1);
+		}
+
+		else if (!match(buf, "dir-right"))
+		{
+			timer_cc_route(TIMER0, 0, gpioPortC, 1);
+			GPIO_PinOutClear(gpioPortC, 0);
+		}
+
 		else if (match(buf, "status") || match(buf, "stat"))
 		{
 			status();
