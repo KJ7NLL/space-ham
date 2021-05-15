@@ -104,7 +104,8 @@ int main()
 	initGpio();
 	initUsart1();
 	initIADC();
-	initTimer(TIMER0, 0, gpioPortC, 0);
+	timer_init_pwm(TIMER0, 0, gpioPortC, 0, 0.5);
+	timer_init_pwm(TIMER1, 0, gpioPortC, 2, 0.1);
 
 	print("\x0c\r\n");
 	help();
@@ -141,13 +142,13 @@ int main()
 			}
 		}
 		
-		else if (!match(buf, "dir-left"))
+		else if (match(buf, "dir-left"))
 		{
 			timer_cc_route(TIMER0, 0, gpioPortC, 0);
 			GPIO_PinOutClear(gpioPortC, 1);
 		}
 
-		else if (!match(buf, "dir-right"))
+		else if (match(buf, "dir-right"))
 		{
 			timer_cc_route(TIMER0, 0, gpioPortC, 1);
 			GPIO_PinOutClear(gpioPortC, 0);

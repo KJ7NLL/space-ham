@@ -30,6 +30,25 @@ void TIMER0_IRQHandler(void)
 	TIMER_CompareBufSet(TIMER0, 0, (uint32_t) (top_value * duty_cycle));
 }
 
+void TIMER1_IRQHandler(void)
+{
+	// Acknowledge the interrupt
+	uint32_t flags = TIMER_IntGet(TIMER1);
+
+	TIMER_IntClear(TIMER1, flags);
+
+	// Update CCVB to alter duty cycle starting next period
+	duty_cycle = iadc_get_result(1) / 3.3;
+	if (duty_cycle > 0.96)
+		duty_cycle = 1.0;
+
+	if (duty_cycle < 0.04)
+		duty_cycle = 0;
+
+
+	TIMER_CompareBufSet(TIMER1, 0, (uint32_t) (top_value * duty_cycle));
+}
+
 void timer_enable(TIMER_TypeDef *timer)
 {
 	if (timer == TIMER0)
@@ -107,7 +126,7 @@ void timer_cc_route(TIMER_TypeDef *timer, int cc, int port, int pin)
 	}
 }
 	
-void initTimer(TIMER_TypeDef *timer, int cc, int port, int pin)
+void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_cycle)
 {
 	uint32_t timerFreq = 0;
 
@@ -131,10 +150,7 @@ void initTimer(TIMER_TypeDef *timer, int cc, int port, int pin)
 
 	// Configure CC Channel 0
 	TIMER_InitCC(timer, cc, &timerCCInit);
-
-	// Start with 10% duty cycle
-	duty_cycle = DUTY_CYCLE_STEPS;
-
+	
 	// set PWM period
 	timerFreq = CMU_ClockFreqGet(timer_cmu_clock(timer)) / (timerInit.prescale + 1);
 	top_value = (timerFreq / PWM_FREQ);
@@ -148,6 +164,5 @@ void initTimer(TIMER_TypeDef *timer, int cc, int port, int pin)
 	TIMER_Enable(timer, true);
 
 	// Enable timer compare event interrupts to update the duty cycle
-			TIMER_IntEnable(TIMER0, TIMER_IEN_CC0);
 	timer_enable(timer);
 }
