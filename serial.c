@@ -50,33 +50,33 @@ void initUsart1(void)
 	// control)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
 
-	// Route USART1 TX and RX to PA5 and PA6 pins, respectively
-	GPIO->USARTROUTE[1].TXROUTE =
+	// Route USART0 TX and RX to PA5 and PA6 pins, respectively
+	GPIO->USARTROUTE[0].TXROUTE =
 		(gpioPortA << _GPIO_USART_TXROUTE_PORT_SHIFT) | (5 <<
 								 _GPIO_USART_TXROUTE_PIN_SHIFT);
-	GPIO->USARTROUTE[1].RXROUTE =
+	GPIO->USARTROUTE[0].RXROUTE =
 		(gpioPortA << _GPIO_USART_RXROUTE_PORT_SHIFT) | (6 <<
 								 _GPIO_USART_RXROUTE_PIN_SHIFT);
 
 	// Enable RX and TX signals now that they have been routed
-	GPIO->USARTROUTE[1].ROUTEEN =
+	GPIO->USARTROUTE[0].ROUTEEN =
 		GPIO_USART_ROUTEEN_RXPEN | GPIO_USART_ROUTEEN_TXPEN;
 
-	// Configure and enable USART1
-	USART_InitAsync(USART1, &init);
+	// Configure and enable USART0
+	USART_InitAsync(USART0, &init);
 
 	// Enable NVIC USART sources
-	NVIC_ClearPendingIRQ(USART1_RX_IRQn);
-	NVIC_EnableIRQ(USART1_RX_IRQn);
-	NVIC_ClearPendingIRQ(USART1_TX_IRQn);
-	NVIC_EnableIRQ(USART1_TX_IRQn);
+	NVIC_ClearPendingIRQ(USART0_RX_IRQn);
+	NVIC_EnableIRQ(USART0_RX_IRQn);
+	NVIC_ClearPendingIRQ(USART0_TX_IRQn);
+	NVIC_EnableIRQ(USART0_TX_IRQn);
 }
 
-void USART1_RX_IRQHandler(void)
+void USART0_RX_IRQHandler(void)
 {
 	if (bufrx != NULL && bufrxlen > 0)
 	{
-		*bufrx = USART1->RXDATA;
+		*bufrx = USART0->RXDATA;
 		bufrx++;
 		bufrxlen--;
 
@@ -86,15 +86,15 @@ void USART1_RX_IRQHandler(void)
 		}
 	}
 	else
-		USART_IntDisable(USART1, USART_IEN_RXDATAV);
+		USART_IntDisable(USART0, USART_IEN_RXDATAV);
 }
 
-void USART1_TX_IRQHandler(void)
+void USART0_TX_IRQHandler(void)
 {
 
 	if (buftx != NULL && buftxlen > 0)
 	{
-		USART1->TXDATA = *buftx;
+		USART0->TXDATA = *buftx;
 		buftx++;
 		buftxlen--;
 	}
@@ -109,8 +109,8 @@ void USART1_TX_IRQHandler(void)
 		 * handler when done or it will immediately trigger again upon exit
 		 * even though there is no data left to send.
 		 */
-		USART_IntDisable(USART1, USART_IEN_TXBL);
-		USART_IntClear(USART1, USART_IEN_TXBL);
+		USART_IntDisable(USART0, USART_IEN_TXBL);
+		USART_IntClear(USART0, USART_IEN_TXBL);
 	}
 }
 
@@ -120,7 +120,7 @@ void serial_write(void *s, int len)
 	buftxlen = len;
 	
 	// Enable transmit buffer level interrupt
-	USART_IntEnable(USART1, USART_IEN_TXBL);
+	USART_IntEnable(USART0, USART_IEN_TXBL);
 	while (buftx != NULL)
 		EMU_EnterEM1();
 
@@ -132,7 +132,7 @@ void serial_read(void *s, int len)
 	bufrxlen = len;
 
 	// Enable receive data valid interrupt
-	USART_IntEnable(USART1, USART_IEN_RXDATAV);
+	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 	while (bufrx != NULL)
 		EMU_EnterEM1();
 
