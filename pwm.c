@@ -8,8 +8,8 @@
 #include "pwm.h"
 #include "iadc.h"
 
-static uint32_t top_value = 0;
-static volatile float duty_cycle = 0.3;
+static uint32_t top_values[4] = {0, 0, 0, 0};
+static volatile float duty_cycles[4] = {-1, -1, -1, -1};
 
 void TIMER0_IRQHandler(void)
 {
@@ -18,6 +18,7 @@ void TIMER0_IRQHandler(void)
 
 	TIMER_IntClear(TIMER0, flags);
 
+	/*
 	// Update CCVB to alter duty cycle starting next period
 	duty_cycle = iadc_get_result(0) / 3.3;
 	if (duty_cycle > 0.96)
@@ -28,6 +29,7 @@ void TIMER0_IRQHandler(void)
 
 
 	TIMER_CompareBufSet(TIMER0, 0, (uint32_t) (top_value * duty_cycle));
+	*/
 }
 
 void TIMER1_IRQHandler(void)
@@ -36,17 +38,17 @@ void TIMER1_IRQHandler(void)
 	uint32_t flags = TIMER_IntGet(TIMER1);
 
 	TIMER_IntClear(TIMER1, flags);
+}
 
-	// Update CCVB to alter duty cycle starting next period
-	duty_cycle = iadc_get_result(1) / 3.3;
-	if (duty_cycle > 0.96)
-		duty_cycle = 1.0;
+void timer_cc_duty_cycle(TIMER_TypeDef *timer, int cc, float duty_cycle)
+{
+	int idx = timer_idx(timer);
 
-	if (duty_cycle < 0.04)
-		duty_cycle = 0;
-
-
-	TIMER_CompareBufSet(TIMER1, 0, (uint32_t) (top_value * duty_cycle));
+	if (duty_cycles[idx] != duty_cycle)
+	{
+		TIMER_CompareBufSet(timer, cc, (uint32_t) (top_values[idx] * duty_cycle));
+		duty_cycles[idx] = duty_cycle;
+	}
 }
 
 void timer_enable(TIMER_TypeDef *timer)
@@ -87,7 +89,7 @@ int timer_cmu_clock(TIMER_TypeDef *timer)
 	return cmuClock_TIMER0;
 }
 
-int timer_route_idx(TIMER_TypeDef *timer)
+int timer_idx(TIMER_TypeDef *timer)
 {
 	if (timer == TIMER0)
 		return 0;
@@ -106,20 +108,20 @@ void timer_cc_route(TIMER_TypeDef *timer, int cc, int port, int pin)
 	switch (cc)
 	{
 		case 0:
-			GPIO->TIMERROUTE[timer_route_idx(timer)].ROUTEEN = GPIO_TIMER_ROUTEEN_CC0PEN;
-			GPIO->TIMERROUTE[timer_route_idx(timer)].CC0ROUTE = (port << _GPIO_TIMER_CC0ROUTE_PORT_SHIFT) | 
+			GPIO->TIMERROUTE[timer_idx(timer)].ROUTEEN = GPIO_TIMER_ROUTEEN_CC0PEN;
+			GPIO->TIMERROUTE[timer_idx(timer)].CC0ROUTE = (port << _GPIO_TIMER_CC0ROUTE_PORT_SHIFT) | 
 				(pin << _GPIO_TIMER_CC0ROUTE_PIN_SHIFT);
 			TIMER_IntEnable(timer, TIMER_IEN_CC0);
 			break;
 		case 1:
-			GPIO->TIMERROUTE[timer_route_idx(timer)].ROUTEEN = GPIO_TIMER_ROUTEEN_CC1PEN;
-			GPIO->TIMERROUTE[timer_route_idx(timer)].CC1ROUTE = (port << _GPIO_TIMER_CC1ROUTE_PORT_SHIFT) | 
+			GPIO->TIMERROUTE[timer_idx(timer)].ROUTEEN = GPIO_TIMER_ROUTEEN_CC1PEN;
+			GPIO->TIMERROUTE[timer_idx(timer)].CC1ROUTE = (port << _GPIO_TIMER_CC1ROUTE_PORT_SHIFT) | 
 				(pin << _GPIO_TIMER_CC1ROUTE_PIN_SHIFT);
 			TIMER_IntEnable(timer, TIMER_IEN_CC1);
 			break;
 		case 2:
-			GPIO->TIMERROUTE[timer_route_idx(timer)].ROUTEEN = GPIO_TIMER_ROUTEEN_CC2PEN;
-			GPIO->TIMERROUTE[timer_route_idx(timer)].CC2ROUTE = (port << _GPIO_TIMER_CC2ROUTE_PORT_SHIFT) | 
+			GPIO->TIMERROUTE[timer_idx(timer)].ROUTEEN = GPIO_TIMER_ROUTEEN_CC2PEN;
+			GPIO->TIMERROUTE[timer_idx(timer)].CC2ROUTE = (port << _GPIO_TIMER_CC2ROUTE_PORT_SHIFT) | 
 				(pin << _GPIO_TIMER_CC2ROUTE_PIN_SHIFT);
 			TIMER_IntEnable(timer, TIMER_IEN_CC2);
 			break;
@@ -130,11 +132,15 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_
 {
 	uint32_t timerFreq = 0;
 
+	int idx;
+
 	// Initialize the timer
 	TIMER_Init_TypeDef timerInit = TIMER_INIT_DEFAULT;
 
 	// Configure timer Compare/Capture for output compare
 	TIMER_InitCC_TypeDef timerCCInit = TIMER_INITCC_DEFAULT;
+	
+	idx = timer_idx(timer);
 
 	// Use PWM mode, which sets output on overflow and clears on compare
 	// events
@@ -151,14 +157,16 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_
 	// Configure CC Channel 0
 	TIMER_InitCC(timer, cc, &timerCCInit);
 	
-	// set PWM period
+	// Get PWM period
 	timerFreq = CMU_ClockFreqGet(timer_cmu_clock(timer)) / (timerInit.prescale + 1);
-	top_value = (timerFreq / PWM_FREQ);
+	
 	// Set top value to overflow at the desired PWM_FREQ frequency
-	TIMER_TopSet(timer, top_value);
+	top_values[idx] = (timerFreq / PWM_FREQ);
+	TIMER_TopSet(timer, top_values[idx]);
 
 	// Set compare value for initial duty cycle
-	TIMER_CompareSet(timer, cc, (uint32_t) (top_value * duty_cycle));
+	// top_values[idx] must be set before calling this function
+	timer_cc_duty_cycle(timer, cc, duty_cycle);
 
 	// Start the timer
 	TIMER_Enable(timer, true);

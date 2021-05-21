@@ -26,6 +26,50 @@
 
 #define MAX_ARGS 10
 
+struct motor
+{
+	TIMER_TypeDef *timer;
+	int port;
+	int pin1;
+	int pin2;
+
+	float duty_cycle;
+};
+
+struct rotor
+{
+	struct motor motor;
+	double target;
+
+	struct cal
+	{
+		double v, deg;
+		int ready;
+	} cal1, cal2;
+
+} phi, theta;
+
+void motor_init(struct motor *m)
+{
+	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->duty_cycle);
+}
+
+void motor_update(struct motor *m, float dir)
+{
+	float duty_cycle;
+
+	if (dir >= 0)
+	{
+		timer_cc_route(m->timer, 0, m->port, m->pin1);
+		timer_cc_duty_cycle(m->timer, 0, dir);
+	}
+	else
+	{
+		timer_cc_route(m->timer, 0, m->port, m->pin2);
+		timer_cc_duty_cycle(m->timer, 0, -dir);
+	}
+}
+
 void initGpio(void)
 {
 	// Configure PA5 as an output (TX)
@@ -94,7 +138,7 @@ void status()
 
 int main()
 {
-	struct linklist *history = NULL, *tmp;
+	struct linklist *history = NULL;
 	char buf[128], *args[MAX_ARGS];
 	char c;
 	
@@ -108,8 +152,24 @@ int main()
 	initGpio();
 	initUsart1();
 	initIADC();
-	timer_init_pwm(TIMER0, 0, gpioPortC, 0, 0.5);
-	timer_init_pwm(TIMER1, 0, gpioPortC, 2, 0.1);
+
+	memset(&theta, 0, sizeof(theta));
+	memset(&phi, 0, sizeof(phi));
+
+	theta.motor.timer = TIMER0;
+	theta.motor.port = gpioPortC;
+	theta.motor.pin1 = 0;
+	theta.motor.pin2 = 1;
+	theta.motor.duty_cycle = 0.5;
+
+	phi.motor.timer = TIMER1;
+	phi.motor.port = gpioPortC;
+	phi.motor.pin1 = 2;
+	phi.motor.pin2 = 3;
+	phi.motor.duty_cycle = 0.5;
+
+	motor_init(&theta.motor);
+	motor_init(&phi.motor);
 
 	print("\x0c\r\n");
 	help();
@@ -127,11 +187,6 @@ int main()
 		print("\r\n");
 		
 		argc = parse_args(buf, args, MAX_ARGS);
-		for (i = 0; i < argc; i++)
-		{
-			print(args[i]);
-			print("\r\n");
-		}
 		
 		if (match(args[0], "history") || match(args[0], "hist"))
 		{
