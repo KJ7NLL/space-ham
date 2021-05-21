@@ -24,6 +24,8 @@
 #define LED0_PIN 0
 #define LED1_PIN 1
 
+#define MAX_ARGS 10
+
 void initGpio(void)
 {
 	// Configure PA5 as an output (TX)
@@ -93,9 +95,11 @@ void status()
 int main()
 {
 	struct linklist *history = NULL, *tmp;
-	char buf[128];
+	char buf[128], *args[MAX_ARGS];
 	char c;
 	
+	int i, argc;
+
 	// Chip errata
 	CHIP_Init();
 
@@ -120,17 +124,24 @@ int main()
 	{
 		print("[Zeke&Daddy@console]# ");
 		input(buf, sizeof(buf)-1, &history);
-		
 		print("\r\n");
-		if (match(buf, "history") || match(buf, "hist"))
+		
+		argc = parse_args(buf, args, MAX_ARGS);
+		for (i = 0; i < argc; i++)
+		{
+			print(args[i]);
+			print("\r\n");
+		}
+		
+		if (match(args[0], "history") || match(args[0], "hist"))
 		{
 			dump_history(history);
 		}
-		else if (match(buf, "h") || match(buf, "?") || match(buf, "help"))
+		else if (match(args[0], "h") || match(args[0], "?") || match(args[0], "help"))
 		{
 			help();
 		}
-		else if (match(buf, "debug-keys"))
+		else if (match(args[0], "debug-keys"))
 		{
 			print("press CTRL+C to end\r\n");
 			c = 0;
@@ -142,27 +153,28 @@ int main()
 			}
 		}
 		
-		else if (match(buf, "dir-left"))
+		else if (match(args[0], "dir-left"))
 		{
 			timer_cc_route(TIMER0, 0, gpioPortC, 0);
 			GPIO_PinOutClear(gpioPortC, 1);
 		}
 
-		else if (match(buf, "dir-right"))
+		else if (match(args[0], "dir-right"))
 		{
 			timer_cc_route(TIMER0, 0, gpioPortC, 1);
 			GPIO_PinOutClear(gpioPortC, 0);
 		}
 
-		else if (match(buf, "status") || match(buf, "stat"))
+		else if (match(args[0], "status") || match(args[0], "stat"))
 		{
 			status();
 		}
+
 		// This must be the last else if:
-		else if (!match(buf, ""))
+		else if (!match(args[0], ""))
 		{
 			print("Unkown command: ");
-			print(buf);
+			print(args[0]);
 			print("\r\n\n");
 		}
 	}
