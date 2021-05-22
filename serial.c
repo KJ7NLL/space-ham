@@ -141,6 +141,12 @@ void serial_read(void *s, int len)
 
 }
 
+int _write(int handle, char *data, int size)
+{
+	serial_write(data, size);
+
+	return size;
+}
 void print(char *s)
 {
 	serial_write(s, strlen(s));

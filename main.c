@@ -43,16 +43,21 @@ struct motor
 	float initial_duty_cycle, min_duty_cycle, max_duty_cycle;
 };
 
+struct rotor_cal
+{
+	float v, deg;
+	int ready;
+};
+
 struct rotor
 {
 	struct motor motor;
-	double target;
+	struct rotor_cal cal1, cal2;
+	
+	int iadc;
 
-	struct cal
-	{
-		double v, deg;
-		int ready;
-	} cal1, cal2;
+	float target;
+
 
 } phi, theta;
 
@@ -188,14 +193,18 @@ void dump_history(struct linklist *history)
 
 void status()
 {
-	char s[128];
 	int i;
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
-		sprintf(s, "iadc[%d]: %f\r\n", i, (float)iadc_get_result(i));
-		print(s);
+		printf("iadc[%d]: %f volts\r\n", i, (float)iadc_get_result(i));
 	}
+	print("\r\n");
+	
+	printf("theta.cal1: %-4.2f deg = %-4.2f volts\r\n", theta.cal1.deg, theta.cal1.v);
+	printf("theta.cal2: %-4.2f deg = %-4.2f volts\r\n", theta.cal2.deg, theta.cal2.v);
+	printf("  phi.cal1: %-4.2f deg = %-4.2f volts\r\n", phi.cal1.deg, phi.cal1.v);
+	printf("  phi.cal2: %-4.2f deg = %-4.2f volts\r\n", phi.cal2.deg, phi.cal2.v);
 }
 
 void motor(int argc, char **args)
@@ -235,6 +244,93 @@ void motor(int argc, char **args)
 	motor_speed(m, speed);
 }
 
+void cal(int argc, char **args)
+{
+	struct rotor *r;
+	struct rotor_cal cal;
+
+	float deg, v;
+
+	if (argc < 3)
+	{
+		print("Usage: cal <rotor_name> <deg>\r\n"
+			"Calibration assumes a linear voltage slope between degrees.\r\n"
+			"You must make 2 calibrations, and each calibration is used as\r\n"
+			"the maximum extent for the rotor. Use the `motor` command to\r\n"
+			"move the rotor between calibrations.\r\n");
+		return;
+	}
+	if (match(args[1], "theta"))
+	{
+		r = &theta;
+	}
+	else if (match(args[1], "phi"))
+	{
+		r = &phi;
+	}
+	else
+	{
+		printf("Unkown Rotor: %s\r\n", args[1]);
+		return;
+	}
+
+	deg = atof(args[2]);
+	v = iadc_get_result(r->iadc);
+	
+	cal.deg = deg;
+	cal.v = v;
+	cal.ready = 1;
+
+	if (!r->cal1.ready && !r->cal2.ready)
+	{
+		r->cal1 = cal;
+	}
+	else if (r->cal1.ready && !r->cal2.ready)
+	{
+		if (deg > r->cal1.deg)
+		{
+			r->cal2 = cal;
+		}
+		else
+		{
+			r->cal2 = r->cal1;
+			r->cal1 = cal;
+		}
+	}
+	else if (!r->cal1.ready && r->cal2.ready)
+	{
+		if (deg > r->cal2.deg)
+		{
+			r->cal1 = r->cal2;
+			r->cal2 = cal;
+		}
+		else
+		{
+			r->cal1 = cal;
+		}
+	}
+	else
+	{
+		if (deg < r->cal2.deg)
+		{	
+			r->cal1 = cal;
+		}
+		else
+		{
+			r->cal2 = cal;
+		}
+	}
+	if (!r->cal1.ready || !r->cal2.ready)
+	{
+		print("~~~Not done yet! Please enter cal 2.~~~\r\n");
+	}
+
+	else if (r->cal1.ready && r->cal2.ready)
+	{
+		print("~~~Done calibrating!~~~\r\n");
+	}
+}
+
 int main()
 {
 	struct linklist *history = NULL;
@@ -255,6 +351,7 @@ int main()
 	memset(&theta, 0, sizeof(theta));
 	memset(&phi, 0, sizeof(phi));
 
+	theta.iadc = 0;
 	theta.motor.name = "theta";
 	theta.motor.timer = TIMER0;
 	theta.motor.port = gpioPortC;
@@ -264,6 +361,7 @@ int main()
 	theta.motor.max_duty_cycle = 1.0;
 	theta.motor.initial_duty_cycle = 0.0;
 
+	phi.iadc = 1;
 	phi.motor.name = "phi";
 	phi.motor.timer = TIMER1;
 	phi.motor.port = gpioPortC;
@@ -278,13 +376,10 @@ int main()
 
 	print("\x0c\r\n");
 	help();
+	print("\r\n");
 	status();
+	print("\r\n");
 	
-	/*
-	void initIADC(void);
-	double get_result(int i);
-	*/
-
 	for (;;)
 	{
 		print("[Zeke&Daddy@console]# ");
@@ -331,12 +426,23 @@ int main()
 			motor(argc, args);
 		}
 
+		else if (match(args[0], "cal"))
+		{
+			cal(argc, args);
+		}
+
 		// This must be the last else if:
 		else if (!match(args[0], ""))
 		{
 			print("Unkown command: ");
 			print(args[0]);
-			print("\r\n\n");
+			print("\r\n");
+		}
+
+
+		if (!match(args[0], ""))
+		{
+			print("\r\n");
 		}
 	}
 }
