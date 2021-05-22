@@ -33,7 +33,14 @@ struct motor
 	int pin1;
 	int pin2;
 
-	float duty_cycle;
+	char *name;
+
+	// -1 to 1
+	float speed;
+
+	// speeds below min_duty_cycle stop the motor
+	// speeds above max_duty_cycle run the motor at full speed
+	float initial_duty_cycle, min_duty_cycle, max_duty_cycle;
 };
 
 struct rotor
@@ -51,24 +58,77 @@ struct rotor
 
 void motor_init(struct motor *m)
 {
-	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->duty_cycle);
+	// Sanity check: full range if not configured or misconfigured.
+	if (m->min_duty_cycle == m->max_duty_cycle || m->max_duty_cycle < m->min_duty_cycle)
+	{
+		m->min_duty_cycle = 0;
+		m->max_duty_cycle = 1;
+	}
+
+	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->initial_duty_cycle);
 }
 
-void motor_update(struct motor *m, float speed)
+void motor_speed(struct motor *m, float speed)
 {
 	float duty_cycle;
 
+	int pin;
+
+	duty_cycle = fabs(speed); // really fast situps!
+
+	// Clamp duty_cycle if necessary
+	if (duty_cycle < m->min_duty_cycle)
+	{
+		duty_cycle = 0;
+
+	}
+	else if (duty_cycle > m->max_duty_cycle)
+	{
+		duty_cycle = 1;
+	}
+
+	m->speed = speed; // For future reference
+
+	// Choose the pin based on the direction
 	if (speed >= 0)
 	{
-		timer_cc_route(m->timer, 0, m->port, m->pin1);
-		timer_cc_duty_cycle(m->timer, 0, speed);
-		m->duty_cycle = speed;
+		pin = m->pin1;
+		GPIO_PinOutClear(m->port, m->pin2);
 	}
 	else
 	{
-		timer_cc_route(m->timer, 0, m->port, m->pin2);
-		timer_cc_duty_cycle(m->timer, 0, -speed);
-		m->duty_cycle = -speed;
+		pin = m->pin2;
+		GPIO_PinOutClear(m->port, m->pin1);
+	}
+
+	// Control the pins directly if stopped or full speed, otherwise PWM
+	if (duty_cycle == 0)
+	{
+		// Disable the route 
+		timer_cc_route_clear(m->timer, 0);
+		timer_disable(m->timer);
+
+		GPIO_PinOutClear(m->port, m->pin1);
+		GPIO_PinOutClear(m->port, m->pin2);
+		print(m->name);
+		print(": Motor Stopped\r\n");
+	}
+	else if (duty_cycle == 1)
+	{
+		timer_cc_route_clear(m->timer, 0);
+		timer_disable(m->timer);
+
+		print(m->name);
+		print(": Motor Full Speed\r\n");
+		// If running at full speed, then clear the negative line and set the positive
+		GPIO_PinOutSet(m->port, pin == m->pin1 ? m->pin1 : m->pin2);
+		GPIO_PinOutClear(m->port, pin == m->pin1 ? m->pin2 : m->pin1);
+	}
+	else
+	{
+		timer_cc_route(m->timer, 0, m->port, pin);
+		timer_cc_duty_cycle(m->timer, 0, duty_cycle);
+		timer_enable(m->timer);
 	}
 }
 
@@ -168,9 +228,11 @@ void motor(int argc, char **args)
 	if (speed < -1 || speed > 1)
 	{
 		print("Speed is out of bounds\r\n");
+
+		return;
 	}
 
-	motor_update(m, speed);
+	motor_speed(m, speed);
 }
 
 int main()
@@ -193,15 +255,23 @@ int main()
 	memset(&theta, 0, sizeof(theta));
 	memset(&phi, 0, sizeof(phi));
 
+	theta.motor.name = "theta";
 	theta.motor.timer = TIMER0;
 	theta.motor.port = gpioPortC;
 	theta.motor.pin1 = 0;
 	theta.motor.pin2 = 1;
+	theta.motor.min_duty_cycle = 0.1;
+	theta.motor.max_duty_cycle = 1.0;
+	theta.motor.initial_duty_cycle = 0.0;
 
+	phi.motor.name = "phi";
 	phi.motor.timer = TIMER1;
 	phi.motor.port = gpioPortC;
 	phi.motor.pin1 = 2;
 	phi.motor.pin2 = 3;
+	phi.motor.min_duty_cycle = 0.25;
+	phi.motor.max_duty_cycle = 1.0;
+	phi.motor.initial_duty_cycle = 0.0;
 
 	motor_init(&theta.motor);
 	motor_init(&phi.motor);
@@ -215,7 +285,7 @@ int main()
 	double get_result(int i);
 	*/
 
-	while (1)
+	for (;;)
 	{
 		print("[Zeke&Daddy@console]# ");
 		input(buf, sizeof(buf)-1, &history);
@@ -245,16 +315,10 @@ int main()
 			}
 		}
 		
-		else if (match(args[0], "dir-left"))
+		else if (match(args[0], "stop"))
 		{
-			timer_cc_route(TIMER0, 0, gpioPortC, 0);
-			GPIO_PinOutClear(gpioPortC, 1);
-		}
-
-		else if (match(args[0], "dir-right"))
-		{
-			timer_cc_route(TIMER0, 0, gpioPortC, 1);
-			GPIO_PinOutClear(gpioPortC, 0);
+			motor_speed(&theta.motor, 0);
+			motor_speed(&phi.motor, 0);
 		}
 
 		else if (match(args[0], "status") || match(args[0], "stat"))

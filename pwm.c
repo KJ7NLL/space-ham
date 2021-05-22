@@ -51,7 +51,7 @@ void timer_cc_duty_cycle(TIMER_TypeDef *timer, int cc, float duty_cycle)
 	}
 }
 
-void timer_enable(TIMER_TypeDef *timer)
+void timer_irq_enable(TIMER_TypeDef *timer)
 {
 	if (timer == TIMER0)
 		NVIC_EnableIRQ(TIMER0_IRQn);
@@ -63,7 +63,7 @@ void timer_enable(TIMER_TypeDef *timer)
 		NVIC_EnableIRQ(TIMER3_IRQn);
 }
 
-void timer_disable(TIMER_TypeDef *timer)
+void timer_irq_disable(TIMER_TypeDef *timer)
 {
 	if (timer == TIMER0)
 		NVIC_DisableIRQ(TIMER0_IRQn);
@@ -103,6 +103,28 @@ int timer_idx(TIMER_TypeDef *timer)
 	return 0;
 }
 
+void timer_cc_route_clear(TIMER_TypeDef *timer, int cc)
+{
+	switch (cc)
+	{
+		case 0:
+			GPIO->TIMERROUTE[timer_idx(timer)].ROUTEEN = 0;
+			GPIO->TIMERROUTE[timer_idx(timer)].CC0ROUTE = 0;
+			TIMER_IntDisable(timer, TIMER_IEN_CC0);
+			break;
+		case 1:
+			GPIO->TIMERROUTE[timer_idx(timer)].ROUTEEN = 0;
+			GPIO->TIMERROUTE[timer_idx(timer)].CC1ROUTE = 0;
+			TIMER_IntDisable(timer, TIMER_IEN_CC1);
+			break;
+		case 2:
+			GPIO->TIMERROUTE[timer_idx(timer)].ROUTEEN = 0;
+			GPIO->TIMERROUTE[timer_idx(timer)].CC2ROUTE = 0;
+			TIMER_IntDisable(timer, TIMER_IEN_CC2);
+			break;
+	}
+}
+
 void timer_cc_route(TIMER_TypeDef *timer, int cc, int port, int pin)
 {
 	switch (cc)
@@ -127,7 +149,17 @@ void timer_cc_route(TIMER_TypeDef *timer, int cc, int port, int pin)
 			break;
 	}
 }
-	
+
+void timer_enable(TIMER_TypeDef *timer)
+{
+	TIMER_Enable(timer, true);
+}
+
+void timer_disable(TIMER_TypeDef *timer)
+{
+	TIMER_Enable(timer, false);
+}
+
 void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_cycle)
 {
 	uint32_t timerFreq = 0;
@@ -172,5 +204,5 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_
 	TIMER_Enable(timer, true);
 
 	// Enable timer compare event interrupts to update the duty cycle
-	timer_enable(timer);
+	timer_irq_enable(timer);
 }

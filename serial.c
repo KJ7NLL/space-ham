@@ -118,6 +118,9 @@ void serial_write(void *s, int len)
 {
 	buftx = s;
 	buftxlen = len;
+
+	if (s == NULL)
+		return;
 	
 	// Enable transmit buffer level interrupt
 	USART_IntEnable(USART0, USART_IEN_TXBL);
