@@ -54,19 +54,21 @@ void motor_init(struct motor *m)
 	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->duty_cycle);
 }
 
-void motor_update(struct motor *m, float dir)
+void motor_update(struct motor *m, float speed)
 {
 	float duty_cycle;
 
-	if (dir >= 0)
+	if (speed >= 0)
 	{
 		timer_cc_route(m->timer, 0, m->port, m->pin1);
-		timer_cc_duty_cycle(m->timer, 0, dir);
+		timer_cc_duty_cycle(m->timer, 0, speed);
+		m->duty_cycle = speed;
 	}
 	else
 	{
 		timer_cc_route(m->timer, 0, m->port, m->pin2);
-		timer_cc_duty_cycle(m->timer, 0, -dir);
+		timer_cc_duty_cycle(m->timer, 0, -speed);
+		m->duty_cycle = -speed;
 	}
 }
 
@@ -104,12 +106,12 @@ void initCmu(void)
 void help()
 {
 	char *h =
-		"mv (phi|theta) <([+-]deg|n|e|s|w)>                    # moves antenna\r\n"
+		"mv [--speed 0-100] (phi|theta) <([+-]deg|n|e|s|w)>    # moves antenna\r\n"
+		"motor (theta|phi) <[+-]0-100>                         # turn on motor at speed\r\n"
 		"cam (on|off)                                          # turns camera on or off\r\n"
 		"(help|?|h)                                            # list of commands\r\n"
 		"status                                                # display system status\r\n"
 		"cal (theta|phi) <deg>                                 # Calibrates phi or theta\r\n"
-		"speed (theta|phi) (0-100)                             # 0 means stop\r\n"
 		"sat (load|track|list|search)                          # satellite commands\r\n";
 	print(h);
 }
@@ -136,6 +138,41 @@ void status()
 	}
 }
 
+void motor(int argc, char **args)
+{
+	struct motor *m = NULL;
+
+	float speed;
+
+	if (argc < 3)
+	{
+		print("Usage: motor <motor_name> <speed>\r\n"
+			"speed can be between -100 and 100, 0 is stopped\r\n");
+		return;
+	}
+	if (match(args[1], "theta"))
+	{
+		m = &theta.motor;
+	}
+	else if (match(args[1], "phi"))
+	{
+		m = &phi.motor;
+	}
+	else
+	{
+		print("Unkown Motor\r\n");
+		return;
+	}
+
+	speed = atof(args[2]) / 100;
+	if (speed < -1 || speed > 1)
+	{
+		print("Speed is out of bounds\r\n");
+	}
+
+	motor_update(m, speed);
+}
+
 int main()
 {
 	struct linklist *history = NULL;
@@ -160,13 +197,11 @@ int main()
 	theta.motor.port = gpioPortC;
 	theta.motor.pin1 = 0;
 	theta.motor.pin2 = 1;
-	theta.motor.duty_cycle = 0.5;
 
 	phi.motor.timer = TIMER1;
 	phi.motor.port = gpioPortC;
 	phi.motor.pin1 = 2;
 	phi.motor.pin2 = 3;
-	phi.motor.duty_cycle = 0.5;
 
 	motor_init(&theta.motor);
 	motor_init(&phi.motor);
@@ -192,10 +227,12 @@ int main()
 		{
 			dump_history(history);
 		}
+
 		else if (match(args[0], "h") || match(args[0], "?") || match(args[0], "help"))
 		{
 			help();
 		}
+
 		else if (match(args[0], "debug-keys"))
 		{
 			print("press CTRL+C to end\r\n");
@@ -223,6 +260,11 @@ int main()
 		else if (match(args[0], "status") || match(args[0], "stat"))
 		{
 			status();
+		}
+
+		else if (match(args[0], "motor"))
+		{
+			motor(argc, args);
 		}
 
 		// This must be the last else if:
