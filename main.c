@@ -40,7 +40,7 @@ struct motor
 
 	// speeds below min_duty_cycle stop the motor
 	// speeds above max_duty_cycle run the motor at full speed
-	float initial_duty_cycle, min_duty_cycle, max_duty_cycle;
+	float initial_duty_cycle, min_duty_cycle, max_duty_cycle, duty_cycle_limit;
 };
 
 struct rotor_cal
@@ -171,12 +171,12 @@ void initCmu(void)
 void help()
 {
 	char *h =
-		"mv [--speed 0-100] (phi|theta) <([+-]deg|n|e|s|w)>    # moves antenna\r\n"
+		"mv (phi|theta) <([+-]deg|n|e|s|w)> [<speed=0-100>]    # moves antenna\r\n"
 		"motor (theta|phi) <[+-]0-100>                         # turn on motor at speed\r\n"
 		"cam (on|off)                                          # turns camera on or off\r\n"
 		"(help|?|h)                                            # list of commands\r\n"
 		"status                                                # display system status\r\n"
-		"cal (theta|phi) <deg>                                 # Calibrates phi or theta\r\n"
+		"cal (theta|phi|reset) <(deg|reset)>                   # Calibrates phi or theta\r\n"
 		"sat (load|track|list|search)                          # satellite commands\r\n";
 	print(h);
 }
@@ -201,10 +201,19 @@ void status()
 	}
 	print("\r\n");
 	
-	printf("theta.cal1: %-4.2f deg = %-4.2f volts\r\n", theta.cal1.deg, theta.cal1.v);
-	printf("theta.cal2: %-4.2f deg = %-4.2f volts\r\n", theta.cal2.deg, theta.cal2.v);
-	printf("  phi.cal1: %-4.2f deg = %-4.2f volts\r\n", phi.cal1.deg, phi.cal1.v);
-	printf("  phi.cal2: %-4.2f deg = %-4.2f volts\r\n", phi.cal2.deg, phi.cal2.v);
+	printf("theta cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f V/deg\r\n", 
+		theta.cal1.deg, theta.cal2.deg,
+		theta.cal1.v, theta.cal2.v,
+		(theta.cal2.v - theta.cal1.v) / (theta.cal2.deg - theta.cal1.deg)
+		);
+	printf("  phi cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f V/deg\r\n\n", 
+		phi.cal1.deg, phi.cal2.deg,
+		phi.cal1.v, phi.cal2.v,
+		(phi.cal2.v - phi.cal1.v) / (phi.cal2.deg - phi.cal1.deg)
+		);
+
+	printf("theta pos: target = %.2f deg\r\n", theta.target);
+	printf("  phi pos: target = %.2f deg\r\n", phi.target);
 }
 
 void motor(int argc, char **args)
@@ -251,7 +260,7 @@ void cal(int argc, char **args)
 
 	float deg, v;
 
-	if (argc < 3)
+	if (argc < 2)
 	{
 		print("Usage: cal <rotor_name> <deg>\r\n"
 			"Calibration assumes a linear voltage slope between degrees.\r\n"
@@ -268,18 +277,52 @@ void cal(int argc, char **args)
 	{
 		r = &phi;
 	}
+	else if (match(args[1], "reset"))
+	{
+		memset(&phi.cal1, 0, sizeof(phi.cal1));
+		memset(&phi.cal2, 0, sizeof(phi.cal2));
+		memset(&theta.cal1, 0, sizeof(theta.cal1));
+		memset(&theta.cal2, 0, sizeof(theta.cal2));
+
+		print("All calibrations have been reset\r\n");
+
+		return;
+	}
 	else
 	{
 		printf("Unkown Rotor: %s\r\n", args[1]);
 		return;
 	}
 
+	if (argc < 3)
+	{
+		print("Missing Argument: only reset can be called with 2 arguments\r\n");
+
+		return;
+	}
+
+	if (match(args[2], "reset"))
+	{
+		memset(&r->cal1, 0, sizeof(r->cal1));
+		memset(&r->cal2, 0, sizeof(r->cal2));
+
+		printf("Calibration reset: %s\r\n", r->motor.name);
+
+		return;
+	}
 	deg = atof(args[2]);
 	v = iadc_get_result(r->iadc);
 	
 	cal.deg = deg;
 	cal.v = v;
 	cal.ready = 1;
+
+	if (deg < 0)
+	{
+		print("Degree angles must start at 0");
+
+		return;
+	}
 
 	if (!r->cal1.ready && !r->cal2.ready)
 	{
@@ -320,15 +363,112 @@ void cal(int argc, char **args)
 			r->cal2 = cal;
 		}
 	}
+
 	if (!r->cal1.ready || !r->cal2.ready)
 	{
 		print("~~~Not done yet! Please enter cal 2.~~~\r\n");
 	}
-
 	else if (r->cal1.ready && r->cal2.ready)
 	{
 		print("~~~Done calibrating!~~~\r\n");
 	}
+}
+
+void mv(int argc, char **args)
+{
+	struct rotor *r;
+
+	float deg, speed;
+
+	if (argc < 3)
+	{
+		print("mv (phi|theta) <([+-]deg|n|e|s|w)> [<speed=0-100>]\r\n"
+			"Move rotor to a degree angle. North is 0 deg.\r\n");
+		return;
+	}
+
+	if (match(args[1], "theta"))
+	{
+		r = &theta;
+	}
+	else if (match(args[1], "phi"))
+	{
+		r = &phi;
+	}
+	else
+	{
+		printf("Unkown Rotor: %s\r\n", args[1]);
+		return;
+	}
+
+	if (!r->cal1.ready || !r->cal2.ready)
+	{
+		printf("Rotor %s is not calibrated, please calibrate and try again.\r\n", r->motor.name);
+
+		return;
+	}
+
+	deg = atof(args[2]);
+	switch (args[2][0])
+	{
+		case '+':
+			deg = r->target + deg;
+			break;
+
+		case '-':
+			deg = r->target - deg;
+			break;
+
+		case 'w':
+			deg = 270;
+			break;
+
+		case 'e':
+			deg = 90;
+			break;
+
+		case 's':
+			deg = 180;
+			break;
+
+		case 'n':
+			deg = 0;
+			break;
+	}
+
+	if (deg < r->cal1.deg || deg > r->cal2.deg)
+	{
+		printf("Cannot move rotor outside of calibrated range: %.2f !< %.2f !< %.2f\r\n",
+			r->cal1.deg, deg, r->cal2.deg);
+
+		return;
+	}
+	
+	if (argc >= 4)
+	{
+		speed = atof(args[3]) / 100;
+		if (speed < r->motor.min_duty_cycle)
+		{
+			printf("Rotor speed %.2f is too low the minimum duty cycle of %.2f for this rotor\r\n", 
+				speed * 100, r->motor.min_duty_cycle);
+
+			return;
+		}
+		else if (speed > r->motor.max_duty_cycle)
+		{
+			printf("Rotor speed %.2f is too low the maximum duty cycle of %.2f for this rotor\r\n", 
+				speed * 100, r->motor.max_duty_cycle);
+
+			return;
+		}
+		else
+		{
+			r->motor.duty_cycle_limit = speed;
+		}
+	}
+
+	// Set the target degree angle
+	r->target = deg;
 }
 
 int main()
@@ -431,6 +571,11 @@ int main()
 			cal(argc, args);
 		}
 
+		else if (match(args[0], "mv"))
+		{
+			mv(argc, args);
+		}
+		
 		// This must be the last else if:
 		else if (!match(args[0], ""))
 		{
