@@ -13,4 +13,4 @@
 #define IADC_INPUT_1_BUSALLOC     GPIO_CDBUSALLOC_CDODD0_ADC0
 
 void initIADC(void);
-double iadc_get_result(int i);
+float iadc_get_result(int i);

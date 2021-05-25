@@ -10,11 +10,13 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_usart.h"
+#include "em_msc.h"
 
 #include "linklist.h"
 #include "serial.h"
 #include "strutil.h"
 #include "iadc.h"
+#include "rotor.h"
 #include "pwm.h"
 
 // Size of the buf for received data
@@ -26,116 +28,7 @@
 
 #define MAX_ARGS 10
 
-struct motor
-{
-	TIMER_TypeDef *timer;
-	int port;
-	int pin1;
-	int pin2;
-
-	char *name;
-
-	// -1 to 1
-	float speed;
-
-	// speeds below min_duty_cycle stop the motor
-	// speeds above max_duty_cycle run the motor at full speed
-	float initial_duty_cycle, min_duty_cycle, max_duty_cycle, duty_cycle_limit;
-};
-
-struct rotor_cal
-{
-	float v, deg;
-	int ready;
-};
-
-struct rotor
-{
-	struct motor motor;
-	struct rotor_cal cal1, cal2;
-	
-	int iadc;
-
-	float target;
-
-
-} phi, theta;
-
-void motor_init(struct motor *m)
-{
-	// Sanity check: full range if not configured or misconfigured.
-	if (m->min_duty_cycle == m->max_duty_cycle || m->max_duty_cycle < m->min_duty_cycle)
-	{
-		m->min_duty_cycle = 0;
-		m->max_duty_cycle = 1;
-	}
-
-	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->initial_duty_cycle);
-}
-
-void motor_speed(struct motor *m, float speed)
-{
-	float duty_cycle;
-
-	int pin;
-
-	duty_cycle = fabs(speed); // really fast situps!
-
-	// Clamp duty_cycle if necessary
-	if (duty_cycle < m->min_duty_cycle)
-	{
-		duty_cycle = 0;
-
-	}
-	else if (duty_cycle > m->max_duty_cycle)
-	{
-		duty_cycle = 1;
-	}
-
-	m->speed = speed; // For future reference
-
-	// Choose the pin based on the direction
-	if (speed >= 0)
-	{
-		pin = m->pin1;
-		GPIO_PinOutClear(m->port, m->pin2);
-	}
-	else
-	{
-		pin = m->pin2;
-		GPIO_PinOutClear(m->port, m->pin1);
-	}
-
-	// Control the pins directly if stopped or full speed, otherwise PWM
-	if (duty_cycle == 0)
-	{
-		// Disable the route 
-		timer_cc_route_clear(m->timer, 0);
-		timer_disable(m->timer);
-
-		GPIO_PinOutClear(m->port, m->pin1);
-		GPIO_PinOutClear(m->port, m->pin2);
-		print(m->name);
-		print(": Motor Stopped\r\n");
-	}
-	else if (duty_cycle == 1)
-	{
-		timer_cc_route_clear(m->timer, 0);
-		timer_disable(m->timer);
-
-		print(m->name);
-		print(": Motor Full Speed\r\n");
-		// If running at full speed, then clear the negative line and set the positive
-		GPIO_PinOutSet(m->port, pin == m->pin1 ? m->pin1 : m->pin2);
-		GPIO_PinOutClear(m->port, pin == m->pin1 ? m->pin2 : m->pin1);
-	}
-	else
-	{
-		timer_cc_route(m->timer, 0, m->port, pin);
-		timer_cc_duty_cycle(m->timer, 0, duty_cycle);
-		timer_enable(m->timer);
-	}
-}
+struct rotor phi, theta;
 
 void initGpio(void)
 {
@@ -471,6 +364,74 @@ void mv(int argc, char **args)
 	r->target = deg;
 }
 
+void flash(int argc, char **args)
+{
+	uint32_t *flash_table[] = {
+		(uint32_t[]) { (uint32_t) &theta, (sizeof(theta)/4) * 4 + 4 },
+		(uint32_t[]) { (uint32_t) &phi, (sizeof(phi)/4) * 4 + 4 },
+		NULL
+	};
+
+	int i, offset, status;
+	if (argc < 2)
+	{
+		print("Usage: flash (save|load)\r\n");
+
+		return;
+	}
+
+	offset = 1024*128;
+
+	if (match(args[1], "save"))
+	{
+
+
+
+		MSC_ExecConfig_TypeDef execConfig = MSC_EXECCONFIG_DEFAULT;
+		MSC_ExecConfigSet(&execConfig);
+
+		MSC_Init();
+	
+		printf("Flash base: %08x, size=%d\r\n", FLASH_BASE, FLASH_SIZE);
+		printf("User base: %08x, size=%d\r\n", USERDATA_BASE, FLASH_SIZE);
+
+		MSC_ErasePage((void *)offset);
+		for (i = 0; flash_table[i] != NULL; i++)
+		{
+			printf("Flashing i=%d at %p, %d bytes to %p...\r\n", i, (void*)flash_table[i][0], (uint32_t)flash_table[i][1], (void*)offset);
+
+			status = MSC_WriteWord((uint32_t*)offset, flash_table[i][0], (uint32_t) flash_table[i][1]);
+			if (status != mscReturnOk)
+			{
+				printf("  Error status: %s (%d)\r\n", 
+					status == -1 ? "mscReturnInvalidAddr" : (
+						status == -2 ? "flashReturnLocked" : (
+							status == -3 ? "flashReturnTimeOut" : (
+								status == -4 ? "mscReturnUnaligned" : "unknown"))),
+					status);
+			}
+
+
+			offset += (uint32_t)flash_table[i][1];
+		}
+	}
+	else if (match(args[1], "load"))
+	{
+		for (i = 0; flash_table[i] != NULL; i++)
+		{
+			memcpy((void*)flash_table[i][0], (void*)offset, (uint32_t) flash_table[i][1]);
+			offset += (uint32_t)flash_table[i][1];
+		}
+		print("Flash successfully loaded to ram\r\n");
+	}
+	else
+	{
+		printf("Unkown argument: %s\r\n", args[1]);
+
+		return;
+	}
+}
+
 int main()
 {
 	struct linklist *history = NULL;
@@ -519,7 +480,7 @@ int main()
 	print("\r\n");
 	status();
 	print("\r\n");
-	
+
 	for (;;)
 	{
 		print("[Zeke&Daddy@console]# ");
@@ -576,6 +537,11 @@ int main()
 			mv(argc, args);
 		}
 		
+		else if (match(args[0], "flash"))
+		{
+			flash(argc, args);
+		}
+
 		// This must be the last else if:
 		else if (!match(args[0], ""))
 		{

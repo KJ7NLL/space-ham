@@ -7,7 +7,7 @@
 
 #include "iadc.h"
 
-static volatile double scan_result[IADC_NUM_INPUTS];	// Volts
+static volatile float scan_result[IADC_NUM_INPUTS];	// Volts
 
 void initIADC(void)
 {
@@ -33,8 +33,7 @@ void initIADC(void)
 	init.warmup = iadcWarmupKeepWarm;
 
 	// Set the HFSCLK prescale value here
-	init.srcClkPrescale =
-		IADC_calcSrcClkPrescale(IADC0, CLK_SRC_ADC_FREQ, 0);
+	init.srcClkPrescale = IADC_calcSrcClkPrescale(IADC0, CLK_SRC_ADC_FREQ, 0);
 
 	// Configuration 0 is used by both scan and single conversions by
 	// default
@@ -93,7 +92,6 @@ void IADC_IRQHandler(void)
 {
 	IADC_Result_t result = { 0, 0 };
 
-	GPIO_PinOutSet(gpioPortB, 0);
 	// Get ADC results
 	int i = 0;
 	while (IADC_getScanFifoCnt(IADC0))
@@ -115,9 +113,9 @@ void IADC_IRQHandler(void)
 	IADC_command(IADC0, iadcCmdStartScan);
 }
 
-double iadc_get_result(int i)
+float iadc_get_result(int i)
 {
-	double r;
+	float r;
 
 	NVIC_DisableIRQ(IADC_IRQn);
 	r = scan_result[i];
