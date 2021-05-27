@@ -8,6 +8,7 @@
 #include "pwm.h"
 #include "iadc.h"
 
+TIMER_TypeDef *TIMERS[4] = {TIMER0, TIMER1, TIMER2, TIMER3};
 static uint32_t top_values[4] = {0, 0, 0, 0};
 static volatile float duty_cycles[4] = {-1, -1, -1, -1};
 
@@ -147,7 +148,7 @@ void timer_disable(TIMER_TypeDef *timer)
 	TIMER_Enable(timer, false);
 }
 
-void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_cycle)
+void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, int pwm_Hz, float duty_cycle)
 {
 	uint32_t timerFreq = 0;
 
@@ -180,7 +181,7 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, float duty_
 	timerFreq = CMU_ClockFreqGet(timer_cmu_clock(timer)) / (timerInit.prescale + 1);
 	
 	// Set top value to overflow at the desired PWM_FREQ frequency
-	top_values[idx] = (timerFreq / PWM_FREQ);
+	top_values[idx] = (timerFreq / pwm_Hz);
 	TIMER_TopSet(timer, top_values[idx]);
 
 	// Set compare value for initial duty cycle

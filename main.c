@@ -28,8 +28,6 @@
 
 #define MAX_ARGS 10
 
-struct rotor phi, theta;
-
 void initGpio(void)
 {
 	// Configure PA5 as an output (TX)
@@ -94,19 +92,20 @@ void status()
 	}
 	print("\r\n");
 	
-	printf("theta cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f V/deg\r\n", 
-		theta.cal1.deg, theta.cal2.deg,
-		theta.cal1.v, theta.cal2.v,
-		(theta.cal2.v - theta.cal1.v) / (theta.cal2.deg - theta.cal1.deg)
-		);
-	printf("  phi cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f V/deg\r\n\n", 
-		phi.cal1.deg, phi.cal2.deg,
-		phi.cal1.v, phi.cal2.v,
-		(phi.cal2.v - phi.cal1.v) / (phi.cal2.deg - phi.cal1.deg)
-		);
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		printf("%s cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f V/deg\r\n", 
+			rotors[i].motor.name,
+			rotors[i].cal1.deg, rotors[i].cal2.deg,
+			rotors[i].cal1.v, rotors[i].cal2.v,
+			(rotors[i].cal2.v - rotors[i].cal1.v) / (rotors[i].cal2.deg - rotors[i].cal1.deg)
+			);
+	}
 
-	printf("theta pos: target = %.2f deg\r\n", theta.target);
-	printf("  phi pos: target = %.2f deg\r\n", phi.target);
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		printf("%s pos: target = %.2f deg\r\n", rotors[i].motor.name, rotors[i].target);
+	}
 }
 
 void motor(int argc, char **args)
@@ -121,15 +120,9 @@ void motor(int argc, char **args)
 			"speed can be between -100 and 100, 0 is stopped\r\n");
 		return;
 	}
-	if (match(args[1], "theta"))
-	{
-		m = &theta.motor;
-	}
-	else if (match(args[1], "phi"))
-	{
-		m = &phi.motor;
-	}
-	else
+
+	m = motor_get(args[1]);
+	if (m == NULL)
 	{
 		print("Unkown Motor\r\n");
 		return;
@@ -148,6 +141,8 @@ void motor(int argc, char **args)
 
 void cal(int argc, char **args)
 {
+	int i;
+
 	struct rotor *r;
 	struct rotor_cal cal;
 
@@ -162,26 +157,22 @@ void cal(int argc, char **args)
 			"move the rotor between calibrations.\r\n");
 		return;
 	}
-	if (match(args[1], "theta"))
+
+	r = rotor_get(args[1]);
+
+	if (match(args[1], "reset"))
 	{
-		r = &theta;
-	}
-	else if (match(args[1], "phi"))
-	{
-		r = &phi;
-	}
-	else if (match(args[1], "reset"))
-	{
-		memset(&phi.cal1, 0, sizeof(phi.cal1));
-		memset(&phi.cal2, 0, sizeof(phi.cal2));
-		memset(&theta.cal1, 0, sizeof(theta.cal1));
-		memset(&theta.cal2, 0, sizeof(theta.cal2));
+		for (i = 0; i < NUM_ROTORS; i++)
+		{
+			memset(&rotors[i].cal1, 0, sizeof(rotors[i].cal1));
+			memset(&rotors[i].cal2, 0, sizeof(rotors[i].cal2));
+		}
 
 		print("All calibrations have been reset\r\n");
 
 		return;
 	}
-	else
+	else if (r == NULL)
 	{
 		printf("Unkown Rotor: %s\r\n", args[1]);
 		return;
@@ -275,20 +266,14 @@ void mv(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("mv (phi|theta) <([+-]deg|n|e|s|w)> [<speed=0-100>]\r\n"
+		print("mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]\r\n"
 			"Move rotor to a degree angle. North is 0 deg.\r\n");
 		return;
 	}
 
-	if (match(args[1], "theta"))
-	{
-		r = &theta;
-	}
-	else if (match(args[1], "phi"))
-	{
-		r = &phi;
-	}
-	else
+	r = rotor_get(args[1]);
+
+	if (r == NULL)
 	{
 		printf("Unkown Rotor: %s\r\n", args[1]);
 		return;
@@ -340,17 +325,17 @@ void mv(int argc, char **args)
 	if (argc >= 4)
 	{
 		speed = atof(args[3]) / 100;
-		if (speed < r->motor.min_duty_cycle)
+		if (speed < r->motor.duty_cycle_min)
 		{
 			printf("Rotor speed %.2f is too low the minimum duty cycle of %.2f for this rotor\r\n", 
-				speed * 100, r->motor.min_duty_cycle);
+				speed * 100, r->motor.duty_cycle_min);
 
 			return;
 		}
-		else if (speed > r->motor.max_duty_cycle)
+		else if (speed > r->motor.duty_cycle_max)
 		{
 			printf("Rotor speed %.2f is too low the maximum duty cycle of %.2f for this rotor\r\n", 
-				speed * 100, r->motor.max_duty_cycle);
+				speed * 100, r->motor.duty_cycle_max);
 
 			return;
 		}
@@ -367,8 +352,8 @@ void mv(int argc, char **args)
 void flash(int argc, char **args)
 {
 	uint32_t *flash_table[] = {
-		(uint32_t[]) { (uint32_t) &theta, (sizeof(theta)/4) * 4 + 4 },
-		(uint32_t[]) { (uint32_t) &phi, (sizeof(phi)/4) * 4 + 4 },
+	//	(uint32_t[]) { (uint32_t) &theta, (sizeof(theta)/4) * 4 + 4 },
+	//	(uint32_t[]) { (uint32_t) &phi, (sizeof(phi)/4) * 4 + 4 },
 		NULL
 	};
 
@@ -434,6 +419,7 @@ void flash(int argc, char **args)
 
 int main()
 {
+	struct rotor *theta = &rotors[0], *phi = &rotors[1];
 	struct linklist *history = NULL;
 	char buf[128], *args[MAX_ARGS];
 	char c;
@@ -448,32 +434,18 @@ int main()
 	initGpio();
 	initUsart1();
 	initIADC();
+	initRotors();
 
-	memset(&theta, 0, sizeof(theta));
-	memset(&phi, 0, sizeof(phi));
+	theta->motor.port = gpioPortC;
+	theta->motor.pin1 = 0;
+	theta->motor.pin2 = 1;
 
-	theta.iadc = 0;
-	theta.motor.name = "theta";
-	theta.motor.timer = TIMER0;
-	theta.motor.port = gpioPortC;
-	theta.motor.pin1 = 0;
-	theta.motor.pin2 = 1;
-	theta.motor.min_duty_cycle = 0.1;
-	theta.motor.max_duty_cycle = 1.0;
-	theta.motor.initial_duty_cycle = 0.0;
+	phi->motor.port = gpioPortC;
+	phi->motor.pin1 = 2;
+	phi->motor.pin2 = 3;
 
-	phi.iadc = 1;
-	phi.motor.name = "phi";
-	phi.motor.timer = TIMER1;
-	phi.motor.port = gpioPortC;
-	phi.motor.pin1 = 2;
-	phi.motor.pin2 = 3;
-	phi.motor.min_duty_cycle = 0.25;
-	phi.motor.max_duty_cycle = 1.0;
-	phi.motor.initial_duty_cycle = 0.0;
-
-	motor_init(&theta.motor);
-	motor_init(&phi.motor);
+	motor_init(&theta->motor);
+	motor_init(&phi->motor);
 
 	print("\x0c\r\n");
 	help();
@@ -513,8 +485,10 @@ int main()
 		
 		else if (match(args[0], "stop"))
 		{
-			motor_speed(&theta.motor, 0);
-			motor_speed(&phi.motor, 0);
+			for (i = 0; i < NUM_ROTORS; i++)
+			{
+				motor_speed(&rotors[i].motor, 0);
+			}
 		}
 
 		else if (match(args[0], "status") || match(args[0], "stat"))

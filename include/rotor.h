@@ -1,18 +1,39 @@
+#define NUM_ROTORS 4
+
 struct motor
 {
-	TIMER_TypeDef *timer;
-	int port;
-	int pin1;
-	int pin2;
+	union {
+		struct {
+			char name[20];
 
-	char *name;
+			TIMER_TypeDef *timer;
+			int port;
+			int pin1;
+			int pin2;
 
-	// -1 to 1
-	float speed;
+			int pwm_Hz;
 
-	// speeds below min_duty_cycle stop the motor
-	// speeds above max_duty_cycle run the motor at full speed
-	float initial_duty_cycle, min_duty_cycle, max_duty_cycle, duty_cycle_limit;
+			// Set this duty cycle upon initialization
+			float duty_cycle_at_init;
+
+			// speeds below min_duty_cycle stop the motor
+			float duty_cycle_min;
+
+			// speeds above max_duty_cycle run the motor at full speed
+			float duty_cycle_max;
+
+			// Temporarily limit the duty cycle below the variable speed. 
+			// If this above duty_cycle_max, then no limit.
+			// Warning: setting this below duty_cycle_min will stop the motor
+			//          next time motor_speed is called. 
+			float duty_cycle_limit;
+
+			// -1 to 1
+			float speed;
+		};
+
+		char pad[80];
+	};
 };
 
 struct rotor_cal
@@ -23,17 +44,29 @@ struct rotor_cal
 
 struct rotor
 {
-	struct motor motor;
-	struct rotor_cal cal1, cal2;
-	
-	int iadc;
+	union {
+		struct {
+			struct motor motor;
+			struct rotor_cal cal1, cal2;
+			
+			int iadc;
 
-	float target;
+			float target;
+		};
 
-
+		char pad[80];
+	};
 };
 
-extern struct rotor phi, theta;
+extern struct rotor rotors[NUM_ROTORS];
+
+// These motors will reference the motor in each rotor.
+extern struct motor *motors[NUM_ROTORS];
+
+void initRotors();
 
 void motor_init(struct motor *m);
 void motor_speed(struct motor *m, float speed);
+
+struct motor *motor_get(char *name);
+struct rotor *rotor_get(char *name);
