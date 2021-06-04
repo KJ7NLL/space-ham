@@ -33,7 +33,7 @@ uint32_t checksum(void *buf, uint32_t len)
 	return csum;
 }
 
-void flash_write(struct flash_entry **entries, uint32_t location)
+int flash_write(struct flash_entry **entries, uint32_t location)
 {
 	struct flash_header header;
 	uint32_t offset, total_size;
@@ -90,7 +90,7 @@ void flash_write(struct flash_entry **entries, uint32_t location)
 		{
 			printf("Flash Error.\r\n");
 
-			return;
+			return 0;
 		}
 
 		// Then write the memory specified by the entry.
@@ -103,12 +103,14 @@ void flash_write(struct flash_entry **entries, uint32_t location)
 		{
 			printf("Flash Error.\r\n");
 
-			return;
+			return 0;
 		}
 	}
+
+	return 1;
 }
 
-void flash_read(struct flash_entry **entries, uint32_t location)
+int flash_read(struct flash_entry **entries, uint32_t location)
 {
 	void *data;
 
@@ -124,22 +126,24 @@ void flash_read(struct flash_entry **entries, uint32_t location)
 		offset += sizeof(struct flash_header);
 		data = (void *) offset;
 
-		printf("Reading flash index %d at header=%p, data=%p\r\n", i, header, data);
+		printf("Reading flash entry %s (%d): header=%p, data=%p\r\n", entries[i]->name, i, header, data);
 		if (header->len != entries[i]->len)
 		{
 			printf("Error reading flash entry %s (%d) at %p: length mismatch, %ld != %ld\r\n",
 				entries[i]->name, i, header, header->len, entries[i]->len);
 
-			return;
+			return 0;
 		}
 		else if (header->csum != checksum(data, header->len))
 		{
 			printf("Error reading flash entry %s (%d) at %p: checksum mismatch, %ld != %ld\r\n",
 				entries[i]->name, i, data, header->csum, checksum(data, header->len));
 
-			return;
+			return 0;
 		}
 
 		memcpy(entries[i]->ptr, data, entries[i]->len);
 	}
+
+	return 1;
 }
