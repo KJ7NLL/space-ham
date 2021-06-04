@@ -1,4 +1,5 @@
 #include <string.h>
+#include <ctype.h>
 
 // Returns 1 if a and b match.
 int match(char *a, char *b)
@@ -42,7 +43,7 @@ int longest_length(char **a)
 // The character at position pos is deleted
 void shift_left(char *s, int pos)
 {
-	int i;
+	unsigned int i;
 
 	for (i = pos; i < strlen(s) - 1; i++)
 	{

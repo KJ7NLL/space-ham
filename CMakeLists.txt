@@ -92,6 +92,7 @@ add_executable(${PROJECT_NAME}
 	iadc.c
 	pwm.c
 	rotor.c
+	flash.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})

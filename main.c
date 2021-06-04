@@ -10,7 +10,6 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_usart.h"
-#include "em_msc.h"
 
 #include "linklist.h"
 #include "serial.h"
@@ -18,15 +17,21 @@
 #include "iadc.h"
 #include "rotor.h"
 #include "pwm.h"
+#include "flash.h"
 
-// Size of the buf for received data
-#define BUFLEN  80
+#define CONFIG_FLASH_BASE 0x20000 // 128k
 
 #define LED_PORT gpioPortB
 #define LED0_PIN 0
 #define LED1_PIN 1
 
 #define MAX_ARGS 10
+
+struct flash_entry flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
+	*flash_table[] = {
+		&flash_rotors,
+		NULL
+	};
 
 void initGpio(void)
 {
@@ -102,9 +107,29 @@ void status()
 			);
 	}
 
+	print("\r\n");
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
-		printf("%s pos: target = %.2f deg\r\n", rotors[i].motor.name, rotors[i].target);
+		char port = '?';
+
+		switch (rotors[i].motor.port)
+		{
+			case gpioPortA: port = 'A'; break;
+			case gpioPortB: port = 'B'; break;
+			case gpioPortC: port = 'C'; break;
+			case gpioPortD: port = 'D'; break;
+		}
+
+		printf("%s pos: target=%.2f deg [%s, port=%c%d/%c%d]\r\n",
+			rotors[i].motor.name,
+			rotors[i].target,
+			!rotor_valid(&rotors[i]) ? "invalid" : 
+				(rotor_online(&rotors[i]) ? "online" : "offline"), 
+			port,
+			rotors[i].motor.pin1, 
+			port,
+			rotors[i].motor.pin2 
+			);
 	}
 }
 
@@ -351,12 +376,6 @@ void mv(int argc, char **args)
 
 void flash(int argc, char **args)
 {
-	uint32_t *flash_table[] = {
-	//	(uint32_t[]) { (uint32_t) &theta, (sizeof(theta)/4) * 4 + 4 },
-	//	(uint32_t[]) { (uint32_t) &phi, (sizeof(phi)/4) * 4 + 4 },
-		NULL
-	};
-
 	int i, offset, status;
 	if (argc < 2)
 	{
@@ -365,49 +384,15 @@ void flash(int argc, char **args)
 		return;
 	}
 
-	offset = 1024*128;
+	offset = CONFIG_FLASH_BASE;
 
-	if (match(args[1], "save"))
+	if (match(args[1], "write") || match(args[1], "save"))
 	{
-
-
-
-		MSC_ExecConfig_TypeDef execConfig = MSC_EXECCONFIG_DEFAULT;
-		MSC_ExecConfigSet(&execConfig);
-
-		MSC_Init();
-	
-		printf("Flash base: %08x, size=%d\r\n", FLASH_BASE, FLASH_SIZE);
-		printf("User base: %08x, size=%d\r\n", USERDATA_BASE, FLASH_SIZE);
-
-		MSC_ErasePage((void *)offset);
-		for (i = 0; flash_table[i] != NULL; i++)
-		{
-			printf("Flashing i=%d at %p, %d bytes to %p...\r\n", i, (void*)flash_table[i][0], (uint32_t)flash_table[i][1], (void*)offset);
-
-			status = MSC_WriteWord((uint32_t*)offset, flash_table[i][0], (uint32_t) flash_table[i][1]);
-			if (status != mscReturnOk)
-			{
-				printf("  Error status: %s (%d)\r\n", 
-					status == -1 ? "mscReturnInvalidAddr" : (
-						status == -2 ? "flashReturnLocked" : (
-							status == -3 ? "flashReturnTimeOut" : (
-								status == -4 ? "mscReturnUnaligned" : "unknown"))),
-					status);
-			}
-
-
-			offset += (uint32_t)flash_table[i][1];
-		}
+		flash_write(flash_table, offset);
 	}
 	else if (match(args[1], "load"))
 	{
-		for (i = 0; flash_table[i] != NULL; i++)
-		{
-			memcpy((void*)flash_table[i][0], (void*)offset, (uint32_t) flash_table[i][1]);
-			offset += (uint32_t)flash_table[i][1];
-		}
-		print("Flash successfully loaded to ram\r\n");
+		flash_read(flash_table, offset);
 	}
 	else
 	{

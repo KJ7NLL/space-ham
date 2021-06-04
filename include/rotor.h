@@ -13,6 +13,10 @@ struct motor
 
 			int pwm_Hz;
 
+			// The port, pins, and PWM have been assigned. If a motor
+			// is used before it is ready, it will crash the MCU.
+			int online;
+
 			// Set this duty cycle upon initialization
 			float duty_cycle_at_init;
 
@@ -67,6 +71,11 @@ void initRotors();
 
 void motor_init(struct motor *m);
 void motor_speed(struct motor *m, float speed);
+
+int motor_valid(struct motor *m);
+int motor_online(struct motor *m);
+int rotor_valid(struct rotor *r);
+int rotor_online(struct rotor *r);
 
 struct motor *motor_get(char *name);
 struct rotor *rotor_get(char *name);

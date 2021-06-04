@@ -4,6 +4,7 @@
 #include "em_gpio.h"
 
 #include "pwm.h"
+#include "linklist.h"
 #include "serial.h"
 #include "rotor.h"
 #include "strutil.h"
@@ -27,6 +28,7 @@ void initRotors()
 		rotors[i].motor.duty_cycle_min = 0;
 		rotors[i].motor.duty_cycle_max = 1;
 		rotors[i].motor.pwm_Hz = 1047;      // C5 note
+		rotors[i].motor.port = -1;
 
 		motors[i] = &rotors[i].motor;
 	}
@@ -63,8 +65,35 @@ struct motor *motor_get(char *name)
 		return NULL;
 }
 
+int motor_valid(struct motor *m)
+{
+	return m != NULL && m->pwm_Hz > 0 &&
+		(m->port == gpioPortA || 
+			m->port == gpioPortB || 
+			m->port == gpioPortC || 
+			m->port == gpioPortD);
+}
+
+int motor_online(struct motor *m)
+{
+	return m != NULL && m->online && motor_valid(m);
+}
+
+int rotor_valid(struct rotor *r)
+{
+	return r != NULL && motor_valid(&r->motor);
+}
+
+int rotor_online(struct rotor *r)
+{
+	return r != NULL && rotor_valid(r) && motor_online(&r->motor);
+}
+
 void motor_init(struct motor *m)
 {
+	if (!motor_valid(m))
+		return;
+
 	// Sanity check: full range if not configured or misconfigured.
 	if (m->duty_cycle_min == m->duty_cycle_max || m->duty_cycle_max < m->duty_cycle_min)
 	{
@@ -80,6 +109,9 @@ void motor_speed(struct motor *m, float speed)
 	float duty_cycle;
 
 	int pin;
+
+	if (!motor_online(m))
+		return;
 
 	duty_cycle = fabs(speed); // really fast situps!
 
