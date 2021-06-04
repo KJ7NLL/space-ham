@@ -429,12 +429,22 @@ int main()
 	phi->motor.pin1 = 2;
 	phi->motor.pin2 = 3;
 
-	motor_init(&theta->motor);
-	motor_init(&phi->motor);
 
 	print("\x0c\r\n");
+
 	help();
 	print("\r\n");
+
+	flash_read(flash_table, CONFIG_FLASH_BASE);
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		if (motor_valid(&rotors[i].motor))
+		{
+			motor_init(&rotors[i].motor);
+		}
+	}
+	print("\r\n");
+
 	status();
 	print("\r\n");
 
