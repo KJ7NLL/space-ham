@@ -120,7 +120,7 @@ void status()
 			case gpioPortD: port = 'D'; break;
 		}
 
-		printf("%s pos: target=%.2f deg [%s, port=%c%d/%c%d]\r\n",
+		printf("%s pos: target=%.2f deg [%s, port=%c%d/%c%d]: speed=%.1f%%\r\n",
 			rotors[i].motor.name,
 			rotors[i].target,
 			!rotor_valid(&rotors[i]) ? "invalid" : 
@@ -128,7 +128,8 @@ void status()
 			port,
 			rotors[i].motor.pin1, 
 			port,
-			rotors[i].motor.pin2 
+			rotors[i].motor.pin2,
+			rotors[i].motor.speed * 100
 			);
 	}
 }
@@ -141,8 +142,22 @@ void motor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: motor <motor_name> <speed>\r\n"
-			"speed can be between -100 and 100, 0 is stopped\r\n");
+		print("Usage: motor <motor_name> (speed|name|port|pin1|pin2|hz|online)\r\n"
+			"speed <percent>       # Can be between -100 and 100, 0 is stopped\r\n"
+			"speed limit <percent> # Limit duty cycle temporarily even if speed is higher\r\n"
+			"                        Note: A limit below min speed will stop the motor\r\n"
+			"online                # Set this motor online\r\n"
+			"offline               # Set this motor offline\r\n"
+			"\r\n"
+			"Configuration options, `flash save` after changing:\r\n"
+			"name <new_name>       # Set the name of the motor\r\n"
+			"speed min <percent>   # Set minimum PWM speed, below this is stopped\r\n"
+			"speed max <percent>   # Set maximum PWM speed, above this is full speed\r\n"
+			"hz <Hz>               # Set the PWM freq for this motor\r\n"
+			"port <a|b|c|d>        # Set the efr32 port for the motor\r\n"
+			"pin1 <0-6>            # Set the efr32 pin for clockwise PWM\r\n"
+			"pin2 <0-6>            # Set the efr32 pin for counter-clockwise PWM\r\n"
+			);
 		return;
 	}
 
@@ -153,15 +168,38 @@ void motor(int argc, char **args)
 		return;
 	}
 
-	speed = atof(args[2]) / 100;
-	if (speed < -1 || speed > 1)
+	if (match(args[2], "speed") && argc == 4)
 	{
-		print("Speed is out of bounds\r\n");
+		if (!motor_online(m))
+		{
+			printf("Motor is currently offline, please run: motor %s online\r\n", m->name);
 
-		return;
+			return;
+		}
+
+		speed = atof(args[3]) / 100;
+		if (speed < -1 || speed > 1)
+		{
+			print("Speed is out of bounds\r\n");
+
+			return;
+		}
+
+		motor_speed(m, speed);
+
+		printf("Speed sucessfully set to %.1f%%\r\n", speed * 100);
 	}
-
-	motor_speed(m, speed);
+	else if (match(args[2], "online"))
+	{
+		m->online = 1;
+	}
+	else if (match(args[2], "offline"))
+	{
+		m->online = 0;
+		motor_speed(m, 0);
+	}
+	else 
+		print("Unkown or invalid motor sub-command\r\n");
 }
 
 void cal(int argc, char **args)
@@ -482,6 +520,7 @@ int main()
 		{
 			for (i = 0; i < NUM_ROTORS; i++)
 			{
+				rotors[i].motor.online = 0;
 				motor_speed(&rotors[i].motor, 0);
 			}
 		}
@@ -516,12 +555,6 @@ int main()
 		{
 			print("Unkown command: ");
 			print(args[0]);
-			print("\r\n");
-		}
-
-
-		if (!match(args[0], ""))
-		{
 			print("\r\n");
 		}
 	}

@@ -99,6 +99,7 @@ void motor_init(struct motor *m)
 	{
 		m->duty_cycle_min = 0;
 		m->duty_cycle_max = 1;
+		m->speed = 0;
 	}
 
 	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->pwm_Hz, m->duty_cycle_at_init);
@@ -110,7 +111,13 @@ void motor_speed(struct motor *m, float speed)
 
 	int pin;
 
-	if (!motor_online(m))
+	// If speed is 0 and the motor is valid, then always fall through so the motor stops.
+	// If is is nonzero and online, then return early if the being set is the same.
+	if (!motor_valid(m))
+		return;
+	else if (speed != 0 && !motor_online(m))
+		return;
+	else if (speed != 0 && m->speed == speed)
 		return;
 
 	duty_cycle = fabs(speed); // really fast situps!

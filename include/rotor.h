@@ -32,7 +32,7 @@ struct motor
 			//          next time motor_speed is called. 
 			float duty_cycle_limit;
 
-			// -1 to 1
+			// -1 to 1, informational only, does not set the speed:
 			float speed;
 		};
 
