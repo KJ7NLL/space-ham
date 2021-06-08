@@ -154,7 +154,7 @@ void motor(int argc, char **args)
 			"speed min <percent>   # Set minimum PWM speed, below this is stopped\r\n"
 			"speed max <percent>   # Set maximum PWM speed, above this is full speed\r\n"
 			"hz <Hz>               # Set the PWM freq for this motor\r\n"
-			"port <a|b|c|d>        # Set the efr32 port for the motor\r\n"
+			"port <0|a|b|c|d>      # Set the efr32 port for the motor, 0 is unconfigured\r\n"
 			"pin1 <0-6>            # Set the efr32 pin for clockwise PWM\r\n"
 			"pin2 <0-6>            # Set the efr32 pin for counter-clockwise PWM\r\n"
 			);
@@ -168,7 +168,11 @@ void motor(int argc, char **args)
 		return;
 	}
 
-	if (match(args[2], "speed") && argc == 4)
+	if (match(args[2], "stop"))
+	{
+		motor_speed(m, 0);
+	}
+	else if (match(args[2], "speed") && argc == 4 && !isalpha(args[3][0]))
 	{
 		if (!motor_online(m))
 		{
@@ -189,6 +193,34 @@ void motor(int argc, char **args)
 
 		printf("Speed sucessfully set to %.1f%%\r\n", speed * 100);
 	}
+	else if (match(args[2], "speed") && argc >= 5)
+	{
+		float value = atof(args[4]) / 100;
+		
+		if (match(args[3], "limit") && value > 0 && value <= 1)
+		{
+			m->duty_cycle_limit = value;
+		}
+		else if (match(args[3], "min") && value >= 0 && value <= 1)
+		{
+			if (m->duty_cycle_max < value)
+			{
+				print("Min must be less than max\r\n");
+			}
+
+			m->duty_cycle_min = value;
+		}
+		else if (match(args[3], "max") && value > 0 && value <= 1)
+		{
+			if (m->duty_cycle_min > value)
+			{
+				print("Max must be greater than min\r\n");
+			}
+			m->duty_cycle_max = value;
+		}
+
+		motor_speed(m, m->speed);
+	}
 	else if (match(args[2], "online"))
 	{
 		m->online = 1;
@@ -197,6 +229,71 @@ void motor(int argc, char **args)
 	{
 		m->online = 0;
 		motor_speed(m, 0);
+	}
+	else if (match(args[2], "name") && argc >= 4)
+	{
+		strncpy(m->name, args[3], sizeof(m->name)-1);
+	}
+	else if (match(args[2], "hz") && argc >= 4)
+	{
+		int hz = atoi(args[3]);
+
+		float speed = m->speed;
+
+		if (hz <= 0)
+			print("Hz must be greater than 0\r\n");
+		else
+		{
+			m->pwm_Hz = hz;
+			m->speed = 0; // set it to zero to force it to refresh the speed
+			motor_init(m);
+			motor_speed(m, speed);
+		}
+	}
+	else if (match(args[2], "port") && argc >= 4)
+	{
+		switch (tolower(args[3][0]))
+		{
+			case '0': m->port = -1; break;
+			case 'a': m->port = gpioPortA; break;
+			case 'b': m->port = gpioPortB; break;
+			case 'c': m->port = gpioPortC; break;
+			case 'd': m->port = gpioPortD; break;
+			default:
+				print("invalid port\r\n");
+				return;
+		}
+
+		if (motor_valid(m))
+			motor_init(m);
+	}
+	else if (match(args[2], "pin1") && argc >= 4)
+	{
+		int pin = atoi(args[3]);
+		if (pin < 0 || pin > 7)
+		{
+			print("invalid pin\r\n");
+
+			return;
+		}
+
+		m->pin1 = pin;
+		if (motor_valid(m))
+			motor_init(m);
+	}
+	else if (match(args[2], "pin2") && argc >= 4)
+	{
+		int pin = atoi(args[3]);
+		if (pin < 0 || pin > 7)
+		{
+			print("invalid pin\r\n");
+
+			return;
+		}
+
+		m->pin2 = pin;
+		if (motor_valid(m))
+			motor_init(m);
 	}
 	else 
 		print("Unkown or invalid motor sub-command\r\n");
@@ -266,7 +363,7 @@ void cal(int argc, char **args)
 
 	if (deg < 0)
 	{
-		print("Degree angles must start at 0");
+		print("Degree angles must start at 0\r\n");
 
 		return;
 	}
@@ -545,6 +642,17 @@ int main()
 			mv(argc, args);
 		}
 		
+		else if (match(args[0], "led") && argc >= 2)
+		{
+			if (args[1][0] == '0')
+				GPIO_PinOutToggle(gpioPortB, 0);
+
+			else if (args[1][0] == '1')
+				GPIO_PinOutToggle(gpioPortB, 1);
+			else
+				print("Invalid pin\r\n");
+		}
+
 		else if (match(args[0], "flash"))
 		{
 			flash(argc, args);

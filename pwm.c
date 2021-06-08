@@ -28,6 +28,22 @@ void TIMER1_IRQHandler(void)
 	TIMER_IntClear(TIMER1, flags);
 }
 
+void TIMER2_IRQHandler(void)
+{
+	// Acknowledge the interrupt
+	uint32_t flags = TIMER_IntGet(TIMER2);
+
+	TIMER_IntClear(TIMER2, flags);
+}
+
+void TIMER3_IRQHandler(void)
+{
+	// Acknowledge the interrupt
+	uint32_t flags = TIMER_IntGet(TIMER3);
+
+	TIMER_IntClear(TIMER3, flags);
+}
+
 void timer_cc_duty_cycle(TIMER_TypeDef *timer, int cc, float duty_cycle)
 {
 	int idx = timer_idx(timer);
@@ -190,7 +206,4 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, int pwm_Hz,
 
 	// Start the timer
 	TIMER_Enable(timer, true);
-
-	// Enable timer compare event interrupts to update the duty cycle
-	timer_irq_enable(timer);
 }

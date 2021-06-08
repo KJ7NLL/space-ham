@@ -1,5 +1,7 @@
+#include <ctype.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "em_gpio.h"
 
@@ -95,10 +97,16 @@ void motor_init(struct motor *m)
 		return;
 
 	// Sanity check: full range if not configured or misconfigured.
-	if (m->duty_cycle_min == m->duty_cycle_max || m->duty_cycle_max < m->duty_cycle_min)
+	if (m->duty_cycle_min == m->duty_cycle_max || 
+		m->duty_cycle_max < m->duty_cycle_min ||
+		m->duty_cycle_max < 0 || m->duty_cycle_max > 1 ||
+		m->duty_cycle_min < 0 || m->duty_cycle_min > 1 ||
+		m->duty_cycle_limit <= 0 || m->duty_cycle_limit > 1
+		)
 	{
 		m->duty_cycle_min = 0;
 		m->duty_cycle_max = 1;
+		m->duty_cycle_limit = 1;
 		m->speed = 0;
 	}
 
@@ -107,8 +115,8 @@ void motor_init(struct motor *m)
 
 void motor_speed(struct motor *m, float speed)
 {
-	float duty_cycle;
-
+	float duty_cycle = fabs(speed); // really fast situps!
+	
 	int pin;
 
 	// If speed is 0 and the motor is valid, then always fall through so the motor stops.
@@ -117,10 +125,9 @@ void motor_speed(struct motor *m, float speed)
 		return;
 	else if (speed != 0 && !motor_online(m))
 		return;
-	else if (speed != 0 && m->speed == speed)
+	else if (speed != 0 && m->speed == speed && duty_cycle < m->duty_cycle_limit)
 		return;
 
-	duty_cycle = fabs(speed); // really fast situps!
 
 	// Clamp duty_cycle if necessary
 	if (duty_cycle < m->duty_cycle_min)
@@ -132,6 +139,9 @@ void motor_speed(struct motor *m, float speed)
 	{
 		duty_cycle = 1;
 	}
+
+	if (m->duty_cycle_limit < duty_cycle)
+		duty_cycle = m->duty_cycle_limit;
 
 	m->speed = speed; // For future reference
 
