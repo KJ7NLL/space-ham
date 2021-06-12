@@ -67,13 +67,16 @@ void initCmu(void)
 void help()
 {
 	char *h =
-		"mv (phi|theta) <([+-]deg|n|e|s|w)> [<speed=0-100>]    # moves antenna\r\n"
-		"motor (theta|phi) <[+-]0-100>                         # turn on motor at speed\r\n"
-		"cam (on|off)                                          # turns camera on or off\r\n"
-		"(help|?|h)                                            # list of commands\r\n"
 		"status                                                # display system status\r\n"
-		"cal (theta|phi|reset) <(deg|reset)>                   # Calibrates phi or theta\r\n"
-		"sat (load|track|list|search)                          # satellite commands\r\n";
+		"mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]   # moves antenna\r\n"
+		"(help|?|h)                                            # list of commands\r\n"
+		"cal <(reset|motor_name)> <(deg|reset)>                # Calibrates phi or theta\r\n"
+		"flash (save|load)                                     # Save to flash\r\n"
+		"sat (load|track|list|search)                          # satellite commands\r\n"
+		"motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz|)\r\n"
+		"cam (on|off)                                          # turns camera on or off\r\n"
+		"led (1|0)                                             # Turns LED1/0 on or off\r\n"
+		"hist|history                                          # History of commands\r\n";
 	print(h);
 }
 
@@ -120,8 +123,9 @@ void status()
 			case gpioPortD: port = 'D'; break;
 		}
 
-		printf("%s pos: target=%.2f deg [%s, port=%c%d/%c%d]: speed=%.1f%%\r\n",
+		printf("%s pos=%.2f deg, target=%.2f deg [%s, port=%c%d/%c%d]: speed=%.1f%%\r\n",
 			rotors[i].motor.name,
+			rotor_pos(&rotors[i]),
 			rotors[i].target,
 			!rotor_valid(&rotors[i]) ? "invalid" : 
 				(rotor_online(&rotors[i]) ? "online" : "offline"), 
@@ -142,13 +146,16 @@ void motor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: motor <motor_name> (speed|name|port|pin1|pin2|hz|online)\r\n"
+		print("Usage: motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz|)\r\n"
 			"speed <percent>       # Can be between -100 and 100, 0 is stopped\r\n"
 			"speed limit <percent> # Limit duty cycle temporarily even if speed is higher\r\n"
 			"                        Note: A limit below min speed will stop the motor\r\n"
 			"online                # Set this motor online\r\n"
 			"offline               # Set this motor offline\r\n"
+			"on                    # Set this motor to full speed\r\n"
+			"off/stop              # Set this motor speed to 0\r\n"
 			"\r\n"
+
 			"Configuration options, `flash save` after changing:\r\n"
 			"name <new_name>       # Set the name of the motor\r\n"
 			"speed min <percent>   # Set minimum PWM speed, below this is stopped\r\n"
@@ -164,11 +171,11 @@ void motor(int argc, char **args)
 	m = motor_get(args[1]);
 	if (m == NULL)
 	{
-		print("Unkown Motor\r\n");
+		printf("Unkown Motor: %s\r\n", args[1]);
 		return;
 	}
 
-	if (match(args[2], "stop"))
+	if (match(args[2], "stop") || match(args[2], "off"))
 	{
 		motor_speed(m, 0);
 	}
@@ -184,7 +191,7 @@ void motor(int argc, char **args)
 		speed = atof(args[3]) / 100;
 		if (speed < -1 || speed > 1)
 		{
-			print("Speed is out of bounds\r\n");
+			printf("Speed is out of bounds: %s\r\n", args[3]);
 
 			return;
 		}
@@ -192,6 +199,17 @@ void motor(int argc, char **args)
 		motor_speed(m, speed);
 
 		printf("Speed sucessfully set to %.1f%%\r\n", speed * 100);
+	}
+	else if (match(args[2], "on"))
+	{
+		if (!motor_online(m))
+		{
+			printf("Motor is currently offline, please run: motor %s online\r\n", m->name);
+
+			return;
+		}
+
+		motor_speed(m, 1);
 	}
 	else if (match(args[2], "speed") && argc >= 5)
 	{
@@ -260,7 +278,7 @@ void motor(int argc, char **args)
 			case 'c': m->port = gpioPortC; break;
 			case 'd': m->port = gpioPortD; break;
 			default:
-				print("invalid port\r\n");
+				printf("invalid port: %s\r\n", args[3]);
 				return;
 		}
 
@@ -272,7 +290,7 @@ void motor(int argc, char **args)
 		int pin = atoi(args[3]);
 		if (pin < 0 || pin > 7)
 		{
-			print("invalid pin\r\n");
+			printf("invalid pin: %s\r\n", args[3]);
 
 			return;
 		}
@@ -286,7 +304,7 @@ void motor(int argc, char **args)
 		int pin = atoi(args[3]);
 		if (pin < 0 || pin > 7)
 		{
-			print("invalid pin\r\n");
+			printf("invalid pin: %s\r\n", args[3]);
 
 			return;
 		}
@@ -296,7 +314,7 @@ void motor(int argc, char **args)
 			motor_init(m);
 	}
 	else 
-		print("Unkown or invalid motor sub-command\r\n");
+		printf("Unkown or invalid motor sub-command: %s\r\n", args[2]);
 }
 
 void cal(int argc, char **args)

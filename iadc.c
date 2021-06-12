@@ -6,13 +6,12 @@
 #include "em_gpio.h"
 
 #include "iadc.h"
+#include "rotor.h"
 
 static volatile float scan_result[IADC_NUM_INPUTS];	// Volts
 
 void initIADC(void)
 {
-	int i = 0;
-
 	// Declare init structs
 	IADC_Init_t init = IADC_INIT_DEFAULT;
 	IADC_AllConfigs_t initAllConfigs = IADC_ALLCONFIGS_DEFAULT;
@@ -106,6 +105,16 @@ void IADC_IRQHandler(void)
 		scan_result[i] = result.data * 3.3 / 0xFFF;
 		i++;
 	}
+
+/*
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		if (rotor_pos(&rotors[i]) < rotors[i].target)
+			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 1.0001);
+		else if (rotor_pos(&rotors[i]) > rotors[i].target)
+			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 0.9999);
+	}
+*/
 
 	// Start next IADC conversion
 	IADC_clearInt(IADC0, IADC_IF_SCANTABLEDONE);

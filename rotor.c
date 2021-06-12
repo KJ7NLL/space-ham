@@ -10,6 +10,7 @@
 #include "serial.h"
 #include "rotor.h"
 #include "strutil.h"
+#include "iadc.h"
 
 struct rotor rotors[NUM_ROTORS];
 
@@ -89,6 +90,21 @@ int rotor_valid(struct rotor *r)
 int rotor_online(struct rotor *r)
 {
 	return r != NULL && rotor_valid(r) && motor_online(&r->motor);
+}
+
+// Return the degree position of the motor baised on the voltage and calibrated values
+float rotor_pos(struct rotor *r)
+{
+	float v, v_range, v_frac;
+	
+	v = iadc_get_result(r->iadc);
+	v_range = r->cal2.v - r->cal1.v;
+	if (v_range != 0)
+		v_frac = (v - r->cal1.v) / (r->cal2.v - r->cal1.v);
+	else
+		v_frac = 0;
+
+	return r->cal1.deg + v_frac * (r->cal2.deg - r->cal1.deg);
 }
 
 void motor_init(struct motor *m)

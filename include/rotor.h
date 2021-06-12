@@ -77,5 +77,7 @@ int motor_online(struct motor *m);
 int rotor_valid(struct rotor *r);
 int rotor_online(struct rotor *r);
 
+float rotor_pos(struct rotor *r);
+
 struct motor *motor_get(char *name);
 struct rotor *rotor_get(char *name);
