@@ -55,12 +55,12 @@ void initIADC(void)
 	// Configure entries in scan table
 
 	// Theta
-	initScanTable.entries[0].posInput = iadcPosInputPortDPin2;
+	initScanTable.entries[0].posInput = IADC_INPUT_0;
 	initScanTable.entries[0].includeInScan = true;
 	initScanTable.entries[0].negInput = iadcNegInputGnd;
 
 	// Phi
-	initScanTable.entries[1].posInput = iadcPosInputPortDPin3;
+	initScanTable.entries[1].posInput = IADC_INPUT_1;
 	initScanTable.entries[1].includeInScan = true;
 	initScanTable.entries[1].negInput = iadcNegInputGnd;
 

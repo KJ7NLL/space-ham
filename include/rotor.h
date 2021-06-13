@@ -1,4 +1,7 @@
-#define NUM_ROTORS 4
+// The efr32mg21 only supports 2 timers. 
+// You might be able to do your own PWM in an interrupt and use a single timer
+// to get additional PWM channels, but currently only timer based PWM is implemented
+#define NUM_ROTORS 2
 
 struct motor
 {

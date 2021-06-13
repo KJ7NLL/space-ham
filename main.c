@@ -50,6 +50,10 @@ void initGpio(void)
 	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortC, 4, gpioModePushPull, 0);
+
+	GPIO_PinModeSet(gpioPortD, 2, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortD, 3, gpioModePushPull, 0);
 
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
@@ -209,7 +213,10 @@ void motor(int argc, char **args)
 			return;
 		}
 
-		motor_speed(m, 1);
+		if (argc >= 3 && args[3][0] == '<')
+			motor_speed(m, -1);
+		else
+			motor_speed(m, 1);
 	}
 	else if (match(args[2], "speed") && argc >= 5)
 	{
@@ -574,14 +581,13 @@ int main()
 	initIADC();
 	initRotors();
 
-	theta->motor.port = gpioPortC;
-	theta->motor.pin1 = 0;
-	theta->motor.pin2 = 1;
+	theta->motor.port = gpioPortD;
+	theta->motor.pin1 = 2;
+	theta->motor.pin2 = 3;
 
 	phi->motor.port = gpioPortC;
-	phi->motor.pin1 = 2;
-	phi->motor.pin2 = 3;
-
+	phi->motor.pin1 = 1;
+	phi->motor.pin2 = 4;
 
 	print("\x0c\r\n");
 

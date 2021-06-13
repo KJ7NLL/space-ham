@@ -200,7 +200,7 @@ int esc_key(char **keys)
 		esc[escidx] = c;
 		escidx++;
 
-		esc[escidx + 1] = 0;
+		esc[escidx] = 0;
 			
 		if (c == 3)
 		{
@@ -271,6 +271,14 @@ int input(char *buf, int len, struct linklist **history)
 				// BEEP BEEP BEEEP
 				serial_write("\x07\x07\x07", 3);
 			}
+		}
+		else if (c == 3)	// CTRL+C
+		{
+			buf[0] = 0;
+			pos = 0;
+			end = 0;
+			print("^C");
+			break;
 		}
 		else if (c == 27)	// Escape
 		{
