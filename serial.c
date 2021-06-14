@@ -129,14 +129,25 @@ void serial_write(void *s, int len)
 
 }
 
-void serial_read(void *s, int len)
+void serial_read_async(void *s, int len)
 {
 	bufrx = s;
 	bufrxlen = len;
 
 	// Enable receive data valid interrupt
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
-	while (bufrx != NULL)
+}
+
+int serial_read_done()
+{
+	return bufrx == NULL;
+}
+
+void serial_read(void *s, int len)
+{
+	serial_read_async(s, len);
+
+	while (!serial_read_done())
 		EMU_EnterEM1();
 
 }

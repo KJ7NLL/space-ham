@@ -10,6 +10,7 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_usart.h"
+#include "ustimer.h"
 
 #include "linklist.h"
 #include "serial.h"
@@ -574,11 +575,14 @@ int main()
 	// Chip errata
 	CHIP_Init();
 
-	// Initialize GPIO and USART1
+	// Initialize efr32 features
+	USTIMER_Init();	
 	initCmu();
 	initGpio();
 	initUsart1();
 	initIADC();
+	
+	// Initialize our features
 	initRotors();
 
 	theta->motor.port = gpioPortD;
@@ -648,7 +652,21 @@ int main()
 
 		else if (match(args[0], "status") || match(args[0], "stat"))
 		{
-			status();
+			char c = 0;
+
+			if (argc >= 2 && match(args[1], "watch"))
+				serial_read_async(&c, 1);
+
+			do
+			{
+				status();
+				if (argc >= 2)
+				{
+					USTIMER_Delay(1_000_000);
+					print("\x0c");
+				}
+			}
+			while (!serial_read_done());
 		}
 
 		else if (match(args[0], "motor"))
