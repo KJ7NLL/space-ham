@@ -6,4 +6,4 @@ uint64_t systick_get();
 void systick_delay(uint64_t delay);
 
 // Use to get pointer to flash to save the time
-volatile extern uint64_t systick_ticks;
+extern volatile uint64_t systick_ticks;

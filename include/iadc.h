@@ -5,15 +5,20 @@
 // Number of scan channels
 #define IADC_NUM_INPUTS 2
 
+// Number of samples to average (must be a power of 2)
+#define IADC_NUM_AVG_BITS 2
+#define IADC_NUM_AVG (1<<IADC_NUM_AVG_BITS)
+#define IADC_NUM_AVG_MASK (IADC_NUM_AVG-1)
+
 // When changing GPIO port/pins below, make sure to change xBUSALLOC macro's
 // accordingly.
-#define IADC_INPUT_0_BUS          ABUSALLOC
-#define IADC_INPUT_0_BUSALLOC     GPIO_ABUSALLOC_AEVEN0_ADC0
-#define IADC_INPUT_1_BUS          ABUSALLOC
-#define IADC_INPUT_1_BUSALLOC     GPIO_ABUSALLOC_AODD0_ADC0
+#define IADC_INPUT_0_BUS          CDBUSALLOC
+#define IADC_INPUT_0_BUSALLOC     GPIO_CDBUSALLOC_CDEVEN0_ADC0
+#define IADC_INPUT_1_BUS          CDBUSALLOC
+#define IADC_INPUT_1_BUSALLOC     GPIO_CDBUSALLOC_CDODD0_ADC0
 
-#define IADC_INPUT_0              iadcPosInputPortAPin3
-#define IADC_INPUT_1              iadcPosInputPortAPin4
+#define IADC_INPUT_0              iadcPosInputPortDPin2
+#define IADC_INPUT_1              iadcPosInputPortDPin3
 
 void initIADC(void);
 float iadc_get_result(int i);

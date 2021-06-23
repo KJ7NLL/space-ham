@@ -10,7 +10,6 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_usart.h"
-#include "ustimer.h"
 
 #include "linklist.h"
 #include "serial.h"
@@ -19,6 +18,7 @@
 #include "rotor.h"
 #include "pwm.h"
 #include "flash.h"
+#include "systick.h"
 
 #define CONFIG_FLASH_BASE 0x20000 // 128k
 
@@ -29,8 +29,10 @@
 #define MAX_ARGS 10
 
 struct flash_entry flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
+	flash_systick = { .name = "systick", .ptr = (void *)&systick_ticks, .len = sizeof(systick_ticks) }, 
 	*flash_table[] = {
 		&flash_rotors,
+		&flash_systick,
 		NULL
 	};
 
@@ -42,23 +44,31 @@ void initGpio(void)
 	// Configure PA6 as an input (RX)
 	GPIO_PinModeSet(gpioPortA, 6, gpioModeInput, 0);
 
+	GPIO_PinModeSet(gpioPortA, 3, gpioModePushPull, 0);
+	
+	// PA04 is used for VCOMCTS and does not work for general use
+	//GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);
+
 	// Configure PD4 as output and set high (VCOM_ENABLE)
 	// comment out next line to disable VCOM
 	GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
 	
 	// pwm ports
 	GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
+
+	// PC01 is used for vcom rts but seems to work fine for a motor
 	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 4, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortC, 5, gpioModePushPull, 0);
 
-	GPIO_PinModeSet(gpioPortD, 2, gpioModePushPull, 0);
-	GPIO_PinModeSet(gpioPortD, 3, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortD, 2, gpioModeInput, 0);
+	GPIO_PinModeSet(gpioPortD, 3, gpioModeInput, 0);
 
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
-	GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 1);
+	GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 0);
 }
 
 void initCmu(void)
@@ -72,16 +82,17 @@ void initCmu(void)
 void help()
 {
 	char *h =
-		"status                                                # display system status\r\n"
-		"mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]   # moves antenna\r\n"
-		"(help|?|h)                                            # list of commands\r\n"
+		"status [watch]                                        # Display system status\r\n"
+		"mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]   # Moves antenna\r\n"
+		"(help|?|h)                                            # List of commands\r\n"
 		"cal <(reset|motor_name)> <(deg|reset)>                # Calibrates phi or theta\r\n"
 		"flash (save|load)                                     # Save to flash\r\n"
-		"sat (load|track|list|search)                          # satellite commands\r\n"
+		"sat (load|track|list|search)                          # Satellite commands\r\n"
 		"motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz|)\r\n"
-		"cam (on|off)                                          # turns camera on or off\r\n"
+		"cam (on|off)                                          # Turns camera on or off\r\n"
 		"led (1|0)                                             # Turns LED1/0 on or off\r\n"
-		"hist|history                                          # History of commands\r\n";
+		"hist|history                                          # History of commands\r\n"
+		"debug-keys                                            # Print chars and hex\r\n";
 	print(h);
 }
 
@@ -99,6 +110,8 @@ void status()
 {
 	int i;
 
+	printf("Ticks: %ld\r\n", (long)systick_get());
+
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
 		printf("iadc[%d]: %f volts\r\n", i, (float)iadc_get_result(i));
@@ -107,11 +120,11 @@ void status()
 	
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
-		printf("%s cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f V/deg\r\n", 
+		printf("%s cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f mV/deg\r\n", 
 			rotors[i].motor.name,
 			rotors[i].cal1.deg, rotors[i].cal2.deg,
 			rotors[i].cal1.v, rotors[i].cal2.v,
-			(rotors[i].cal2.v - rotors[i].cal1.v) / (rotors[i].cal2.deg - rotors[i].cal1.deg)
+			(rotors[i].cal2.v - rotors[i].cal1.v) / (rotors[i].cal2.deg - rotors[i].cal1.deg) * 1000
 			);
 	}
 
@@ -476,11 +489,8 @@ void mv(int argc, char **args)
 	switch (args[2][0])
 	{
 		case '+':
-			deg = r->target + deg;
-			break;
-
 		case '-':
-			deg = r->target - deg;
+			deg = r->target + deg;
 			break;
 
 		case 'w':
@@ -537,7 +547,7 @@ void mv(int argc, char **args)
 
 void flash(int argc, char **args)
 {
-	int i, offset, status;
+	int offset;
 	if (argc < 2)
 	{
 		print("Usage: flash (save|load)\r\n");
@@ -576,7 +586,6 @@ int main()
 	CHIP_Init();
 
 	// Initialize efr32 features
-	USTIMER_Init();	
 	initCmu();
 	initGpio();
 	initUsart1();
@@ -585,9 +594,9 @@ int main()
 	// Initialize our features
 	initRotors();
 
-	theta->motor.port = gpioPortD;
-	theta->motor.pin1 = 2;
-	theta->motor.pin2 = 3;
+	theta->motor.port = gpioPortB;
+	theta->motor.pin1 = 0;
+	theta->motor.pin2 = 1;
 
 	phi->motor.port = gpioPortC;
 	phi->motor.pin1 = 1;
@@ -599,6 +608,8 @@ int main()
 	print("\r\n");
 
 	flash_read(flash_table, CONFIG_FLASH_BASE);
+
+	// Initalize motors that were loaded from flash if they were valid
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
 		if (motor_valid(&rotors[i].motor))
@@ -606,6 +617,10 @@ int main()
 			motor_init(&rotors[i].motor);
 		}
 	}
+
+	// Initalize systick after reading flash so that it does not change
+	if (systick_init(1000) != 0)
+		print("Failed to set systick to 1000 Hz\r\n");
 	print("\r\n");
 
 	status();
@@ -662,7 +677,7 @@ int main()
 				status();
 				if (argc >= 2)
 				{
-					USTIMER_Delay(1_000_000);
+					systick_delay(1000);
 					print("\x0c");
 				}
 			}

@@ -1,4 +1,6 @@
+#include <string.h>
 #include <stdio.h>
+
 #include "em_device.h"
 #include "em_chip.h"
 #include "em_cmu.h"
@@ -8,7 +10,8 @@
 #include "iadc.h"
 #include "rotor.h"
 
-static volatile float scan_result[IADC_NUM_INPUTS];	// Volts
+static volatile uint16_t scan_results[IADC_NUM_INPUTS][IADC_NUM_AVG];	// Raw value from ADC, 0-4095
+static volatile uint16_t sample_position[IADC_NUM_INPUTS];
 
 void initIADC(void)
 {
@@ -17,6 +20,12 @@ void initIADC(void)
 	IADC_AllConfigs_t initAllConfigs = IADC_ALLCONFIGS_DEFAULT;
 	IADC_InitScan_t initScan = IADC_INITSCAN_DEFAULT;
 	IADC_ScanTable_t initScanTable = IADC_SCANTABLE_DEFAULT;
+
+	printf("IADC: scan_results is %d bytes, sample_position is %d bytes\r\n", 
+		sizeof(scan_results), sizeof(sample_position));
+
+	memset((void *)scan_results, 0, sizeof(scan_results));
+	memset((void *)sample_position, 0, sizeof(sample_position));
 
 	// Enable IADC0 and GPIO clock branches
 	CMU_ClockEnable(cmuClock_IADC0, true);
@@ -102,19 +111,14 @@ void IADC_IRQHandler(void)
 		// for Vref = AVDD = 3.30V, 12 bits represents 3.30V full scale IADC range.
 		// Really we should use result.id instead of i, but for some reason, result.id is always 0.
 		// Hopefully the scan results are always in order (they seem to be).
-		scan_result[i] = result.data * 3.3 / 0xFFF;
+
+		// Add prev value and divide by 2 for average.
+		// Hopefully, gcc optimizes the indexes. If not, we should simplify as pointers.
+		scan_results[i][sample_position[i] & IADC_NUM_AVG_MASK] += result.data & 0xFFF;
+		scan_results[i][sample_position[i] & IADC_NUM_AVG_MASK] >>= 1;
+		sample_position[i]++;
 		i++;
 	}
-
-/*
-	for (i = 0; i < NUM_ROTORS; i++)
-	{
-		if (rotor_pos(&rotors[i]) < rotors[i].target)
-			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 1.0001);
-		else if (rotor_pos(&rotors[i]) > rotors[i].target)
-			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 0.9999);
-	}
-*/
 
 	// Start next IADC conversion
 	IADC_clearInt(IADC0, IADC_IF_SCANTABLEDONE);
@@ -124,11 +128,19 @@ void IADC_IRQHandler(void)
 
 float iadc_get_result(int i)
 {
-	float r;
+	int j, total = 0;
 
+	// Disable the interrupt to prevent the results from changing while we operate
 	NVIC_DisableIRQ(IADC_IRQn);
-	r = scan_result[i];
+
+	// Sum the results to get an average
+	for (j = 0; j < IADC_NUM_AVG; j++)
+		total += scan_results[i][j];
+
 	NVIC_EnableIRQ(IADC_IRQn);
 	
-	return r;
+	// Get an average, the count is always a power of 2
+	total >>= IADC_NUM_AVG_BITS;
+	
+	return 3.3 * (float)total / 4095.0;
 }

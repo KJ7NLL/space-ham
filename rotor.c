@@ -96,7 +96,7 @@ int rotor_online(struct rotor *r)
 float rotor_pos(struct rotor *r)
 {
 	float v, v_range, v_frac;
-	
+
 	v = iadc_get_result(r->iadc);
 	v_range = r->cal2.v - r->cal1.v;
 	if (v_range != 0)

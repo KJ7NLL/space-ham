@@ -1,27 +1,41 @@
 #include "em_cmu.h"
 #include "em_emu.h"
 
-volatile static int lock = 0, locked_ticks = 0, ticks_per_sec;
-volatile static uint64_t ticks = 0;
+#include "rotor.h"
+
+volatile uint64_t systick_ticks = 0;
+static volatile int lock = 0, locked_ticks = 0, ticks_per_sec = 1000;
 
 void SysTick_Handler(void)
 {
+	int i;
+
 	if (!lock)
 	{
-		ticks++;
+		systick_ticks++;
 		if (locked_ticks != 0)
 		{
-			ticks += locked_ticks;
+			systick_ticks += locked_ticks;
 			locked_ticks = 0;
 		}
 	}
 	else
 		locked_ticks++;
+
+/*
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		if (rotor_pos(&rotors[i]) < rotors[i].target)
+			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 1.1);
+		else if (rotor_pos(&rotors[i]) > rotors[i].target)
+			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 0.9);
+	}
+*/
 }
 
 int systick_update()
 {
-	return SysTick_Config(cmuClock_CORE / ticks_per_sec);
+	return SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / ticks_per_sec);
 }
 
 int systick_init(int tps)
@@ -33,7 +47,7 @@ int systick_init(int tps)
 void systick_set(uint64_t newticks)
 {
 	lock = 1;
-	ticks = newticks;
+	systick_ticks = newticks;
 	locked_ticks = 0;
 	lock = 0;
 }
@@ -42,7 +56,7 @@ uint64_t systick_get()
 {
 	uint64_t t;
 	lock = 1;
-	t = ticks;
+	t = systick_ticks;
 	lock = 0;
 	
 	return t;
