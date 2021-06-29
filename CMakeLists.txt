@@ -94,6 +94,7 @@ add_executable(${PROJECT_NAME}
 	rotor.c
 	flash.c
 	systick.c
+	pid.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
