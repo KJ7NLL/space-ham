@@ -8,6 +8,8 @@ static volatile int lock = 0, locked_ticks = 0, ticks_per_sec = 1000;
 
 void SysTick_Handler(void)
 {
+	struct motor *motor;
+	struct rotor *rotor;
 	int i;
 
 	if (!lock)
@@ -22,15 +24,20 @@ void SysTick_Handler(void)
 	else
 		locked_ticks++;
 
-/*
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
-		if (rotor_pos(&rotors[i]) < rotors[i].target)
-			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 1.1);
-		else if (rotor_pos(&rotors[i]) > rotors[i].target)
-			motor_speed(&rotors[i].motor, rotors[i].motor.speed * 0.9);
+		rotor = &rotors[i];
+		motor = &rotor->motor;
+		if (!rotor_online(rotor))
+			continue;
+
+		if (rotor_pos(rotor) < rotor->target)
+			motor_speed(motor, motor->speed + 0.01);
+		else if (rotor_pos(rotor) > rotor->target)
+			motor_speed(motor, motor->speed - 0.01);
+		else
+			motor_speed(motor, 0);
 	}
-*/
 }
 
 int systick_update()
@@ -62,7 +69,7 @@ uint64_t systick_get()
 	return t;
 }
 
-void systick_delay(uint64_t delay)
+void systick_delay_ticks(uint64_t delay)
 {
 	uint64_t cur = systick_get();
 
@@ -71,3 +78,7 @@ void systick_delay(uint64_t delay)
 
 }
 
+void systick_delay_sec(float sec)
+{
+	systick_delay_ticks(sec * (float)ticks_per_sec);
+}

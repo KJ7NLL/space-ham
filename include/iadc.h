@@ -6,7 +6,7 @@
 #define IADC_NUM_INPUTS 2
 
 // Number of samples to average (must be a power of 2)
-#define IADC_NUM_AVG_BITS 2
+#define IADC_NUM_AVG_BITS 8
 #define IADC_NUM_AVG (1<<IADC_NUM_AVG_BITS)
 #define IADC_NUM_AVG_MASK (IADC_NUM_AVG-1)
 

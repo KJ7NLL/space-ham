@@ -98,9 +98,10 @@ float rotor_pos(struct rotor *r)
 	float v, v_range, v_frac;
 
 	v = iadc_get_result(r->iadc);
+
 	v_range = r->cal2.v - r->cal1.v;
 	if (v_range != 0)
-		v_frac = (v - r->cal1.v) / (r->cal2.v - r->cal1.v);
+		v_frac = (v - r->cal1.v) / v_range;
 	else
 		v_frac = 0;
 
@@ -131,9 +132,16 @@ void motor_init(struct motor *m)
 
 void motor_speed(struct motor *m, float speed)
 {
-	float duty_cycle = fabs(speed); // really fast situps!
-	
+	float duty_cycle;
 	int pin;
+
+	if (speed > 1)
+		speed = 1;
+	else if (speed < -1)
+		speed = -1;
+
+
+	duty_cycle = fabs(speed); // really fast situps!
 
 	// If speed is 0 and the motor is valid, then always fall through so the motor stops.
 	// If is is nonzero and online, then return early if the being set is the same.

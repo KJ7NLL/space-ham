@@ -599,8 +599,8 @@ int main()
 	theta->motor.pin2 = 1;
 
 	phi->motor.port = gpioPortC;
-	phi->motor.pin1 = 1;
-	phi->motor.pin2 = 4;
+	phi->motor.pin1 = 4;
+	phi->motor.pin2 = 5;
 
 	print("\x0c\r\n");
 
@@ -619,7 +619,7 @@ int main()
 	}
 
 	// Initalize systick after reading flash so that it does not change
-	if (systick_init(1000) != 0)
+	if (systick_init(100) != 0)
 		print("Failed to set systick to 1000 Hz\r\n");
 	print("\r\n");
 
@@ -677,7 +677,7 @@ int main()
 				status();
 				if (argc >= 2)
 				{
-					systick_delay(1000);
+					systick_delay_sec(1);
 					print("\x0c");
 				}
 			}
