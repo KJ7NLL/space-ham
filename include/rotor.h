@@ -1,7 +1,8 @@
-// The efr32mg21 only supports 2 timers. 
-// You might be able to do your own PWM in an interrupt and use a single timer
-// to get additional PWM channels, but currently only timer based PWM is implemented
-#define NUM_ROTORS 2
+#include "pid.h"
+
+// The efr32mg21 supports 4 timers. Timers 0 and 1 work on any port, 
+// but timers 2 only work on ports a/b and timer 3 works on c/d
+#define NUM_ROTORS 4
 
 struct motor
 {
@@ -59,9 +60,13 @@ struct rotor
 			int iadc;
 
 			float target;
+
+			char target_enabled;
+
+			PIDController pid;
 		};
 
-		char pad[80];
+		char pad[256];
 	};
 };
 

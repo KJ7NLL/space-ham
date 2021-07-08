@@ -106,6 +106,94 @@ void dump_history(struct linklist *history)
 	}
 }
 
+void motor_detail(struct motor *m)
+{
+	int port;
+	switch (m->port)
+	{
+		case gpioPortA: port = 'A'; break;
+		case gpioPortB: port = 'B'; break;
+		case gpioPortC: port = 'C'; break;
+		case gpioPortD: port = 'D'; break;
+	}
+
+	printf("%s:\r\n"
+		"  port:                %c\r\n"
+		"  pin1:                %d\r\n"
+		"  pin2:                %d\r\n"
+		"  pwm_Hz:              %d\r\n"
+		"  online:              %d\r\n"
+		"  duty_cycle_at_init:  %f%%\r\n"
+		"  duty_cycle_min:      %f%%\r\n"
+		"  duty_cycle_max:      %f%%\r\n"
+		"  duty_cycle_limit:    %f%%\r\n"
+		"  speed:               %f%%\r\n",
+			m->name,
+			port,
+			m->pin1,
+			m->pin2,
+			m->pwm_Hz,
+			m->online,
+			m->duty_cycle_at_init,
+			m->duty_cycle_min,
+			m->duty_cycle_max,
+			m->duty_cycle_limit,
+			m->speed
+			);
+}
+
+void rotor_detail(struct rotor *r)
+{
+	printf("%s:\r\n"
+		"  cal1.v:               %f       mV\r\n"
+		"  cal1.deg:             %f       deg\r\n"
+		"  cal1.ready:           %d\r\n"
+		"  cal2.v:               %f       mV\r\n"
+		"  cal2.deg:             %f       deg\r\n"
+		"  cal2.ready:           %d\r\n"
+		"  iadc:                 %d\r\n"
+		"  target:               %f       deg\r\n"
+		"  target_enabled:       %d\r\n"
+		"  pid.Kp:               %f\r\n"
+		"  pid.Ki:               %f\r\n"
+		"  pid.Kd:               %f\r\n"
+		"  pid.tau:              %f       sec\r\n"
+		"  pid.out_min:          %f\r\n"
+		"  pid.out_max:          %f\r\n"
+		"  pid.int_min:          %f\r\n"
+		"  pid.int_max:          %f\r\n"
+		"  pid.T:                %f       sec\r\n"
+		"  pid.integrator:       %f\r\n"
+		"  pid.prevError:        %f\r\n"
+		"  pid.differentiator:   %f\r\n"
+		"  pid.prevMeasurement:  %f\r\n"
+		"  pid.out:              %f\r\n",
+			r->motor.name,
+			r->cal1.v,
+			r->cal1.deg,
+			r->cal1.ready,
+			r->cal2.v,
+			r->cal2.deg,
+			r->cal2.ready,
+			r->iadc,
+			r->target,
+			r->target_enabled,
+			r->pid.Kp,
+			r->pid.Ki,
+			r->pid.Kd,
+			r->pid.tau,
+			r->pid.out_min,
+			r->pid.out_max,
+			r->pid.int_min,
+			r->pid.int_max,
+			r->pid.T,
+			r->pid.integrator,
+			r->pid.prevError,
+			r->pid.differentiator,
+			r->pid.prevMeasurement,
+			r->pid.out);
+}
+
 void status()
 {
 	int i;
@@ -153,6 +241,9 @@ void status()
 			rotors[i].motor.pin2,
 			rotors[i].motor.speed * 100
 			);
+
+	//	motor_detail(&rotors[i].motor);
+	//	rotor_detail(&rotors[i]);
 	}
 }
 
@@ -625,6 +716,17 @@ int main()
 
 	status();
 	print("\r\n");
+
+	// These should be compiler errors:
+	if (sizeof(struct rotor) > sizeof(((struct rotor *)0)->pad))
+		printf("Warning: struct rotor (%d) is bigger than its pad (%d), increase pad size for flash "
+			"backwards compatibility\r\n",
+			sizeof(struct rotor), sizeof(((struct rotor *)0)->pad));
+
+	if (sizeof(struct motor) > sizeof(((struct motor *)0)->pad))
+		printf("Warning: struct motor (%d) is bigger than its pad (%d), increase pad size for flash "
+			"backwards compatibility\r\n",
+			sizeof(struct motor), sizeof(((struct motor *)0)->pad));
 
 	for (;;)
 	{

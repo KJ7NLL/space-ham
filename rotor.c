@@ -33,6 +33,13 @@ void initRotors()
 		rotors[i].motor.pwm_Hz = 1047;      // C5 note
 		rotors[i].motor.port = -1;
 
+		PIDController_Init(&rotors[i].pid);
+		rotors[i].pid.T = 0.01;
+		rotors[i].pid.int_min = -1;
+		rotors[i].pid.int_max = +1;
+		rotors[i].pid.out_min = -1;
+		rotors[i].pid.out_max = +1;
+
 		motors[i] = &rotors[i].motor;
 	}
 }
@@ -84,7 +91,7 @@ int motor_online(struct motor *m)
 
 int rotor_valid(struct rotor *r)
 {
-	return r != NULL && motor_valid(&r->motor);
+	return r != NULL && motor_valid(&r->motor) && r->cal1.ready && r->cal2.ready;
 }
 
 int rotor_online(struct rotor *r)

@@ -31,12 +31,17 @@ void SysTick_Handler(void)
 		if (!rotor_online(rotor))
 			continue;
 
+		float newspeed = PIDController_Update(&rotor->pid, rotor->target, rotor_pos(rotor));
+		motor_speed(motor, newspeed);
+
+/*
 		if (rotor_pos(rotor) < rotor->target)
 			motor_speed(motor, motor->speed + 0.01);
 		else if (rotor_pos(rotor) > rotor->target)
 			motor_speed(motor, motor->speed - 0.01);
 		else
 			motor_speed(motor, 0);
+*/
 	}
 }
 
