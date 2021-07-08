@@ -89,3 +89,6 @@ float rotor_pos(struct rotor *r);
 
 struct motor *motor_get(char *name);
 struct rotor *rotor_get(char *name);
+
+void rotor_detail(struct rotor *r);
+void motor_detail(struct motor *m);

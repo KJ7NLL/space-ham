@@ -85,10 +85,10 @@ void help()
 		"status [watch]                                        # Display system status\r\n"
 		"mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]   # Moves antenna\r\n"
 		"(help|?|h)                                            # List of commands\r\n"
-		"cal <(reset|motor_name)> <(deg|reset)>                # Calibrates phi or theta\r\n"
 		"flash (save|load)                                     # Save to flash\r\n"
 		"sat (load|track|list|search)                          # Satellite commands\r\n"
 		"motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz|)\r\n"
+		"rotor <rotor_name> (cal)                              # Rotor commands\r\n"
 		"cam (on|off)                                          # Turns camera on or off\r\n"
 		"led (1|0)                                             # Turns LED1/0 on or off\r\n"
 		"hist|history                                          # History of commands\r\n"
@@ -104,94 +104,6 @@ void dump_history(struct linklist *history)
 		print("\r\n");
 		history = history->next;
 	}
-}
-
-void motor_detail(struct motor *m)
-{
-	int port;
-	switch (m->port)
-	{
-		case gpioPortA: port = 'A'; break;
-		case gpioPortB: port = 'B'; break;
-		case gpioPortC: port = 'C'; break;
-		case gpioPortD: port = 'D'; break;
-	}
-
-	printf("%s:\r\n"
-		"  port:                %c\r\n"
-		"  pin1:                %d\r\n"
-		"  pin2:                %d\r\n"
-		"  pwm_Hz:              %d\r\n"
-		"  online:              %d\r\n"
-		"  duty_cycle_at_init:  %f%%\r\n"
-		"  duty_cycle_min:      %f%%\r\n"
-		"  duty_cycle_max:      %f%%\r\n"
-		"  duty_cycle_limit:    %f%%\r\n"
-		"  speed:               %f%%\r\n",
-			m->name,
-			port,
-			m->pin1,
-			m->pin2,
-			m->pwm_Hz,
-			m->online,
-			m->duty_cycle_at_init,
-			m->duty_cycle_min,
-			m->duty_cycle_max,
-			m->duty_cycle_limit,
-			m->speed
-			);
-}
-
-void rotor_detail(struct rotor *r)
-{
-	printf("%s:\r\n"
-		"  cal1.v:               %f       mV\r\n"
-		"  cal1.deg:             %f       deg\r\n"
-		"  cal1.ready:           %d\r\n"
-		"  cal2.v:               %f       mV\r\n"
-		"  cal2.deg:             %f       deg\r\n"
-		"  cal2.ready:           %d\r\n"
-		"  iadc:                 %d\r\n"
-		"  target:               %f       deg\r\n"
-		"  target_enabled:       %d\r\n"
-		"  pid.Kp:               %f\r\n"
-		"  pid.Ki:               %f\r\n"
-		"  pid.Kd:               %f\r\n"
-		"  pid.tau:              %f       sec\r\n"
-		"  pid.out_min:          %f\r\n"
-		"  pid.out_max:          %f\r\n"
-		"  pid.int_min:          %f\r\n"
-		"  pid.int_max:          %f\r\n"
-		"  pid.T:                %f       sec\r\n"
-		"  pid.integrator:       %f\r\n"
-		"  pid.prevError:        %f\r\n"
-		"  pid.differentiator:   %f\r\n"
-		"  pid.prevMeasurement:  %f\r\n"
-		"  pid.out:              %f\r\n",
-			r->motor.name,
-			r->cal1.v,
-			r->cal1.deg,
-			r->cal1.ready,
-			r->cal2.v,
-			r->cal2.deg,
-			r->cal2.ready,
-			r->iadc,
-			r->target,
-			r->target_enabled,
-			r->pid.Kp,
-			r->pid.Ki,
-			r->pid.Kd,
-			r->pid.tau,
-			r->pid.out_min,
-			r->pid.out_max,
-			r->pid.int_min,
-			r->pid.int_max,
-			r->pid.T,
-			r->pid.integrator,
-			r->pid.prevError,
-			r->pid.differentiator,
-			r->pid.prevMeasurement,
-			r->pid.out);
 }
 
 void status()
@@ -263,6 +175,7 @@ void motor(int argc, char **args)
 			"offline               # Set this motor offline\r\n"
 			"on                    # Set this motor to full speed\r\n"
 			"off/stop              # Set this motor speed to 0\r\n"
+			"detail                # Show detailed settings\r\n"
 			"\r\n"
 
 			"Configuration options, `flash save` after changing:\r\n"
@@ -287,6 +200,10 @@ void motor(int argc, char **args)
 	if (match(args[2], "stop") || match(args[2], "off"))
 	{
 		motor_speed(m, 0);
+	}
+	else if (match(args[2], "detail"))
+	{
+		motor_detail(m);
 	}
 	else if (match(args[2], "speed") && argc == 4 && !isalpha(args[3][0]))
 	{
@@ -429,18 +346,17 @@ void motor(int argc, char **args)
 		printf("Unkown or invalid motor sub-command: %s\r\n", args[2]);
 }
 
-void cal(int argc, char **args)
+void rotor_cal(struct rotor *r, int argc, char **args)
 {
 	int i;
 
-	struct rotor *r;
 	struct rotor_cal cal;
 
 	float deg, v;
 
 	if (argc < 2)
 	{
-		print("Usage: cal <rotor_name> <deg>\r\n"
+		print("Usage: cal <deg>\r\n"
 			"Calibration assumes a linear voltage slope between degrees.\r\n"
 			"You must make 2 calibrations, and each calibration is used as\r\n"
 			"the maximum extent for the rotor. Use the `motor` command to\r\n"
@@ -448,34 +364,7 @@ void cal(int argc, char **args)
 		return;
 	}
 
-	r = rotor_get(args[1]);
-
 	if (match(args[1], "reset"))
-	{
-		for (i = 0; i < NUM_ROTORS; i++)
-		{
-			memset(&rotors[i].cal1, 0, sizeof(rotors[i].cal1));
-			memset(&rotors[i].cal2, 0, sizeof(rotors[i].cal2));
-		}
-
-		print("All calibrations have been reset\r\n");
-
-		return;
-	}
-	else if (r == NULL)
-	{
-		printf("Unkown Rotor: %s\r\n", args[1]);
-		return;
-	}
-
-	if (argc < 3)
-	{
-		print("Missing Argument: only reset can be called with 2 arguments\r\n");
-
-		return;
-	}
-
-	if (match(args[2], "reset"))
 	{
 		memset(&r->cal1, 0, sizeof(r->cal1));
 		memset(&r->cal2, 0, sizeof(r->cal2));
@@ -484,7 +373,7 @@ void cal(int argc, char **args)
 
 		return;
 	}
-	deg = atof(args[2]);
+	deg = atof(args[1]);
 	v = iadc_get_result(r->iadc);
 	
 	cal.deg = deg;
@@ -548,6 +437,38 @@ void cal(int argc, char **args)
 	}
 }
 
+void rotor(int argc, char **args)
+{
+	int i;
+
+	struct rotor *r;
+	struct rotor_cal cal;
+
+	float deg, v;
+
+	if (argc < 3)
+	{
+		print("Usage: rotor <rotor_name> (cal)\r\n"
+			"Calibration assumes a linear voltage slope between degrees.\r\n"
+			"You must make 2 calibrations, and each calibration is used as\r\n"
+			"the maximum extent for the rotor. Use the `motor` command to\r\n"
+			"move the rotor between calibrations.\r\n");
+		return;
+	}
+
+	r = rotor_get(args[1]);
+
+	if (r == NULL)
+	{
+		printf("Unkown Rotor: %s\r\n", args[1]);
+		return;
+	}
+
+	if (match(args[2], "cal"))
+	{
+		rotor_cal(r, argc-2, &args[2]);
+	}
+}
 void mv(int argc, char **args)
 {
 	struct rotor *r;
@@ -791,9 +712,9 @@ int main()
 			motor(argc, args);
 		}
 
-		else if (match(args[0], "cal"))
+		else if (match(args[0], "rotor"))
 		{
-			cal(argc, args);
+			rotor(argc, args);
 		}
 
 		else if (match(args[0], "mv"))
