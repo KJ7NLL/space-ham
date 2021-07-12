@@ -28,6 +28,8 @@
 
 #define MAX_ARGS 10
 
+void dispatch(int argc, char **args, struct linklist *history);
+
 struct flash_entry flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
 	flash_systick = { .name = "systick", .ptr = (void *)&systick_ticks, .len = sizeof(systick_ticks) }, 
 	*flash_table[] = {
@@ -348,8 +350,6 @@ void motor(int argc, char **args)
 
 void rotor_cal(struct rotor *r, int argc, char **args)
 {
-	int i;
-
 	struct rotor_cal cal;
 
 	float deg, v;
@@ -439,16 +439,11 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 
 void rotor(int argc, char **args)
 {
-	int i;
-
 	struct rotor *r;
-	struct rotor_cal cal;
-
-	float deg, v;
 
 	if (argc < 3)
 	{
-		print("Usage: rotor <rotor_name> (cal)\r\n"
+		print("Usage: rotor <rotor_name> (cal|detail)\r\n"
 			"Calibration assumes a linear voltage slope between degrees.\r\n"
 			"You must make 2 calibrations, and each calibration is used as\r\n"
 			"the maximum extent for the rotor. Use the `motor` command to\r\n"
@@ -468,7 +463,12 @@ void rotor(int argc, char **args)
 	{
 		rotor_cal(r, argc-2, &args[2]);
 	}
+	else if (match(args[2], "detail"))
+	{
+		rotor_detail(r);
+	}
 }
+
 void mv(int argc, char **args)
 {
 	struct rotor *r;
@@ -585,12 +585,123 @@ void flash(int argc, char **args)
 	}
 }
 
+
+void watch(int argc, char **args, struct linklist *history)
+{
+	char c;
+
+	if (argc < 2)
+	{
+		print("usage: watch <command>\r\n"
+			"Run <command> once per second until a key is pressed\r\n"
+			);
+			
+			return;
+	}
+
+	serial_read_async(&c, 1);
+
+	do
+	{
+		dispatch(argc-1, &args[1], history);
+		systick_delay_sec(1);
+		if (!serial_read_done())
+		{
+			print("\x0c");
+		}
+	}
+	while (!serial_read_done());
+}
+
+void dispatch(int argc, char **args, struct linklist *history)
+{
+	int i, c;
+
+	if (match(args[0], "history") || match(args[0], "hist"))
+	{
+		dump_history(history);
+	}
+
+	else if (match(args[0], "h") || match(args[0], "?") || match(args[0], "help"))
+	{
+		help();
+	}
+
+	else if (match(args[0], "watch"))
+	{
+		watch(argc, args, history);
+	}
+
+	else if (match(args[0], "debug-keys"))
+	{
+		print("press CTRL+C to end\r\n");
+		c = 0;
+		while (c != 3)
+		{
+			serial_read(&c, 1);
+			printf("you typed: %3d (0x%02x): '%c'\r\n", c, c, isprint(c) ? c : '?');
+		}
+	}
+	
+	else if (match(args[0], "stop"))
+	{
+		for (i = 0; i < NUM_ROTORS; i++)
+		{
+			rotors[i].motor.online = 0;
+			motor_speed(&rotors[i].motor, 0);
+		}
+	}
+
+	else if (match(args[0], "status") || match(args[0], "stat"))
+	{
+		status();
+	}
+
+	else if (match(args[0], "motor"))
+	{
+		motor(argc, args);
+	}
+
+	else if (match(args[0], "rotor"))
+	{
+		rotor(argc, args);
+	}
+
+	else if (match(args[0], "mv"))
+	{
+		mv(argc, args);
+	}
+	
+	else if (match(args[0], "led") && argc >= 2)
+	{
+		if (args[1][0] == '0')
+			GPIO_PinOutToggle(gpioPortB, 0);
+
+		else if (args[1][0] == '1')
+			GPIO_PinOutToggle(gpioPortB, 1);
+		else
+			print("Invalid pin\r\n");
+	}
+
+	else if (match(args[0], "flash"))
+	{
+		flash(argc, args);
+	}
+
+	// This must be the last else if:
+	else if (!match(args[0], ""))
+	{
+		print("Unkown command: ");
+		print(args[0]);
+		print("\r\n");
+	}
+}
+
 int main()
 {
 	struct rotor *theta = &rotors[0], *phi = &rotors[1];
 	struct linklist *history = NULL;
 	char buf[128], *args[MAX_ARGS];
-	char c;
 	
 	int i, argc;
 
@@ -656,94 +767,6 @@ int main()
 		print("\r\n");
 		
 		argc = parse_args(buf, args, MAX_ARGS);
-		
-		if (match(args[0], "history") || match(args[0], "hist"))
-		{
-			dump_history(history);
-		}
-
-		else if (match(args[0], "h") || match(args[0], "?") || match(args[0], "help"))
-		{
-			help();
-		}
-
-		else if (match(args[0], "debug-keys"))
-		{
-			print("press CTRL+C to end\r\n");
-			c = 0;
-			while (c != 3)
-			{
-				serial_read(&c, 1);
-				sprintf(buf, "you typed: %3d (0x%02x): '%c'\r\n", c, c, isprint(c) ? c : '?');
-				print(buf);
-			}
-		}
-		
-		else if (match(args[0], "stop"))
-		{
-			for (i = 0; i < NUM_ROTORS; i++)
-			{
-				rotors[i].motor.online = 0;
-				motor_speed(&rotors[i].motor, 0);
-			}
-		}
-
-		else if (match(args[0], "status") || match(args[0], "stat"))
-		{
-			char c = 0;
-
-			if (argc >= 2 && match(args[1], "watch"))
-				serial_read_async(&c, 1);
-
-			do
-			{
-				status();
-				if (argc >= 2)
-				{
-					systick_delay_sec(1);
-					print("\x0c");
-				}
-			}
-			while (!serial_read_done());
-		}
-
-		else if (match(args[0], "motor"))
-		{
-			motor(argc, args);
-		}
-
-		else if (match(args[0], "rotor"))
-		{
-			rotor(argc, args);
-		}
-
-		else if (match(args[0], "mv"))
-		{
-			mv(argc, args);
-		}
-		
-		else if (match(args[0], "led") && argc >= 2)
-		{
-			if (args[1][0] == '0')
-				GPIO_PinOutToggle(gpioPortB, 0);
-
-			else if (args[1][0] == '1')
-				GPIO_PinOutToggle(gpioPortB, 1);
-			else
-				print("Invalid pin\r\n");
-		}
-
-		else if (match(args[0], "flash"))
-		{
-			flash(argc, args);
-		}
-
-		// This must be the last else if:
-		else if (!match(args[0], ""))
-		{
-			print("Unkown command: ");
-			print(args[0]);
-			print("\r\n");
-		}
+		dispatch(argc, args, history);
 	}
 }
