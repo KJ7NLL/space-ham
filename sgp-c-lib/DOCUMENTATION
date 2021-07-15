@@ -1,0 +1,158 @@
+--------------------------------------------------------------------
+----------------  S G P   -   C   -   L I B R A R Y ----------------
+--------------------------------------------------------------------
+
+
+Table of Contents
+-----------------
+
+1. Legal Information
+2. Brief Description
+    2.1  SGP, SGP4/SDP4 and SGP8/SDP8
+    2.2  This SGP-C-Library
+    2.3  References
+3. Source Code Availability
+4. This C Release
+    4.1  Files
+5. Interface
+6. Release Notes
+
+
+
+1. LEGAL INFORMATION
+====================
+
+This library and this documentation is free software; you can 
+redistribute it and/or modify it under the terms of the GNU 
+Lesser General Public License as published by the Free Software 
+Foundation; either version 2.1 of the License, or (at your option) 
+any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public 
+License along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+
+2. BRIEF DESCRIPTION
+====================
+
+2.1 SGP, SGP4/SDP4 and SGP8/SDP8
+--------------------------------
+The SGP4 and SDP4 orbital models have become the most-used prediction
+algorithms. The two-line orbital elements (TLEs) available from NASA's
+Orbital Interest Group are based on these models, and in order to
+obtain accurate predictions it is necessary to use the same model as
+was used to generate the orbital elements data.
+
+The SGP model is a faster but less accurate model which was used prior
+to SGP4/SDP4, and the SGP8 and SDP8 models are faster and include some
+improvements, but since NORAD has not yet adopted these these models
+are not as reliable as the SGP4/SDP4 models are.
+
+For more details on these orbital models see the Spacetrack Report
+No. 3, which is available at http://www.celestrak.com.
+
+
+2.2 This SGP-C library
+----------------------
+Based on Dr TS Kelso SGP4/SDP4 Pascal Library Package (available at
+http://www.celestrak.com) I have developed an implementation of the
+SGP, SGP4/SDP4 and SGP8/SDP8 models in C. There are probably still
+some minor flaws in this source code, so please check 
+http://www.brodo.de/english/pub/sgp/ 
+for updates. 
+
+
+2.3 References
+--------------
+For more information, take a look at the Spacetrack Report No. 3
+available at http://www.celestrak.com
+
+Additionally, the documentation included in Dr TS Kelso's SGP4-Pascal
+Library offers a more detailed description of the SGP4/SDP4
+models. This package is also available at http://www.celestrak.com
+
+
+
+3. SOURCE CODE AVAILABILITY
+===========================
+
+Included in the Spacetrack Report No. 3 is a sample implementation in
+FORTRAN. You can find the Spacetrack Report No.3 at
+http://www.celestrak.com
+
+Dr TS Kelso has written a SGP4/SDP4 Pascal Library Package which is
+also available at http://www.celestrak.com
+
+Based in this package I have written an implementation in C which is
+available at 
+http://www.brodo.de/english/pub/sgp/
+Please check for updates often during the next weeks, since the C
+package probably has some bugs. 
+
+
+
+4. THIS C RELEASE
+=================
+
+When "INLINE" is not externally defined the source code should be
+clean, plain ANSI which any C compiler should be able to work with. If
+you find any problems, please report them to the maintainer Dominik
+Brodowski at mail@brodo.de. Thank you!
+
+
+4.1 Files
+---------
+
+DOCUMENTATION      - this Documentation
+COPYING            - The GNU Public Library
+sgp.h		   - header file for the sgp-c-library. Include this
+		     file when accessing any of the included
+		     prediction models
+sgp_int.h	   - internal header file. You do not need to include
+		     this header in your user program.
+sgp_conv.c	   - functions needed to transform TLEs from ascii- to
+		     binary format.
+sgp_math.c	   - a few math helper functions
+sgp_time.c	   - conversions between julian dates and "normal"
+		     dates
+sgp_deep.c	   - Deep Space subroutines for SDP4 and SDP8
+sgp0.c		   - the SGP model
+sgp4sdp4.c	   - the SGP4 and SDP4 models
+sgp8sdp8.c	   - the SGP8 and SDP8 models
+testing.c	   - Testing routine (for sample test data)
+testdata	   - Sample test data (see Spacetrack Report No. 3)
+
+
+
+5. INTERFACE
+============
+
+To access the sgp, sgp4/sdp4 and sgp8/sdp8 functions you need to
+include the header file sgp.h. In this file you can find comments
+which explain the in- and output, and the differences between the
+various functions.
+
+
+
+6. RELEASE NOTES
+================
+
+20020319	-	first release
+20031230	-	fix for 69 or 70 chars wide testdata input file
+20050321	-	fix off-by-ten multiplication in sdp8
+			fix actan->atan2 replacement
+			[both reported by Christopher Moore]
+
+
+========================================================
+
+Rosenheim, Germany, on March 21th, 2005
+
+Dominik Brodowski

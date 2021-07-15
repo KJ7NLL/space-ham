@@ -1,0 +1,8 @@
+BUGS:	SDP8 - little strange values
+TODO:	License
+	Documentation
+	Optimization
+	nicer output for testing routine
+	Makefile
+	main.c -> testing.c / *.c -> *.o, testing.o --> testing
+

@@ -1,0 +1,30 @@
+0.1-pre1  07.12.2001 18:34
+	x implementation of SGP
+	x values a little incorrect
+
+0.1-pre2  08.12.2001 12:40
+	x added implementation of SGP4 and SDP4
+	x values a little incorrect, too
+
+0.1-pre3  08.12.2001 15:15
+	x added implementation of SGP8 and SDP8
+	x values a little incorrect, too :-(
+	x some small bugfixes
+
+0.1-pre4  08.12.2001 17:00
+	x new testing routine
+	x CK2, CK4 and XJ3 globally defined
+ 	x new headers
+	x new includes
+
+0.1-pre5  09.12.2001 00:55  
+	x removed compiler warnings (unused variables)
+	x added Magnitude - definition to sgp_int.h
+	x corrected sgp_conv - healed SGP, SGP4, SGP8 :-))
+
+0.1-pre6  09.12.2001 14:45
+	x xnode is now transferred and changed by sgp_deep / dpper
+	x Julian_Date_of_Year now returns the correct value (.5 difference)
+	x added Julian_Date_of_Epoch
+	x added new interface function sgp
+
