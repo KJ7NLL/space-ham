@@ -12,7 +12,15 @@
 #include "linklist.h"
 #include "strutil.h"
 
-// Receive data buf
+// RX ring buffer used internally in the RX interrupt
+#define READ_BUF_BITS	7
+#define READ_BUF_SIZE	(1 << READ_BUF_BITS)
+#define READ_BUF_MASK	(READ_BUF_SIZE-1)
+
+unsigned char read_buf[READ_BUF_SIZE];
+int read_buf_cur = 0, read_buf_next = 0;
+
+// Receive data buf provided by user code
 unsigned char *bufrx = NULL;
 unsigned char *buftx = NULL;
 int buftxlen = 0, bufrxlen = 0;
@@ -49,6 +57,7 @@ void initUsart1(void)
 	// Default asynchronous initializer (115.2 Kbps, 8N1, no flow
 	// control)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
+	memset(read_buf, 0, sizeof(read_buf));
 
 	// Route USART0 TX and RX to PA5 and PA6 pins, respectively
 	GPIO->USARTROUTE[0].TXROUTE =
@@ -70,13 +79,20 @@ void initUsart1(void)
 	NVIC_EnableIRQ(USART0_RX_IRQn);
 	NVIC_ClearPendingIRQ(USART0_TX_IRQn);
 	NVIC_EnableIRQ(USART0_TX_IRQn);
+
+	// Enable receive data valid interrupt
+	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 }
 
-void USART0_RX_IRQHandler(void)
+int read_buf_to_bufrx()
 {
-	if (bufrx != NULL && bufrxlen > 0)
+	int i = 0;
+
+	while (bufrx != NULL && bufrxlen > 0 && read_buf_cur != read_buf_next)
 	{
-		*bufrx = USART0->RXDATA;
+		*bufrx = read_buf[read_buf_cur];
+		read_buf_cur = ((read_buf_cur+1) & READ_BUF_MASK); 
+
 		bufrx++;
 		bufrxlen--;
 
@@ -84,9 +100,23 @@ void USART0_RX_IRQHandler(void)
 		{
 			bufrx = NULL;
 		}
+
+		i++;
 	}
-	else
-		USART_IntDisable(USART0, USART_IEN_RXDATAV);
+
+	return i;
+}
+
+void USART0_RX_IRQHandler(void)
+{
+	unsigned char c = USART0->RXDATA;
+	if (((read_buf_next+1) & READ_BUF_MASK) != read_buf_cur)
+	{
+		read_buf[read_buf_next] = c;
+		read_buf_next = ((read_buf_next+1) & READ_BUF_MASK); 
+	}
+
+	read_buf_to_bufrx();
 }
 
 void USART0_TX_IRQHandler(void)
@@ -102,7 +132,6 @@ void USART0_TX_IRQHandler(void)
 	if (buftxlen == 0)
 	{
 		buftx = NULL;
-
 
 		/*
 		 * Need to disable the transmit buf level interrupt in this IRQ
@@ -133,9 +162,6 @@ void serial_read_async(void *s, int len)
 {
 	bufrx = s;
 	bufrxlen = len;
-
-	// Enable receive data valid interrupt
-	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 }
 
 int serial_read_done()
@@ -148,7 +174,13 @@ void serial_read(void *s, int len)
 	serial_read_async(s, len);
 
 	while (!serial_read_done())
-		EMU_EnterEM1();
+	{
+		USART_IntDisable(USART0, USART_IEN_RXDATAV);
+		read_buf_to_bufrx();
+		USART_IntEnable(USART0, USART_IEN_RXDATAV);
+		if (!serial_read_done())
+			EMU_EnterEM1();
+	}
 
 }
 
@@ -158,6 +190,7 @@ int _write(int handle, char *data, int size)
 
 	return size;
 }
+
 void print(char *s)
 {
 	serial_write(s, strlen(s));
