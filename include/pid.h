@@ -24,6 +24,7 @@ typedef struct
 	float T;
 
 	// Controller "memory" 
+	float proportional;
 	float integrator;
 	float prevError;	/* Required for integrator */
 

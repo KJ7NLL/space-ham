@@ -15,7 +15,7 @@ float PIDController_Update(PIDController *pid, float setpoint, float measurement
 {
 
 	float error = setpoint - measurement;
-	float proportional = pid->Kp * error;
+	pid->proportional = pid->Kp * error;
 
 	pid->integrator =
 		pid->integrator + 0.5f * pid->Ki * pid->T * (error +
@@ -33,12 +33,14 @@ float PIDController_Update(PIDController *pid, float setpoint, float measurement
 				/ (2.0f * pid->tau + pid->T);
 
 	// Compute output and apply limits
-	pid->out = proportional + pid->integrator + pid->differentiator;
+	pid->out = pid->proportional + pid->integrator + pid->differentiator;
+
 
 	if (pid->out > pid->out_max)
 		pid->out = pid->out_max;
 	else if (pid->out < pid->out_min)
 		pid->out = pid->out_min;
+
 
 	// Store error and measurement for later use 
 	pid->prevError = error;
@@ -46,5 +48,4 @@ float PIDController_Update(PIDController *pid, float setpoint, float measurement
 
 	// Return controller output 
 	return pid->out;
-
 }

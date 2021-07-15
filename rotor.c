@@ -272,6 +272,7 @@ void rotor_detail(struct rotor *r)
 		"  pid.int_min:          %f\r\n"
 		"  pid.int_max:          %f\r\n"
 		"  pid.T:                %f       sec\r\n"
+		"  pid.proportional:     %f\r\n"
 		"  pid.integrator:       %f\r\n"
 		"  pid.prevError:        %f\r\n"
 		"  pid.differentiator:   %f\r\n"
@@ -296,6 +297,7 @@ void rotor_detail(struct rotor *r)
 			r->pid.int_min,
 			r->pid.int_max,
 			r->pid.T,
+			r->pid.proportional,
 			r->pid.integrator,
 			r->pid.prevError,
 			r->pid.differentiator,

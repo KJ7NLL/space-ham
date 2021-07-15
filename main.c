@@ -348,6 +348,44 @@ void motor(int argc, char **args)
 		printf("Unkown or invalid motor sub-command: %s\r\n", args[2]);
 }
 
+void rotor_pid(struct rotor *r, int argc, char **args)
+{
+	float f;
+
+	if (argc < 3)
+	{
+		print("Usage: pid var <value>\r\n"
+			"Set pid.var to value. See `rotor <name> detail` for available fields\r\n");
+		return;
+	}
+
+	f = atof(args[2]);
+
+	if (match(args[1], "Kp")) r->pid.Kp = f;
+	else if (match(args[1], "Ki")) r->pid.Ki = f;
+	else if (match(args[1], "Kd")) r->pid.Kd = f;
+
+	else if (match(args[1], "kp")) r->pid.Kp = f;
+	else if (match(args[1], "ki")) r->pid.Ki = f;
+	else if (match(args[1], "kd")) r->pid.Kd = f;
+
+	else if (match(args[1], "tau")) r->pid.tau = f;
+
+	else if (match(args[1], "int_min")) r->pid.int_min = f;
+	else if (match(args[1], "int_max")) r->pid.int_max = f;
+
+	else if (match(args[1], "T")) r->pid.T = f;
+	else if (match(args[1], "t")) r->pid.T = f;
+	else
+	{
+		print("Not configurable\r\n");
+		
+		return;
+	}
+
+	rotor_detail(r);
+}
+
 void rotor_cal(struct rotor *r, int argc, char **args)
 {
 	struct rotor_cal cal;
@@ -467,6 +505,10 @@ void rotor(int argc, char **args)
 	{
 		rotor_detail(r);
 	}
+	else if (match(args[2], "pid"))
+	{
+		rotor_pid(r, argc-2, &args[2]);
+	}
 }
 
 void mv(int argc, char **args)
@@ -498,7 +540,7 @@ void mv(int argc, char **args)
 	}
 
 	deg = atof(args[2]);
-	switch (args[2][0])
+	switch (tolower(args[2][0]))
 	{
 		case '+':
 		case '-':
