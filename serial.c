@@ -184,6 +184,27 @@ void serial_read(void *s, int len)
 
 }
 
+int _read(int handle, char *data, int size)
+{
+	int n = 0;
+
+	if (!size) return 0;
+
+	// Wait for the first char
+	serial_read(data, 1);
+	n++;
+	serial_read_async(data + 1, size - 1);
+
+	// Read more if there is any available
+	USART_IntDisable(USART0, USART_IEN_RXDATAV);
+	n += read_buf_to_bufrx();
+	bufrx = NULL;
+	bufrxlen = 0;
+	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+
+	return n;
+}
+
 int _write(int handle, char *data, int size)
 {
 	serial_write(data, size);

@@ -655,6 +655,27 @@ void watch(int argc, char **args, struct linklist *history)
 	while (!serial_read_done());
 }
 
+void sat(int argc, char **args)
+{
+	char buf[128];
+
+	if (argc < 2)
+	{
+		 print("usage: sat (load|detail|search|list|track)\r\n");
+
+		 return;
+	}
+
+	if (match(args[1], "load"))
+	{
+		while (!feof(stdin))
+		{
+			fgets(buf, sizeof(buf)-1, stdin);
+			printf("You typed: %s\r\n", buf);
+		}
+	}
+}
+
 void dispatch(int argc, char **args, struct linklist *history)
 {
 	int i, c;
@@ -683,6 +704,11 @@ void dispatch(int argc, char **args, struct linklist *history)
 			serial_read(&c, 1);
 			printf("you typed: %3d (0x%02x): '%c'\r\n", c, c, isprint(c) ? c : '?');
 		}
+	}
+
+	else if (match(args[0], "sat"))
+	{
+		sat(argc, args);
 	}
 	
 	else if (match(args[0], "stop"))
@@ -785,7 +811,7 @@ int main()
 
 	// Initalize systick after reading flash so that it does not change
 	if (systick_init(100) != 0)
-		print("Failed to set systick to 1000 Hz\r\n");
+		print("Failed to set systick to 100 Hz\r\n");
 	print("\r\n");
 
 	status();
