@@ -77,6 +77,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 #include_directories(bsp)
 include_directories(${BASE_LOCATION}/include
 	include
+	sgp-c-lib
 	)
 
 # Generate executable and link
@@ -95,6 +96,13 @@ add_executable(${PROJECT_NAME}
 	flash.c
 	systick.c
 	pid.c
+	sgp-c-lib/sgp0.c
+	sgp-c-lib/sgp4sdp4.c
+	sgp-c-lib/sgp8sdp8.c
+	sgp-c-lib/sgp_conv.c
+	sgp-c-lib/sgp_deep.c
+	sgp-c-lib/sgp_math.c
+	sgp-c-lib/sgp_time.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
