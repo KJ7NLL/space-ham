@@ -184,6 +184,32 @@ void serial_read(void *s, int len)
 
 }
 
+int serial_read_line(char *s, int len)
+{
+	int n = 0;
+	char c;
+
+	do
+	{
+		serial_read(&c, 1);
+
+		// If ctrl-d is the first char, then exit early
+		// otherwise ignore it.
+		if (c == 4)
+			if (n == 0) return 0;
+			else continue;
+
+		s[n] = c;
+		n++;
+
+	} while (n < len-1 && c != '\r');
+
+	// Add a \0 if there is room
+	if (n < len)
+		s[n] = 0;
+	return n;
+}
+
 int _read(int handle, char *data, int size)
 {
 	int n = 0;
@@ -191,7 +217,8 @@ int _read(int handle, char *data, int size)
 	if (!size) return 0;
 
 	// Wait for the first char
-	serial_read(data, 1);
+	serial_read(data, size);
+/*	
 	n++;
 	serial_read_async(data + 1, size - 1);
 
@@ -201,8 +228,9 @@ int _read(int handle, char *data, int size)
 	bufrx = NULL;
 	bufrxlen = 0;
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+*/
 
-	return n;
+	return size;
 }
 
 int _write(int handle, char *data, int size)

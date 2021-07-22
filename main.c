@@ -19,6 +19,7 @@
 #include "pwm.h"
 #include "flash.h"
 #include "systick.h"
+#include "sat.h"
 
 #define CONFIG_FLASH_BASE 0x20000 // 128k
 
@@ -30,13 +31,19 @@
 
 void dispatch(int argc, char **args, struct linklist *history);
 
-struct flash_entry flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
+struct satellite satellites[NUM_SAT_RECORDS];
+
+struct flash_entry 
+	flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
 	flash_systick = { .name = "systick", .ptr = (void *)&systick_ticks, .len = sizeof(systick_ticks) }, 
+	flash_sat = { .name = "satellites", .ptr = satellites, .len = sizeof(satellites) },
 	*flash_table[] = {
 		&flash_rotors,
 		&flash_systick,
+		&flash_sat,
 		NULL
 	};
+
 
 void initGpio(void)
 {
@@ -657,7 +664,11 @@ void watch(int argc, char **args, struct linklist *history)
 
 void sat(int argc, char **args)
 {
+	struct tle_ascii tle;
+
 	char buf[128];
+
+	int i, sat_idx = 0;
 
 	if (argc < 2)
 	{
@@ -668,11 +679,26 @@ void sat(int argc, char **args)
 
 	if (match(args[1], "load"))
 	{
-		while (!feof(stdin))
+		i = 0;
+
+		while (i < 3 && serial_read_line(buf, 80))
 		{
-			fgets(buf, sizeof(buf)-1, stdin);
-			printf("You typed: %s\r\n", buf);
+			strncpy(tle.l[i], buf, 71);
+			tle.l[i][70] = 0;
+			printf("input%d: %s\r\n", i, buf);
+			i++;
 		}
+
+		memset(&satellites[sat_idx], 0, sizeof(struct satellite));
+		strncpy(satellites[sat_idx].name, tle.l[0], sizeof(satellites[sat_idx].name)-1);
+		Convert_Satellite_Data(tle, &satellites[sat_idx].sgp);
+
+		sat_detail(&satellites[sat_idx]);
+		printf("valid: %d\r\n", sat_tle_valid(&tle));
+		printf("csum1: %d\r\n", sat_csum(tle.l[1]));
+		printf("csum2: %d\r\n", sat_csum(tle.l[2]));
+		sat_idx++;
+
 	}
 }
 
