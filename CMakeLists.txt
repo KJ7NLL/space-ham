@@ -96,6 +96,8 @@ add_executable(${PROJECT_NAME}
 	flash.c
 	systick.c
 	pid.c
+	sat.c
+	
 	sgp-c-lib/sgp0.c
 	sgp-c-lib/sgp4sdp4.c
 	sgp-c-lib/sgp8sdp8.c
