@@ -78,6 +78,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 include_directories(${BASE_LOCATION}/include
 	include
 	sgp-c-lib
+	fatfs
 	)
 
 # Generate executable and link
@@ -105,6 +106,12 @@ add_executable(${PROJECT_NAME}
 	sgp-c-lib/sgp_deep.c
 	sgp-c-lib/sgp_math.c
 	sgp-c-lib/sgp_time.c
+
+#	fatfs/diskio.c
+	fatfs-efr32.c
+	fatfs/ff.c
+#	fatfs/ffsystem.c
+#	fatfs/ffunicode.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})

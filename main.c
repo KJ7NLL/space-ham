@@ -11,6 +11,8 @@
 #include "em_gpio.h"
 #include "em_usart.h"
 
+#include "ff.h"
+
 #include "linklist.h"
 #include "serial.h"
 #include "strutil.h"
@@ -21,8 +23,6 @@
 #include "systick.h"
 #include "sat.h"
 
-#define CONFIG_FLASH_BASE 0x20000 // 128k
-
 #define LED_PORT gpioPortB
 #define LED0_PIN 0
 #define LED1_PIN 1
@@ -31,6 +31,7 @@
 
 void dispatch(int argc, char **args, struct linklist *history);
 
+FATFS fatfs;           /* Filesystem object */
 struct satellite satellites[NUM_SAT_RECORDS];
 
 struct flash_entry 
@@ -616,7 +617,7 @@ void flash(int argc, char **args)
 		return;
 	}
 
-	offset = CONFIG_FLASH_BASE;
+	offset = FLASH_DATA_BASE;
 
 	if (match(args[1], "write") || match(args[1], "save"))
 	{
@@ -665,9 +666,12 @@ void watch(int argc, char **args, struct linklist *history)
 void sat(int argc, char **args)
 {
 	struct tle_ascii tle;
-
+	
+	unsigned char page[FLASH_PAGE_SIZE];
+	
 	char buf[128];
 
+	int off = 0;
 	int i, sat_idx = 0;
 
 	if (argc < 2)
@@ -681,25 +685,118 @@ void sat(int argc, char **args)
 	{
 		i = 0;
 
-		while (i < 3 && serial_read_line(buf, 80))
+		print("Paste TLE data and press CTRL+D when done\r\n");
+		while (serial_read_line(buf, 80))
 		{
 			strncpy(tle.l[i], buf, 71);
 			tle.l[i][70] = 0;
-			printf("input%d: %s\r\n", i, buf);
+//			printf("input%d: %s\r\n", i, buf);
 			i++;
+			
+			if (i == 3)
+			{
+				i = 0;
+
+				memset(&satellites[sat_idx], 0, sizeof(struct satellite));
+				strncpy(satellites[sat_idx].name, tle.l[0], sizeof(satellites[sat_idx].name)-1);
+				Convert_Satellite_Data(tle, &satellites[sat_idx].sgp);
+
+				sat_info(&satellites[sat_idx]);
+				if (!sat_tle_valid(&tle))
+				{
+					printf("  Invalid TLE data, recived lines\r\n");
+					tle_info(&tle);
+					printf("  calculated csum1: %d\r\n", sat_csum(tle.l[1]));
+					printf("  calculated csum2: %d\r\n", sat_csum(tle.l[2]));
+				}
+				else
+				{
+					sat_idx++;
+					if (sat_idx >= NUM_SAT_RECORDS)
+					{
+						print("Out of room for more satellite records\r\n");
+						break;
+					}
+				}
+			}
 		}
 
-		memset(&satellites[sat_idx], 0, sizeof(struct satellite));
-		strncpy(satellites[sat_idx].name, tle.l[0], sizeof(satellites[sat_idx].name)-1);
-		Convert_Satellite_Data(tle, &satellites[sat_idx].sgp);
-
-		sat_detail(&satellites[sat_idx]);
-		printf("valid: %d\r\n", sat_tle_valid(&tle));
-		printf("csum1: %d\r\n", sat_csum(tle.l[1]));
-		printf("csum2: %d\r\n", sat_csum(tle.l[2]));
-		sat_idx++;
+		if (i != 0)
+		{
+			print("ignoring partial satellite data\r\n");
+		}
+		printf("Loaded %d satellite TLEs\r\n", sat_idx);
 
 	}
+}
+
+void fat(int argc, char **args)
+{
+	FIL fil;            /* File object */
+	FRESULT res;        /* API result code */
+	UINT br, bw;          /* Bytes written */
+	BYTE work[FF_MAX_SS]; /* Work area (larger is better for processing time) */
+	MKFS_PARM mkfs = {
+			.fmt = FM_ANY,
+			.au_size = FLASH_PAGE_SIZE,
+			.align = FLASH_PAGE_SIZE / 512,
+			.n_fat = 0, 
+			.n_root = 0};
+
+
+	char buf[128];
+
+	if (match(args[1], "mkfs"))
+	{
+		res = f_mkfs("", &mkfs, work, sizeof work);
+		printf("res: %d\r\n", res);
+	}
+	else if (match(args[1], "mount"))
+	{
+		res = f_mount(&fatfs, "", 0);
+	}
+	else if (match(args[1], "umount"))
+	{
+		res = f_mount(NULL, "", 0);
+	}
+	else if (match(args[1], "find"))
+	{
+		buf[0] = 0;
+		res = scan_files(buf);
+	}
+	else if (match(args[1], "load") && argc >= 3)
+	{
+		printf("Paste data into %s and press CTRL+D when done\r\n", args[2]);
+		res = f_open(&fil, args[2], FA_CREATE_NEW | FA_WRITE);
+		printf("res: %d\r\n", res);
+		
+		while (serial_read_line(buf, 80))
+		{
+			res = f_write(&fil, buf, strlen(buf), &bw);
+			printf("bw: %d\r\n", bw);
+		}
+
+		res = f_close(&fil);
+	}
+	else if (match(args[1], "cat") && argc >= 3)
+	{
+		res = f_open(&fil, args[2], FA_READ);
+		printf("res: %d\r\n", res);
+		
+		do
+		{
+			res = f_read(&fil, buf, sizeof(buf)-1, &br);
+//			printf("br: %d\r\n", br);
+			serial_write(buf, br);
+		}
+		while (br > 0);
+
+		printf("\r\n");
+		res = f_close(&fil);
+	}
+
+	if (res != FR_OK)
+		printf("error %d: %s\r\n", res, ff_strerror(res));
 }
 
 void dispatch(int argc, char **args, struct linklist *history)
@@ -782,6 +879,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 		flash(argc, args);
 	}
 
+	else if (match(args[0], "fat"))
+		fat(argc, args);
+
+
 	// This must be the last else if:
 	else if (!match(args[0], ""))
 	{
@@ -824,7 +925,7 @@ int main()
 	help();
 	print("\r\n");
 
-	flash_read(flash_table, CONFIG_FLASH_BASE);
+	flash_read(flash_table, FLASH_DATA_BASE);
 
 	// Initalize motors that were loaded from flash if they were valid
 	for (i = 0; i < NUM_ROTORS; i++)

@@ -7,6 +7,14 @@
 
 #include "flash.h"
 
+void flash_init()
+{
+	MSC_ExecConfig_TypeDef execConfig = MSC_EXECCONFIG_DEFAULT;
+	MSC_ExecConfigSet(&execConfig);
+
+	MSC_Init();
+}
+
 char *flash_status(int status)
 {
 	switch (status)
@@ -41,10 +49,7 @@ int flash_write(struct flash_entry **entries, uint32_t location)
 
 	int i, status, pages;
 
-	MSC_ExecConfig_TypeDef execConfig = MSC_EXECCONFIG_DEFAULT;
-	MSC_ExecConfigSet(&execConfig);
-
-	MSC_Init();
+	flash_init();
 
 	printf("Flash base: %08lx, size=%ld\r\n", FLASH_BASE, FLASH_SIZE);
 	printf("User base: %08lx, size=%ld\r\n", USERDATA_BASE, FLASH_SIZE);
