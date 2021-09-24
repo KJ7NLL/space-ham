@@ -13,7 +13,7 @@
 #include "strutil.h"
 
 // RX ring buffer used internally in the RX interrupt
-#define READ_BUF_BITS	7
+#define READ_BUF_BITS	10
 #define READ_BUF_SIZE	(1 << READ_BUF_BITS)
 #define READ_BUF_MASK	(READ_BUF_SIZE-1)
 

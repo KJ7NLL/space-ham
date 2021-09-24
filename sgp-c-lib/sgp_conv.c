@@ -33,6 +33,7 @@
  * ------------------------------ includes --------------------------- *
  * ------------------------------------------------------------------- */
 
+#include <string.h>
 #include <math.h>
 #include "sgp.h"
 #include "sgp_int.h"
@@ -176,6 +177,10 @@ void Convert_Satellite_Data (struct tle_ascii tle, struct sgp_data *data)
 	double a1,ao,del1,delo,xnodp,temp, xke;
 	
 	/* first line */
+	memcpy(data->catnr, tle.l[1]+2, 5);
+	memcpy(data->elset, tle.l[1]+64, 4);
+	data->catnr[5] = 0;
+	data->elset[4] = 0;
 	data->epoch = double_value(tle.l[1], 18, 14);
 	data->julian_epoch = Julian_Date_of_Epoch(data->epoch);
 	data->xndt2o = double_value(tle.l[1], 33, 10);

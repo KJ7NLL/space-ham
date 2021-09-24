@@ -4,14 +4,22 @@
 
 #include "sat.h"
 
+void sat_info(struct satellite *s)
+{
+	printf("%s (%s)\r\n",
+		s->name,
+		s->sgp.catnr);
+}
+
+void tle_info(struct tle_ascii *tle)
+{
+	int i;
+	for (i = 0; i < 3; i++)
+		printf("input%d: %s\r\n", i, tle->l[i]);
+}
+
 void sat_detail(struct satellite *s)
 {
-	char catnr[6] = {0};
-	char elset[4] = {0};
-
-	memcpy(catnr, s->sgp.catnr, 5);
-	memcpy(elset, s->sgp.elset, 3);
-
 	printf("%s\r\n"
 		"  epoch:         %f\r\n"
 		"  julian_epoch:  %f\r\n"
@@ -39,8 +47,8 @@ void sat_detail(struct satellite *s)
 			s->sgp.xnodeo,
 			s->sgp.xndt2o,
 			s->sgp.xndd6o,
-			catnr,
-			elset,
+			s->sgp.catnr,
+			s->sgp.elset,
 			s->sgp.ideep
 		);
 }
@@ -48,7 +56,7 @@ void sat_detail(struct satellite *s)
 int sat_csum(char *s)
 {
 	int csum = 0;
-	int i = 0;
+	unsigned int i = 0;
 
 	for (i = 0; i < strlen(s)-1 && i < 68; i++)
 	{

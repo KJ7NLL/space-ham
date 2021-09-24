@@ -75,8 +75,8 @@ struct sgp_data {
 	double xnodeo;
 	double xndt2o;
 	double xndd6o;
-	char catnr[5];
-	char elset[3];
+	char catnr[6];
+	char elset[5];
 	int ideep;
 };
 /* Convert_Satellite_Data(...) transforms the ascii-Two-Line-Element 
