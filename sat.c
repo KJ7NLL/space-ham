@@ -4,25 +4,17 @@
 
 #include "sat.h"
 
-void sat_info(struct satellite *s)
+void sat_info(tle_t *s)
 {
-	printf("%s (%s)\r\n",
-		s->name,
-		s->sgp.catnr);
+	printf("%s (%d)\r\n",
+		s->sat_name,
+		s->catnr);
 }
 
-void tle_info(struct tle_ascii *tle)
+void sat_detail(tle_t *s)
 {
-	int i;
-	for (i = 0; i < 3; i++)
-		printf("input%d: %s\r\n", i, tle->l[i]);
-}
-
-void sat_detail(struct satellite *s)
-{
-	printf("%s\r\n"
+	printf("%s (%s)\r\n"
 		"  epoch:         %f\r\n"
-		"  julian_epoch:  %f\r\n"
 		"  xno:           %f\r\n"
 		"  bstar:         %f\r\n"
 		"  xincl:         %f\r\n"
@@ -32,24 +24,24 @@ void sat_detail(struct satellite *s)
 		"  xnodeo:        %f\r\n"
 		"  xndt2o:        %f\r\n"
 		"  xndd6o:        %f\r\n"
-		"  catnr:         %s\r\n"
-		"  elset:         %s\r\n"
-		"  ideep:         %d\r\n",
-			s->name,
-			s->sgp.epoch,
-			s->sgp.julian_epoch,
-			s->sgp.xno,
-			s->sgp.bstar,
-			s->sgp.xincl,
-			s->sgp.eo,
-			s->sgp.xmo,
-			s->sgp.omegao,
-			s->sgp.xnodeo,
-			s->sgp.xndt2o,
-			s->sgp.xndd6o,
-			s->sgp.catnr,
-			s->sgp.elset,
-			s->sgp.ideep
+		"  catnr:         %d\r\n"
+		"  elset:         %d\r\n"
+		"  revnum:        %d\r\n",
+			s->sat_name,
+			s->idesg, 
+			s->epoch,
+			s->xno,
+			s->bstar,
+			s->xincl,
+			s->eo,
+			s->xmo,
+			s->omegao,
+			s->xnodeo,
+			s->xndt2o,
+			s->xndd6o,
+			s->catnr,
+			s->elset,
+			s->revnum
 		);
 }
 
@@ -70,10 +62,4 @@ int sat_csum(char *s)
 	}
 
 	return csum % 10;
-}
-
-int sat_tle_valid(struct tle_ascii *tle)
-{
-	return sat_csum(tle->l[1]) == tle->l[1][68] - '0' &&
-		sat_csum(tle->l[2]) == tle->l[2][68] - '0';
 }

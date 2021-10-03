@@ -32,16 +32,13 @@
 void dispatch(int argc, char **args, struct linklist *history);
 
 FATFS fatfs;           /* Filesystem object */
-struct satellite satellites[NUM_SAT_RECORDS];
 
 struct flash_entry 
 	flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
 	flash_systick = { .name = "systick", .ptr = (void *)&systick_ticks, .len = sizeof(systick_ticks) }, 
-	flash_sat = { .name = "satellites", .ptr = satellites, .len = sizeof(satellites) },
 	*flash_table[] = {
 		&flash_rotors,
 		&flash_systick,
-		&flash_sat,
 		NULL
 	};
 
@@ -665,11 +662,11 @@ void watch(int argc, char **args, struct linklist *history)
 
 void sat(int argc, char **args)
 {
-	struct tle_ascii tle;
-	
+	tle_t tle;
+
 	unsigned char page[FLASH_PAGE_SIZE];
 	
-	char buf[128];
+	char buf[128], tle_set[139];
 
 	int off = 0;
 	int i, sat_idx = 0;
@@ -686,38 +683,38 @@ void sat(int argc, char **args)
 		i = 0;
 
 		print("Paste TLE data and press CTRL+D when done\r\n");
+		memset(&tle, 0, sizeof(tle));
 		while (serial_read_line(buf, 80))
 		{
-			strncpy(tle.l[i], buf, 71);
-			tle.l[i][70] = 0;
-//			printf("input%d: %s\r\n", i, buf);
+			if (i == 0)
+			{
+				strncpy(tle.sat_name, buf, sizeof(tle.sat_name));
+				tle.sat_name[sizeof(tle.sat_name)-1] = 0;
+			}
+			else if (i == 1)
+			{
+				strncpy(tle_set, buf, 69);
+				tle_set[69] = 0;
+			}
+			else if (i == 2)
+			{
+				strncpy(tle_set+69, buf, 69);
+				tle_set[138] = 0;
+				if (Good_Elements(tle_set))
+				{
+					Convert_Satellite_Data(tle_set, &tle);
+					printf("parsed tle: %s\r\n", tle.sat_name);
+					sat_detail(&tle);
+				}
+				else
+					printf("invalid tle: %s\r\n", tle.sat_name);
+			}
+
 			i++;
 			
 			if (i == 3)
 			{
 				i = 0;
-
-				memset(&satellites[sat_idx], 0, sizeof(struct satellite));
-				strncpy(satellites[sat_idx].name, tle.l[0], sizeof(satellites[sat_idx].name)-1);
-				Convert_Satellite_Data(tle, &satellites[sat_idx].sgp);
-
-				sat_info(&satellites[sat_idx]);
-				if (!sat_tle_valid(&tle))
-				{
-					printf("  Invalid TLE data, recived lines\r\n");
-					tle_info(&tle);
-					printf("  calculated csum1: %d\r\n", sat_csum(tle.l[1]));
-					printf("  calculated csum2: %d\r\n", sat_csum(tle.l[2]));
-				}
-				else
-				{
-					sat_idx++;
-					if (sat_idx >= NUM_SAT_RECORDS)
-					{
-						print("Out of room for more satellite records\r\n");
-						break;
-					}
-				}
 			}
 		}
 

@@ -77,7 +77,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 #include_directories(bsp)
 include_directories(${BASE_LOCATION}/include
 	include
-	sgp-c-lib
+	sgp4sdp4
 	fatfs
 	)
 
@@ -98,14 +98,13 @@ add_executable(${PROJECT_NAME}
 	systick.c
 	pid.c
 	sat.c
-	
-	sgp-c-lib/sgp0.c
-	sgp-c-lib/sgp4sdp4.c
-	sgp-c-lib/sgp8sdp8.c
-	sgp-c-lib/sgp_conv.c
-	sgp-c-lib/sgp_deep.c
-	sgp-c-lib/sgp_math.c
-	sgp-c-lib/sgp_time.c
+
+	sgp4sdp4/sgp4sdp4.c
+	sgp4sdp4/sgp_in.c
+	sgp4sdp4/sgp_math.c
+	sgp4sdp4/sgp_obs.c
+	sgp4sdp4/sgp_time.c
+	sgp4sdp4/solar.c
 
 #	fatfs/diskio.c
 	fatfs-efr32.c
