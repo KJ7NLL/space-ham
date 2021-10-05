@@ -78,6 +78,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 include_directories(${BASE_LOCATION}/include
 	include
 	sgp4sdp4
+	xmodem
 	fatfs
 	)
 
@@ -106,11 +107,10 @@ add_executable(${PROJECT_NAME}
 	sgp4sdp4/sgp_time.c
 	sgp4sdp4/solar.c
 
-#	fatfs/diskio.c
+	xmodem/xmodem.c
+
 	fatfs-efr32.c
 	fatfs/ff.c
-#	fatfs/ffsystem.c
-#	fatfs/ffunicode.c
 	)
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
