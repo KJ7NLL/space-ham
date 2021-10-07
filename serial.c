@@ -196,8 +196,10 @@ int serial_read_line(char *s, int len)
 		// If ctrl-d is the first char, then exit early
 		// otherwise ignore it.
 		if (c == 4)
+		{
 			if (n == 0) return 0;
 			else continue;
+		}
 
 		s[n] = c;
 		n++;
@@ -212,13 +214,12 @@ int serial_read_line(char *s, int len)
 
 int _read(int handle, char *data, int size)
 {
-	int n = 0;
-
 	if (!size) return 0;
 
 	// Wait for the first char
 	serial_read(data, size);
 /*	
+	int n = 0;
 	n++;
 	serial_read_async(data + 1, size - 1);
 

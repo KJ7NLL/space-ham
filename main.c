@@ -12,6 +12,7 @@
 #include "em_usart.h"
 
 #include "ff.h"
+#include "fatfs-efr32.h"
 
 #include "linklist.h"
 #include "serial.h"
@@ -664,11 +665,8 @@ void sat(int argc, char **args)
 {
 	tle_t tle;
 
-	unsigned char page[FLASH_PAGE_SIZE];
-	
 	char buf[128], tle_set[139];
 
-	int off = 0;
 	int i, sat_idx = 0;
 
 	if (argc < 2)
