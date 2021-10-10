@@ -9,6 +9,7 @@
 #include "em_gpio.h"
 #include "em_usart.h"
 
+#include "systick.h"
 #include "linklist.h"
 #include "strutil.h"
 
@@ -84,7 +85,7 @@ void initUsart1(void)
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 }
 
-int read_buf_to_bufrx()
+int _read_buf_to_bufrx()
 {
 	int i = 0;
 
@@ -107,6 +108,20 @@ int read_buf_to_bufrx()
 	return i;
 }
 
+int read_buf_to_bufrx()
+{
+	int count;
+
+	if (bufrx == NULL || bufrxlen == 0 || read_buf_cur == read_buf_next)
+		return 0;
+
+	USART_IntDisable(USART0, USART_IEN_RXDATAV);
+	count = _read_buf_to_bufrx();
+	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+
+	return count;
+}
+
 void USART0_RX_IRQHandler(void)
 {
 	unsigned char c = USART0->RXDATA;
@@ -116,7 +131,7 @@ void USART0_RX_IRQHandler(void)
 		read_buf_next = ((read_buf_next+1) & READ_BUF_MASK); 
 	}
 
-	read_buf_to_bufrx();
+	_read_buf_to_bufrx();
 }
 
 void USART0_TX_IRQHandler(void)
@@ -164,6 +179,14 @@ void serial_read_async(void *s, int len)
 	bufrxlen = len;
 }
 
+void serial_read_async_cancel()
+{
+	bufrxlen = 0;
+	bufrx = NULL;
+}
+
+
+
 int serial_read_done()
 {
 	return bufrx == NULL;
@@ -175,13 +198,31 @@ void serial_read(void *s, int len)
 
 	while (!serial_read_done())
 	{
-		USART_IntDisable(USART0, USART_IEN_RXDATAV);
 		read_buf_to_bufrx();
-		USART_IntEnable(USART0, USART_IEN_RXDATAV);
 		if (!serial_read_done())
 			EMU_EnterEM1();
 	}
 
+}
+
+int serial_read_timeout(void *s, int len, float timeout)
+{
+	int count = 0;
+	uint64_t start;
+
+	start = systick_get();
+	serial_read_async(s, len);
+
+	while (!serial_read_done() && systick_elapsed_sec(start) < timeout)
+	{
+		count += read_buf_to_bufrx();
+		if (!serial_read_done())
+			EMU_EnterEM1();
+	}
+	
+	serial_read_async_cancel();
+
+	return count;
 }
 
 int serial_read_line(char *s, int len)

@@ -87,3 +87,9 @@ void systick_delay_sec(float sec)
 {
 	systick_delay_ticks(sec * (float)ticks_per_sec);
 }
+
+// return the number of seeconds elapsed given a starting tick count
+float systick_elapsed_sec(uint64_t start)
+{
+	return (systick_get() - start) / (float)ticks_per_sec;
+}

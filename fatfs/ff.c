@@ -5896,7 +5896,6 @@ FRESULT f_mkfs (
 		}
 	} else {	/* The volume is associated with a physical drive */
 		if (disk_ioctl(pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK) LEAVE_MKFS(FR_DISK_ERR);
-		printf("sz_vol=%d\r\n", sz_vol);
 		if (!(fsopt & FM_SFD)) {	/* To be partitioned? */
 			/* Create a single-partition on the drive in this function */
 #if FF_LBA64
@@ -6143,10 +6142,8 @@ FRESULT f_mkfs (
 				sz_fat += n / n_fat;
 			}
 
-printf("1\n");
 			/* Determine number of clusters and final check of validity of the FAT sub-type */
 			if (sz_vol < b_data + pau * 16 - b_vol) LEAVE_MKFS(FR_MKFS_ABORTED);	/* Too small volume? */
-printf("2\n");
 			n_clst = ((DWORD)sz_vol - sz_rsv - sz_fat * n_fat - sz_dir) / pau;
 			if (fsty == FS_FAT32) {
 				if (n_clst <= MAX_FAT16) {	/* Too few clusters for FAT32? */
@@ -6154,7 +6151,6 @@ printf("2\n");
 					LEAVE_MKFS(FR_MKFS_ABORTED);
 				}
 			}
-printf("3\n");
 			if (fsty == FS_FAT16) {
 				if (n_clst > MAX_FAT16) {	/* Too many clusters for FAT16 */
 					if (sz_au == 0 && (pau * 2) <= 64) {
@@ -6171,9 +6167,7 @@ printf("3\n");
 					LEAVE_MKFS(FR_MKFS_ABORTED);
 				}
 			}
-printf("4: n_clst=%d > %d, sz_vol=%d\n", n_clst, MAX_FAT12, sz_vol);
 			if (fsty == FS_FAT12 && n_clst > MAX_FAT12) LEAVE_MKFS(FR_MKFS_ABORTED);	/* Too many clusters for FAT12 */
-printf("5\n");
 
 			/* Ok, it is the valid cluster configuration */
 			break;
