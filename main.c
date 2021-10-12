@@ -762,16 +762,15 @@ void fat(int argc, char **args)
 	else if (match(args[1], "load") && argc >= 3)
 	{
 		printf("Paste data into %s and press CTRL+D when done\r\n", args[2]);
-		res = f_open(&fil, args[2], FA_CREATE_NEW | FA_WRITE);
-		printf("res: %d\r\n", res);
+		res = f_open(&fil, args[2], FA_CREATE_ALWAYS | FA_WRITE);
 		
-		while (serial_read_line(buf, 80))
+		while (res == FR_OK && serial_read_line(buf, 80))
 		{
 			res = f_write(&fil, buf, strlen(buf), &bw);
-			printf("bw: %d\r\n", bw);
 		}
 
-		res = f_close(&fil);
+		if (res != FR_OK)
+			res = f_close(&fil);
 	}
 	else if (match(args[1], "cat") && argc >= 3)
 	{
@@ -788,6 +787,12 @@ void fat(int argc, char **args)
 
 		printf("\r\n");
 		res = f_close(&fil);
+	}
+	else if (match(args[1], "rx") && argc >= 3)
+	{
+		br = xmodem_rx(args[2]);
+
+		printf("Receved %d bytes\r\n", br);
 	}
 
 	if (res != FR_OK)
@@ -889,6 +894,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 int main()
 {
+	FRESULT res;
+
 	struct rotor *theta = &rotors[0], *phi = &rotors[1];
 	struct linklist *history = NULL;
 	char buf[128], *args[MAX_ARGS];
@@ -935,6 +942,10 @@ int main()
 	if (systick_init(100) != 0)
 		print("Failed to set systick to 100 Hz\r\n");
 	print("\r\n");
+
+	res = f_mount(&fatfs, "", 0);
+	if (res != FR_OK)
+		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
 
 	status();
 	print("\r\n");

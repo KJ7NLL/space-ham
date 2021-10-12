@@ -14,7 +14,8 @@
 #include "strutil.h"
 
 // RX ring buffer used internally in the RX interrupt
-#define READ_BUF_BITS	10
+// At least 128 byte ring buffer is necessary for xmodem, so set it to 256:
+#define READ_BUF_BITS	8
 #define READ_BUF_SIZE	(1 << READ_BUF_BITS)
 #define READ_BUF_MASK	(READ_BUF_SIZE-1)
 
@@ -130,8 +131,6 @@ void USART0_RX_IRQHandler(void)
 		read_buf[read_buf_next] = c;
 		read_buf_next = ((read_buf_next+1) & READ_BUF_MASK); 
 	}
-
-	_read_buf_to_bufrx();
 }
 
 void USART0_TX_IRQHandler(void)

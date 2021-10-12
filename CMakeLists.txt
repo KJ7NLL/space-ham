@@ -110,6 +110,7 @@ add_executable(${PROJECT_NAME}
 	xmodem/xmodem.c
 
 	fatfs-efr32.c
+	fatfs-xmodem.c
 	fatfs/ff.c
 	)
 
