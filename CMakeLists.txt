@@ -57,6 +57,13 @@ endif ()
 # Add base libs (emlib, CMSIS, device files)
 include(${BASE_LOCATION}/toolchain/efm32-base.cmake)
 
+
+# Note that "Release" has different flags.
+# See efm32-base/toolchain/efm32-base.cmake
+#set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_C_FLAGS_DEBUG "-O2 -ffast-math")
+
+
 # Enable protocols / BLE if desired
 # Note this will overwrite the default linker files / may not behave in the manner you expect
 #set(USE_PROTOCOL 1)
