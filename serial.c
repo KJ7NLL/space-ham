@@ -19,13 +19,14 @@
 #define READ_BUF_SIZE	(1 << READ_BUF_BITS)
 #define READ_BUF_MASK	(READ_BUF_SIZE-1)
 
-unsigned char read_buf[READ_BUF_SIZE];
-int read_buf_cur = 0, read_buf_next = 0;
+volatile unsigned char read_buf[READ_BUF_SIZE];
+volatile int read_buf_cur = 0, read_buf_next = 0;
+volatile int bytes_read = 0;
 
 // Receive data buf provided by user code
-unsigned char *bufrx = NULL;
-unsigned char *buftx = NULL;
-int buftxlen = 0, bufrxlen = 0;
+volatile unsigned char *bufrx = NULL;
+volatile unsigned char *buftx = NULL;
+volatile int buftxlen = 0, bufrxlen = 0;
 
 enum KEYS 
 {
@@ -59,7 +60,7 @@ void initUsart1(void)
 	// Default asynchronous initializer (115.2 Kbps, 8N1, no flow
 	// control)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
-	memset(read_buf, 0, sizeof(read_buf));
+	memset((unsigned char*)read_buf, 0, sizeof(read_buf));
 
 	// Route USART0 TX and RX to PA5 and PA6 pins, respectively
 	GPIO->USARTROUTE[0].TXROUTE =
@@ -106,6 +107,8 @@ int _read_buf_to_bufrx()
 		i++;
 	}
 
+	bytes_read += i;
+
 	return i;
 }
 
@@ -131,6 +134,8 @@ void USART0_RX_IRQHandler(void)
 		read_buf[read_buf_next] = c;
 		read_buf_next = ((read_buf_next+1) & READ_BUF_MASK); 
 	}
+
+	_read_buf_to_bufrx();
 }
 
 void USART0_TX_IRQHandler(void)
@@ -174,14 +179,25 @@ void serial_write(void *s, int len)
 
 void serial_read_async(void *s, int len)
 {
+	USART_IntDisable(USART0, USART_IEN_RXDATAV);
 	bufrx = s;
 	bufrxlen = len;
+	bytes_read = 0;
+	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+}
+
+inline int serial_read_async_bytes_read()
+{
+	return bytes_read;
 }
 
 void serial_read_async_cancel()
 {
+	USART_IntDisable(USART0, USART_IEN_RXDATAV);
 	bufrxlen = 0;
 	bufrx = NULL;
+	bytes_read = 0;
+	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 }
 
 
@@ -197,6 +213,8 @@ void serial_read(void *s, int len)
 
 	while (!serial_read_done())
 	{
+		// Call read_buf_to_bufrx() here in case the RX interrupt 
+		// was called before bufrx configured by serial_read_async().
 		read_buf_to_bufrx();
 		if (!serial_read_done())
 			EMU_EnterEM1();
@@ -214,10 +232,14 @@ int serial_read_timeout(void *s, int len, float timeout)
 
 	while (!serial_read_done() && systick_elapsed_sec(start) < timeout)
 	{
-		count += read_buf_to_bufrx();
+		// Call read_buf_to_bufrx() here in case the RX interrupt 
+		// was called before bufrx configured by serial_read_async().
+		read_buf_to_bufrx();
 		if (!serial_read_done())
 			EMU_EnterEM1();
 	}
+
+	count = serial_read_async_bytes_read();
 	
 	serial_read_async_cancel();
 
