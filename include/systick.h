@@ -1,5 +1,6 @@
 
 int systick_update();
+void systick_set_bypass(int b);
 int systick_init(int tps);
 void systick_set(uint64_t newticks);
 uint64_t systick_get();

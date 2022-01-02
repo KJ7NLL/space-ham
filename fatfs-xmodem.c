@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "em_chip.h"
+
 #include "ff.h"
 #include "xmodem.h"
 
@@ -52,7 +54,21 @@ int xmodem_rx(char *filename)
 		return -(fr+10);
 	}
 
+
+	// IADC and systick handlers drown the CPU in IRQ triggers
+	// so turn them off while transferring:
+	int iadc = NVIC_GetEnableIRQ(IADC_IRQn);
+	if (iadc)
+	{
+		NVIC_DisableIRQ(IADC_IRQn);
+		NVIC_ClearPendingIRQ(IADC_IRQn);
+	}
+	systick_bypass(1);
+	
 	len = XmodemReceive(xmodem_rx_chunk, &out, 1024*1024, 1, 0);
+
+	systick_bypass(0);
+	if (iadc) NVIC_EnableIRQ(IADC_IRQn);
 
 	f_close(&out);
 

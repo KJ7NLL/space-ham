@@ -4,6 +4,7 @@
 #include "rotor.h"
 
 volatile uint64_t systick_ticks = 0;
+volatile static int _systick_bypass = 0;
 static volatile int lock = 0, locked_ticks = 0, ticks_per_sec = 1000;
 
 void SysTick_Handler(void)
@@ -23,6 +24,11 @@ void SysTick_Handler(void)
 	}
 	else
 		locked_ticks++;
+
+	// Bypass non-systick code.  Really this should be moved to an RTC IRQ
+	// and let systick be turned off completely.
+	if (_systick_bypass)
+		return;
 
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
@@ -54,6 +60,11 @@ int systick_init(int tps)
 {
 	ticks_per_sec = tps;
 	return systick_update();
+}
+
+void systick_bypass(int b)
+{
+	_systick_bypass = b;
 }
 
 void systick_set(uint64_t newticks)
