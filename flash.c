@@ -138,14 +138,14 @@ int flash_read(struct flash_entry **entries, uint32_t location)
 			printf("Error reading flash entry %s (%d) at %p: length mismatch, %ld != %ld\r\n",
 				entries[i]->name, i, header, header->len, entries[i]->len);
 
-//			return 0;
+			return 0;
 		}
 		else if (header->csum != checksum(data, header->len))
 		{
 			printf("Error reading flash entry %s (%d) at %p: checksum mismatch, %ld != %ld\r\n",
 				entries[i]->name, i, data, header->csum, checksum(data, header->len));
 
-//			return 0;
+			return 0;
 		}
 
 		memcpy(entries[i]->ptr, data, entries[i]->len);

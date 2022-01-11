@@ -39,7 +39,6 @@ struct flash_entry
 	flash_systick = { .name = "systick", .ptr = (void *)&systick_ticks, .len = sizeof(systick_ticks) }, 
 	*flash_table[] = {
 		&flash_rotors,
-		&flash_systick,
 		NULL
 	};
 
@@ -619,11 +618,15 @@ void flash(int argc, char **args)
 
 	if (match(args[1], "write") || match(args[1], "save"))
 	{
+		systick_bypass(1);
 		flash_write(flash_table, offset);
+		systick_bypass(0);
 	}
 	else if (match(args[1], "load"))
 	{
+		systick_bypass(1);
 		flash_read(flash_table, offset);
+		systick_bypass(0);
 	}
 	else
 	{
@@ -922,7 +925,7 @@ int main()
 	phi->motor.pin1 = 4;
 	phi->motor.pin2 = 5;
 
-	print("\x0c\r\n");
+	print("\r\n");
 
 	help();
 	print("\r\n");
