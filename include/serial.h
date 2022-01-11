@@ -1,4 +1,4 @@
-void initUsart1(void);
+void initUsart0(void);
 void USART1_RX_IRQHandler(void);
 void USART1_TX_IRQHandler(void);
 void serial_write(void *s, int len);

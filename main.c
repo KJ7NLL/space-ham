@@ -10,6 +10,7 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_usart.h"
+#include "em_i2c.h"
 
 #include "ff.h"
 #include "fatfs-efr32.h"
@@ -22,6 +23,8 @@
 #include "pwm.h"
 #include "flash.h"
 #include "systick.h"
+#include "i2c.h"
+
 #include "sat.h"
 
 #define LED_PORT gpioPortB
@@ -45,6 +48,8 @@ struct flash_entry
 
 void initGpio(void)
 {
+	CMU_ClockEnable(cmuClock_GPIO, true);
+
 	// Configure PA5 as an output (TX)
 	GPIO_PinModeSet(gpioPortA, 5, gpioModePushPull, 0);
 
@@ -73,17 +78,13 @@ void initGpio(void)
 	GPIO_PinModeSet(gpioPortD, 2, gpioModeInput, 0);
 	GPIO_PinModeSet(gpioPortD, 3, gpioModeInput, 0);
 
+
+	GPIO_PinModeSet(I2C_PORT, I2C_SDA, gpioModeWiredAndPullUpFilter, 1);
+	GPIO_PinModeSet(I2C_PORT, I2C_SCL, gpioModeWiredAndPullUpFilter, 1);
+
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
 	GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 0);
-}
-
-void initCmu(void)
-{
-	// Enable clock to GPIO and USART1
-	CMU_ClockEnable(cmuClock_GPIO, true);
-	CMU_ClockEnable(cmuClock_USART1, true);
-	CMU_ClockEnable(cmuClock_TIMER0, true);
 }
 
 void help()
@@ -885,6 +886,14 @@ void dispatch(int argc, char **args, struct linklist *history)
 	else if (match(args[0], "fat"))
 		fat(argc, args);
 
+	else if  (match(args[0], "i2c"))
+	{
+		char buf[12];
+		buf[0] = 0;
+		i2c_master_read(0x68 << 1, 0, buf, 12);
+		for (i = 0; i < 12; i++)
+			printf("%d. %02X\r\n", i, buf[i]);
+	}
 
 	// This must be the last else if:
 	else if (!match(args[0], ""))
@@ -909,10 +918,11 @@ int main()
 	CHIP_Init();
 
 	// Initialize efr32 features
-	initCmu();
 	initGpio();
-	initUsart1();
+	initUsart0();
 	initIADC();
+	initI2C();
+
 	
 	// Initialize our features
 	initRotors();

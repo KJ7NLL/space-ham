@@ -55,11 +55,14 @@ char *vt102[] =
 };
 
 
-void initUsart1(void)
+void initUsart0(void)
 {
 	// Default asynchronous initializer (115.2 Kbps, 8N1, no flow
 	// control)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
+
+	CMU_ClockEnable(cmuClock_USART0, true);
+
 	memset((unsigned char*)read_buf, 0, sizeof(read_buf));
 
 	// Route USART0 TX and RX to PA5 and PA6 pins, respectively

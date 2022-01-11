@@ -175,6 +175,8 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, int pwm_Hz,
 
 	// Configure timer Compare/Capture for output compare
 	TIMER_InitCC_TypeDef timerCCInit = TIMER_INITCC_DEFAULT;
+
+	CMU_ClockEnable(timer_cmu_clock(timer), true);
 	
 	idx = timer_idx(timer);
 

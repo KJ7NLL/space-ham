@@ -91,11 +91,7 @@ include_directories(${BASE_LOCATION}/include
 
 # Generate executable and link
 add_executable(${PROJECT_NAME}
-	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetio.c
-	#${BASE_LOCATION}/hardware/kit/common/drivers/retargetserial.c
-	#main_gpio_conf_s2.c
-	#main_gpio_periph_s2.c
-        main.c
+    main.c
 	serial.c
 	strutil.c
 	linklist.c
@@ -106,6 +102,7 @@ add_executable(${PROJECT_NAME}
 	systick.c
 	pid.c
 	sat.c
+	i2c.c
 
 	sgp4sdp4/sgp4sdp4.c
 	sgp4sdp4/sgp_in.c
