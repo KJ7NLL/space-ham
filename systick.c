@@ -1,10 +1,14 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
 #include "em_cmu.h"
 #include "em_emu.h"
 
 #include "rotor.h"
 
 volatile uint64_t systick_ticks = 0;
-volatile static int _systick_bypass = 0;
+static volatile int _systick_bypass = 0;
 static volatile int lock = 0, locked_ticks = 0, ticks_per_sec = 1000;
 
 void SysTick_Handler(void)
@@ -85,6 +89,11 @@ uint64_t systick_get()
 	return t;
 }
 
+time_t systick_get_sec()
+{
+	return systick_get() / ticks_per_sec;
+}
+
 void systick_delay_ticks(uint64_t delay)
 {
 	uint64_t cur = systick_get();
@@ -103,4 +112,48 @@ void systick_delay_sec(float sec)
 float systick_elapsed_sec(uint64_t start)
 {
 	return (systick_get() - start) / (float)ticks_per_sec;
+}
+
+int _gettimeofday(struct timeval *tv, void *tz)
+{
+	uint64_t now = systick_get(); 
+
+	if (tv == NULL)
+		return -1;
+
+	time_t sec = now / ticks_per_sec;
+	long usec = now - (sec * ticks_per_sec);
+	usec *= 1000000 / ticks_per_sec;
+
+	tv->tv_sec = sec;
+	tv->tv_usec = usec;
+
+	printf("s=%lu usec=%lu\n", (long)sec, (long)usec);
+
+	return 0;
+}
+
+/*  Not sure if this works, but available if it is useful someday:
+int _times(struct tms *t)
+{
+	clock_t ticks = systick_get() * 1000 / ticks_per_sec; 
+
+	t->tms_utime = ticks;
+	t->tms_stime = ticks;
+	t->tms_cutime = ticks;
+	t->tms_cstime = ticks;
+
+	return ticks;
+}
+*/
+
+time_t _time(time_t *t)
+{
+	if (t != NULL)
+	{
+		*t = systick_get_sec();
+		return *t;
+	}
+	else
+		return systick_get_sec();
 }

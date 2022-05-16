@@ -79,8 +79,8 @@ void initGpio(void)
 	GPIO_PinModeSet(gpioPortD, 3, gpioModeInput, 0);
 
 
-	GPIO_PinModeSet(I2C_PORT, I2C_SDA, gpioModeWiredAndPullUpFilter, 1);
-	GPIO_PinModeSet(I2C_PORT, I2C_SCL, gpioModeWiredAndPullUpFilter, 1);
+	GPIO_PinModeSet(I2C_SDA_PORT, I2C_SDA, gpioModeWiredAndPullUpFilter, 1);
+	GPIO_PinModeSet(I2C_SCL_PORT, I2C_SCL, gpioModeWiredAndPullUpFilter, 1);
 
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
@@ -665,6 +665,23 @@ void watch(int argc, char **args, struct linklist *history)
 	while (!serial_read_done());
 }
 
+void sat_pos(tle_t *tle)
+{
+  /** !Clear all flags! **/
+  /* Before calling a different ephemeris  */
+  /* or changing the TLE set, flow control */
+  /* flags must be cleared in main().      */
+  ClearFlag(ALL_FLAGS);
+
+  /** Select ephemeris type **/
+  /* Will set or clear the DEEP_SPACE_EPHEM_FLAG       */
+  /* depending on the TLE parameters of the satellite. */
+  /* It will also pre-process tle members for the      */
+  /* ephemeris functions SGP4 or SDP4 so this function */
+  /* must be called each time a new tle set is used    */
+  select_ephemeris(&tle);
+}
+
 void sat(int argc, char **args)
 {
 	tle_t tle;
@@ -893,6 +910,20 @@ void dispatch(int argc, char **args, struct linklist *history)
 		i2c_master_read(0x68 << 1, 0, buf, 12);
 		for (i = 0; i < 12; i++)
 			printf("%d. %02X\r\n", i, buf[i]);
+
+		struct tm rtc;
+		rtc.tm_sec = (buf[0] & 0x0F) + ((buf[0] & 0xF0) >> 4) * 10;
+		rtc.tm_min = (buf[1] & 0x0F) + ((buf[1] & 0xF0) >> 4) * 10;
+		rtc.tm_hour = (buf[2] & 0x0F) + ((buf[2] & 0x30) >> 4) * 10;
+		rtc.tm_mday = (buf[4] & 0x0F) + ((buf[4] & 0x30) >> 4) * 10;
+		rtc.tm_mon = ((buf[5] & 0x0F) + ((buf[5] & 0x10) >> 4) * 10) - 1;  // month 0-11
+		int cent = ((buf[5] & 0x80) >> 7) + 1; // starts at 1900 so add 1 to cent
+		rtc.tm_year = (buf[6] & 0x0F) + ((buf[6] & 0xF0) >> 4) * 10 + cent*100;
+
+		printf("%02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
+			rtc.tm_mday, rtc.tm_mon+1, rtc.tm_year + 1900,
+			rtc.tm_hour, rtc.tm_min, rtc.tm_sec,
+			(unsigned long)mktime(&rtc));
 	}
 
 	// This must be the last else if:
@@ -920,6 +951,8 @@ int main()
 	// Initialize efr32 features
 	initGpio();
 	initUsart0();
+	print("\x0c\r\n");
+
 	initIADC();
 	initI2C();
 
@@ -934,8 +967,6 @@ int main()
 	phi->motor.port = gpioPortC;
 	phi->motor.pin1 = 4;
 	phi->motor.pin2 = 5;
-
-	print("\r\n");
 
 	help();
 	print("\r\n");

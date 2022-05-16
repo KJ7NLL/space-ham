@@ -1,8 +1,9 @@
 #include "em_i2c.h"
 
-#define I2C_PORT gpioPortD
-#define I2C_SDA 2
-#define I2C_SCL 3
+#define I2C_SCL_PORT gpioPortC
+#define I2C_SDA_PORT gpioPortC
+#define I2C_SCL 0
+#define I2C_SDA 1
 
 void initI2C();
 
