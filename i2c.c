@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #include "em_device.h"
 #include "em_chip.h"
 #include "em_emu.h"
@@ -6,6 +8,7 @@
 #include "em_i2c.h"
 
 #include "i2c.h"
+#include "serial.h"
 
 void initI2C()
 {
@@ -53,11 +56,50 @@ i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 
 	result = I2C_TransferInit(I2C0, &i2cTransfer);
 
-	// Sending data - GETS STUCK IN THIS LOOP
+	// Sending data
 	while (result == i2cTransferInProgress)
 	{
 		result = I2C_Transfer(I2C0);
 	}
 
 	return result;
+}
+
+
+void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
+		     uint8_t * txBuff, uint8_t numBytes)
+{
+	// Transfer structure
+	I2C_TransferSeq_TypeDef i2cTransfer;
+	I2C_TransferReturn_TypeDef result;
+	uint8_t txBuffer[I2C_TXBUFFER_SIZE + 1];
+
+	if (numBytes > I2C_TXBUFFER_SIZE)
+	{
+		printf("Warning: I2C tx: numbytes exceeds buffer size, truncating: %d > %d\r\n",
+			numBytes, I2C_TXBUFFER_SIZE);
+		numBytes = I2C_TXBUFFER_SIZE;
+	}
+
+	txBuffer[0] = targetAddress;
+	for (int i = 0; i < numBytes; i++)
+	{
+		txBuffer[i + 1] = txBuff[i];
+	}
+
+	// Initializing I2C transfer
+	i2cTransfer.addr = slaveAddress;
+	i2cTransfer.flags = I2C_FLAG_WRITE;
+	i2cTransfer.buf[0].data = txBuffer;
+	i2cTransfer.buf[0].len = numBytes + 1;
+	i2cTransfer.buf[1].data = NULL;
+	i2cTransfer.buf[1].len = 0;
+
+	result = I2C_TransferInit(I2C0, &i2cTransfer);
+
+	// Sending data
+	while (result == i2cTransferInProgress)
+	{
+		result = I2C_Transfer(I2C0);
+	}
 }
