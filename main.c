@@ -23,7 +23,9 @@
 #include "pwm.h"
 #include "flash.h"
 #include "systick.h"
+
 #include "i2c.h"
+#include "i2c/rtc-ds3231.h"
 
 #include "sat.h"
 
@@ -100,6 +102,7 @@ void help()
 		"cam (on|off)                                          # Turns camera on or off\r\n"
 		"led (1|0)                                             # Turns LED1/0 on or off\r\n"
 		"hist|history                                          # History of commands\r\n"
+		"date                                                  # Set or get the date\r\n"
 		"debug-keys                                            # Print chars and hex\r\n";
 	print(h);
 }
@@ -905,70 +908,86 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 	else if  (match(args[0], "i2c"))
 	{
-		char buf[12];
+		if (argc < 3)
+		{
+			print("usage: i2c <hex_addr> <num_bytes>\r\n"
+				"Address is in hex, num_bytes is decimal\r\n");
+			return;
+		}
+
+		int addr = strtol(args[1], NULL, 16);
+		int n_bytes = atoi(args[2]);
+		char *buf = malloc(n_bytes);
+
+		if (!buf)
+		{
+			print("buf is null, out of memory?\r\n");
+			return;
+		}
+
 		buf[0] = 0;
-		i2c_master_read(0x68 << 1, 0, buf, 12);
-		for (i = 0; i < 12; i++)
+		i2c_master_read(0x68 << 1, 0, buf, n_bytes);
+		for (i = 0; i < n_bytes; i++)
 			printf("%d. %02X\r\n", i, buf[i]);
 
-		struct tm rtc;
-		rtc.tm_sec = (buf[0] & 0x0F) + ((buf[0] & 0xF0) >> 4) * 10;
-		rtc.tm_min = (buf[1] & 0x0F) + ((buf[1] & 0xF0) >> 4) * 10;
-		rtc.tm_hour = (buf[2] & 0x0F) + ((buf[2] & 0x30) >> 4) * 10;
-		rtc.tm_mday = (buf[4] & 0x0F) + ((buf[4] & 0x30) >> 4) * 10;
-		rtc.tm_mon = ((buf[5] & 0x0F) + ((buf[5] & 0x10) >> 4) * 10) - 1;  // month 0-11
-		int cent = ((buf[5] & 0x80) >> 7) + 1; // starts at 1900 so add 1 to cent
-		rtc.tm_year = (buf[6] & 0x0F) + ((buf[6] & 0xF0) >> 4) * 10 + cent*100;
-
-		printf("%02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
-			rtc.tm_mon+1, rtc.tm_mday, rtc.tm_year + 1900,
-			rtc.tm_hour, rtc.tm_min, rtc.tm_sec,
-			(unsigned long)mktime(&rtc));
+		free(buf);
 	}
 	else if (match(args[0], "date"))
 	{
 		char buf[12];
 		struct tm rtc;
 
-		if (argc < 7)
+		if (argc >= 2 && match(args[1], "read"))
 		{
-			printf("invalid date format, expected: YYYY MM DD hh mm ss\r\n");
+			ds3231_read_time(&rtc);
+		}
+		else if (argc >= 2 && match(args[1], "set"))
+		{
+			if (argc == 8)
+			{
+				rtc.tm_year = atoi(args[2]) - 1900;
+				rtc.tm_mon = atoi(args[3]) - 1;
+				rtc.tm_mday = atoi(args[4]);
+				rtc.tm_hour = atoi(args[5]);
+				rtc.tm_min = atoi(args[6]);
+				rtc.tm_sec = atoi(args[7]);
+			}
+			else if (argc == 3)
+			{
+				time_t t = atoi(args[2]);
+
+				// RTC doesn't support earlier than y2k.
+				// You can call this a y2k bug ;)
+				if (t < 946684800)
+					t = 946684800;
+				gmtime_r(&t, &rtc);
+			}
+			else
+			{
+				print("i2c date set (unixtime|YYYY MM DD hh mm ss)\r\n"
+					"  If a single integer is given, then it is seconds since Jan 1, 1970 UTC\r\n"
+					"  If 6 integers are passed, then parse as YYYY MM DD hh mm ss\r\n"
+					"  Note: clock only supports dates after the year 2000.\r\n");
+				return;
+			}
+
+			ds3231_write_time(&rtc);
+		}
+		else
+		{
+			printf("usage: date (read|set)\r\n"
+				"date read - show current time\r\n"
+				"date set  - set current time\r\n"
+				"date set (unixtime|YYYY MM DD hh mm ss)\r\n");
 
 			return;
 		}
 
-		rtc.tm_year = atoi(args[1]) - 1900;
-		rtc.tm_mon = atoi(args[2]) - 1;
-		rtc.tm_mday = atoi(args[3]);
-		rtc.tm_hour = atoi(args[4]);
-		rtc.tm_min = atoi(args[5]);
-		rtc.tm_sec = atoi(args[6]);
-
-		printf("%02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
+		printf("UTC: %02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
 			rtc.tm_mon+1, rtc.tm_mday, rtc.tm_year + 1900,
 			rtc.tm_hour, rtc.tm_min, rtc.tm_sec,
 			(unsigned long)mktime(&rtc));
 
-		buf[0] = (rtc.tm_sec-((rtc.tm_sec/10)*10)) | ((rtc.tm_sec/10) << 4);
-		buf[1] = (rtc.tm_min-((rtc.tm_min/10)*10)) | ((rtc.tm_min/10) << 4);
-		buf[2] = (rtc.tm_hour-((rtc.tm_hour/10)*10)) | ((rtc.tm_hour/10) << 4);
-		buf[3] = rtc.tm_wday+1;
-		buf[4] = (rtc.tm_mday-((rtc.tm_mday/10)*10)) | ((rtc.tm_mday/10) << 4);
-		int cent;
-		if (rtc.tm_year + 1900 >= 2100)
-			cent = 0x80;
-		else
-			cent = 0;
-		int month = rtc.tm_mon+1;
-		buf[5] = (month-((month/10)*10)) | ((month/10) << 4) | cent;
-		int yy = rtc.tm_year + 1900;
-		yy = yy - ((yy/100)*100);
-		buf[6] = (yy-((yy/10)*10)) | ((yy/10) << 4);
-
-		for (i = 0; i < 7; i++)
-			printf("%d. %02X\r\n", i, buf[i]);
-
-		i2c_master_write(0x68 << 1, 0, buf, 7);
 	}
 
 	// This must be the last else if:

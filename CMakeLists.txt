@@ -104,6 +104,8 @@ add_executable(${PROJECT_NAME}
 	sat.c
 	i2c.c
 
+	i2c/rtc-ds3231.c
+
 	sgp4sdp4/sgp4sdp4.c
 	sgp4sdp4/sgp_in.c
 	sgp4sdp4/sgp_math.c
