@@ -921,9 +921,54 @@ void dispatch(int argc, char **args, struct linklist *history)
 		rtc.tm_year = (buf[6] & 0x0F) + ((buf[6] & 0xF0) >> 4) * 10 + cent*100;
 
 		printf("%02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
-			rtc.tm_mday, rtc.tm_mon+1, rtc.tm_year + 1900,
+			rtc.tm_mon+1, rtc.tm_mday, rtc.tm_year + 1900,
 			rtc.tm_hour, rtc.tm_min, rtc.tm_sec,
 			(unsigned long)mktime(&rtc));
+	}
+	else if (match(args[0], "date"))
+	{
+		char buf[12];
+		struct tm rtc;
+
+		if (argc < 7)
+		{
+			printf("invalid date format, expected: YYYY MM DD hh mm ss\r\n");
+
+			return;
+		}
+
+		rtc.tm_year = atoi(args[1]) - 1900;
+		rtc.tm_mon = atoi(args[2]) - 1;
+		rtc.tm_mday = atoi(args[3]);
+		rtc.tm_hour = atoi(args[4]);
+		rtc.tm_min = atoi(args[5]);
+		rtc.tm_sec = atoi(args[6]);
+
+		printf("%02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
+			rtc.tm_mon+1, rtc.tm_mday, rtc.tm_year + 1900,
+			rtc.tm_hour, rtc.tm_min, rtc.tm_sec,
+			(unsigned long)mktime(&rtc));
+
+		buf[0] = (rtc.tm_sec-((rtc.tm_sec/10)*10)) | ((rtc.tm_sec/10) << 4);
+		buf[1] = (rtc.tm_min-((rtc.tm_min/10)*10)) | ((rtc.tm_min/10) << 4);
+		buf[2] = (rtc.tm_hour-((rtc.tm_hour/10)*10)) | ((rtc.tm_hour/10) << 4);
+		buf[3] = rtc.tm_wday+1;
+		buf[4] = (rtc.tm_mday-((rtc.tm_mday/10)*10)) | ((rtc.tm_mday/10) << 4);
+		int cent;
+		if (rtc.tm_year + 1900 >= 2100)
+			cent = 0x80;
+		else
+			cent = 0;
+		int month = rtc.tm_mon+1;
+		buf[5] = (month-((month/10)*10)) | ((month/10) << 4) | cent;
+		int yy = rtc.tm_year + 1900;
+		yy = yy - ((yy/100)*100);
+		buf[6] = (yy-((yy/10)*10)) | ((yy/10) << 4);
+
+		for (i = 0; i < 7; i++)
+			printf("%d. %02X\r\n", i, buf[i]);
+
+		i2c_master_write(0x68 << 1, 0, buf, 7);
 	}
 
 	// This must be the last else if:
