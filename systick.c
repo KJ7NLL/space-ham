@@ -89,9 +89,14 @@ uint64_t systick_get()
 	return t;
 }
 
-time_t systick_get_sec()
+uint64_t systick_get_sec()
 {
 	return systick_get() / ticks_per_sec;
+}
+
+void systick_set_sec(time_t sec)
+{
+	systick_set(sec*(uint64_t)ticks_per_sec);
 }
 
 void systick_delay_ticks(uint64_t delay)
@@ -121,9 +126,9 @@ int _gettimeofday(struct timeval *tv, void *tz)
 	if (tv == NULL)
 		return -1;
 
-	time_t sec = now / ticks_per_sec;
-	long usec = now - (sec * ticks_per_sec);
-	usec *= 1000000 / ticks_per_sec;
+	time_t sec = now / (uint64_t)ticks_per_sec;
+	long usec = now - (sec * (uint64_t)ticks_per_sec);
+	usec *= 1000000 / (uint64_t)ticks_per_sec;
 
 	tv->tv_sec = sec;
 	tv->tv_usec = usec;

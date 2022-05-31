@@ -89,6 +89,15 @@ void initGpio(void)
 	GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 0);
 }
 
+void print_tm(struct tm *rtc)
+{
+	time_t now = mktime(rtc);
+	printf("UTC: %02d/%02d/%04d  %02d:%02d:%02d  unix time: %s\r\n",
+		rtc->tm_mon+1, rtc->tm_mday, rtc->tm_year + 1900,
+		rtc->tm_hour, rtc->tm_min, rtc->tm_sec,
+		lltoa(now, 10));
+}
+
 void help()
 {
 	char *h =
@@ -120,8 +129,12 @@ void dump_history(struct linklist *history)
 void status()
 {
 	int i;
-
-	printf("Ticks: %ld\r\n", (long)systick_get());
+	
+	struct tm rtc;
+	
+	time_t now = systick_get_sec();
+	gmtime_r(&now, &rtc);
+	print_tm(&rtc);
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
@@ -954,7 +967,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 			}
 			else if (argc == 3)
 			{
-				time_t t = atoi(args[2]);
+				time_t t = atoll(args[2]);
 
 				// RTC doesn't support earlier than y2k.
 				// You can call this a y2k bug ;)
@@ -971,6 +984,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 				return;
 			}
 
+			systick_set_sec(mktime(&rtc));
 			ds3231_write_time(&rtc);
 		}
 		else
@@ -983,11 +997,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 			return;
 		}
 
-		printf("UTC: %02d/%02d/%04d  %02d:%02d:%02d  unix time: %ld\r\n",
-			rtc.tm_mon+1, rtc.tm_mday, rtc.tm_year + 1900,
-			rtc.tm_hour, rtc.tm_min, rtc.tm_sec,
-			(unsigned long)mktime(&rtc));
-
+		mktime(&rtc);
+		print_tm(&rtc);
 	}
 
 	// This must be the last else if:
@@ -1051,6 +1062,10 @@ int main()
 		print("Failed to set systick to 100 Hz\r\n");
 	print("\r\n");
 
+	struct tm rtc;
+	ds3231_read_time(&rtc);
+	systick_set_sec(mktime(&rtc));
+	
 	res = f_mount(&fatfs, "", 0);
 	if (res != FR_OK)
 		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
