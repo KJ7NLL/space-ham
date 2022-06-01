@@ -697,7 +697,7 @@ void sat_pos(tle_t *tle)
   /* It will also pre-process tle members for the      */
   /* ephemeris functions SGP4 or SDP4 so this function */
   /* must be called each time a new tle set is used    */
-  select_ephemeris(&tle);
+  select_ephemeris(tle);
 }
 
 void sat(int argc, char **args)
@@ -767,7 +767,7 @@ void sat(int argc, char **args)
 void fat(int argc, char **args)
 {
 	FIL fil;            /* File object */
-	FRESULT res;        /* API result code */
+	FRESULT res = FR_OK;        /* API result code */
 	UINT br, bw;          /* Bytes written */
 	BYTE work[FF_MAX_SS]; /* Work area (larger is better for processing time) */
 	MKFS_PARM mkfs = {
@@ -832,6 +832,12 @@ void fat(int argc, char **args)
 		br = xmodem_rx(args[2]);
 
 		printf("Receved %d bytes\r\n", br);
+	}
+	else
+	{
+		printf("usage: fat (rx <file>|cat <file>|load <file>|find|mkfs|mount|umount\r\n");
+
+		return;
 	}
 
 	if (res != FR_OK)
@@ -932,7 +938,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 		int addr = strtol(args[1], NULL, 16);
 		int n_bytes = atoi(args[2]);
-		char *buf = malloc(n_bytes);
+		unsigned char *buf = malloc(n_bytes);
 
 		if (!buf)
 		{
@@ -941,7 +947,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 
 		buf[0] = 0;
-		i2c_master_read(0x68 << 1, 0, buf, n_bytes);
+		i2c_master_read(addr << 1, 0, buf, n_bytes);
 		for (i = 0; i < n_bytes; i++)
 			printf("%d. %02X\r\n", i, buf[i]);
 
@@ -949,7 +955,6 @@ void dispatch(int argc, char **args, struct linklist *history)
 	}
 	else if (match(args[0], "date"))
 	{
-		char buf[12];
 		struct tm rtc;
 
 		if (argc >= 2 && match(args[1], "read"))

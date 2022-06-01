@@ -49,7 +49,7 @@ struct rotor *rotor_get(char *name)
 	int i;
 
 	// If name is a single char and it is a number, then return that rotor number
-	if (strlen(name) == 1 && isdigit(name[0]) && name[0] >= '0' && name[0] < '0' + NUM_ROTORS)
+	if (strlen(name) == 1 && isdigit((int)name[0]) && name[0] >= '0' && name[0] < '0' + NUM_ROTORS)
 	{
 		return &rotors[name[0] - '0'];
 	}
@@ -217,7 +217,7 @@ void motor_speed(struct motor *m, float speed)
 
 void motor_detail(struct motor *m)
 {
-	int port;
+	char port = '?';
 	switch (m->port)
 	{
 		case gpioPortA: port = 'A'; break;

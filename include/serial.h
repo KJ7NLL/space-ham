@@ -1,3 +1,5 @@
+#include "linklist.h"
+
 void initUsart0(void);
 void USART1_RX_IRQHandler(void);
 void USART1_TX_IRQHandler(void);

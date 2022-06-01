@@ -52,7 +52,7 @@ int sat_csum(char *s)
 
 	for (i = 0; i < strlen(s)-1 && i < 68; i++)
 	{
-		if (isdigit(s[i]))
+		if (isdigit((int)s[i]))
 		{
 			csum += s[i] - '0';
 		}
