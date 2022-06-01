@@ -9,7 +9,7 @@
 #include "em_gpio.h"
 #include "em_usart.h"
 
-#include "systick.h"
+#include "rtcc.h"
 #include "linklist.h"
 #include "strutil.h"
 
@@ -230,10 +230,10 @@ int serial_read_timeout(void *s, int len, float timeout)
 	int count = 0;
 	uint64_t start;
 
-	start = systick_get();
+	start = rtcc_get();
 	serial_read_async(s, len);
 
-	while (!serial_read_done() && systick_elapsed_sec(start) < timeout)
+	while (!serial_read_done() && rtcc_elapsed_sec(start) < timeout)
 	{
 		// Call read_buf_to_bufrx() here in case the RX interrupt 
 		// was called before bufrx configured by serial_read_async().

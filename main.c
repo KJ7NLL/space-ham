@@ -36,13 +36,14 @@
 
 #define MAX_ARGS 10
 
+time_t boot_time;
+
 void dispatch(int argc, char **args, struct linklist *history);
 
 FATFS fatfs;           /* Filesystem object */
 
 struct flash_entry 
 	flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
-	flash_systick = { .name = "systick", .ptr = (void *)&systick_ticks, .len = sizeof(systick_ticks) }, 
 	*flash_table[] = {
 		&flash_rotors,
 		NULL
@@ -133,11 +134,7 @@ void status()
 	
 	struct tm rtc;
 	
-	time_t now = systick_get_sec();
-	gmtime_r(&now, &rtc);
-	print_tm(&rtc);
-
-	now = rtcc_get_sec();
+	time_t now = rtcc_get_sec();
 	gmtime_r(&now, &rtc);
 	print_tm(&rtc);
 
@@ -677,7 +674,7 @@ void watch(int argc, char **args, struct linklist *history)
 	do
 	{
 		dispatch(argc-1, &args[1], history);
-		systick_delay_sec(1);
+		rtcc_delay_sec(1);
 		if (!serial_read_done())
 		{
 			print("\x0c");
@@ -989,7 +986,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 				return;
 			}
 
-			systick_set_sec(mktime(&rtc));
+			rtcc_set_sec(mktime(&rtc));
 			ds3231_write_time(&rtc);
 		}
 		else
@@ -1066,11 +1063,13 @@ int main()
 	if (systick_init(100) != 0)
 		print("Failed to set systick to 100 Hz\r\n");
 	print("\r\n");
-	rtcc_init(1024);
+	rtcc_init(128);
 	struct tm rtc;
+
 	ds3231_read_time(&rtc);
-	systick_set_sec(mktime(&rtc));
-	rtcc_set_sec(mktime(&rtc));
+	boot_time = mktime(&rtc);
+
+	rtcc_set_sec(boot_time);
 	
 	res = f_mount(&fatfs, "", 0);
 	if (res != FR_OK)
