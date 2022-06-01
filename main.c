@@ -23,6 +23,7 @@
 #include "pwm.h"
 #include "flash.h"
 #include "systick.h"
+#include "rtcc.h"
 
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
@@ -133,6 +134,10 @@ void status()
 	struct tm rtc;
 	
 	time_t now = systick_get_sec();
+	gmtime_r(&now, &rtc);
+	print_tm(&rtc);
+
+	now = rtcc_get_sec();
 	gmtime_r(&now, &rtc);
 	print_tm(&rtc);
 
@@ -1061,10 +1066,11 @@ int main()
 	if (systick_init(100) != 0)
 		print("Failed to set systick to 100 Hz\r\n");
 	print("\r\n");
-
+	rtcc_init(1024);
 	struct tm rtc;
 	ds3231_read_time(&rtc);
 	systick_set_sec(mktime(&rtc));
+	rtcc_set_sec(mktime(&rtc));
 	
 	res = f_mount(&fatfs, "", 0);
 	if (res != FR_OK)

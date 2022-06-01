@@ -100,6 +100,7 @@ add_executable(${PROJECT_NAME}
 	rotor.c
 	flash.c
 	systick.c
+	rtcc.c
 	pid.c
 	sat.c
 	i2c.c
