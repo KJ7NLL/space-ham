@@ -96,7 +96,7 @@ int rotor_valid(struct rotor *r)
 
 int rotor_online(struct rotor *r)
 {
-	return r != NULL && rotor_valid(r) && motor_online(&r->motor);
+	return r != NULL && rotor_valid(r) && motor_online(&r->motor) && r->target_enabled;
 }
 
 // Return the degree position of the motor baised on the voltage and calibrated values
@@ -139,7 +139,7 @@ void motor_init(struct motor *m)
 
 void motor_speed(struct motor *m, float speed)
 {
-	float duty_cycle;
+	float duty_cycle, aspeed;
 	int pin;
 
 	if (speed > 1)
@@ -148,7 +148,16 @@ void motor_speed(struct motor *m, float speed)
 		speed = -1;
 
 
-	duty_cycle = fabs(speed); // really fast situps!
+	aspeed = fabs(speed); // really fast situps!
+	if (aspeed < 0.0099)
+	{
+		duty_cycle = 0;
+		speed = 0;
+	}
+	else
+	{
+		duty_cycle = (m->duty_cycle_limit - m->duty_cycle_min) * aspeed + m->duty_cycle_min;
+	}
 
 	// If speed is 0 and the motor is valid, then always fall through so the motor stops.
 	// If is is nonzero and online, then return early if the being set is the same.
