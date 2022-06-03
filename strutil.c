@@ -76,7 +76,7 @@ int parse_args(char *s, char **args, int argc)
 	args[0] = NULL;
 	for (i = 0; i < len; i++)
 	{
-		if (isspace(s[i]))
+		if (isspace((int)s[i]))
 		{
 			s[i] = 0;
 			if (n + 1 < argc && args[n] != NULL)
