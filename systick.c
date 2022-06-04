@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 #include "em_cmu.h"
 #include "em_emu.h"
@@ -28,7 +29,25 @@ void SysTick_Handler(void)
 		if (!rotor_online(rotor))
 			continue;
 
-		float newspeed = PIDController_Update(&rotor->pid, rotor->target, rotor_pos(rotor));
+		// Try to reach the closest degree angle.  For example, if at 360 
+		// and the rotor target is set to 630=360+270, then move to 270 instead.
+		float rpos = rotor_pos(rotor);
+		float rtarget = rotor->target;
+		if (rtarget+360 <= rotor->cal2.deg &&
+			fabs(rpos - rtarget) > fabs(rpos - (rtarget+360)))
+		{
+			rotor->target = rtarget + 360;
+		}
+		else if (rtarget-360 >= rotor->cal1.deg &&
+			fabs(rpos - rtarget) > fabs(rpos - (rtarget-360)))
+		{
+			rotor->target = rtarget - 360;
+		}
+
+		float range = rotor->cal2.deg - rotor->cal1.deg;
+		float target = (rotor->target - rotor->cal1.deg) / range;
+		float pos = (rpos - rotor->cal1.deg) / range;
+		float newspeed = PIDController_Update(&rotor->pid, target, pos);
 		motor_speed(motor, newspeed);
 	}
 }
