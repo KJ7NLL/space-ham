@@ -9,3 +9,4 @@ void rtcc_set_sec(uint64_t t);
 void rtcc_delay_sec(float sec);
 void rtcc_delay_ticks(uint64_t delay);
 float rtcc_elapsed_sec(uint64_t start);
+void rtcc_set_clock_scale(int scale);
