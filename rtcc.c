@@ -10,11 +10,15 @@ volatile uint64_t rtcc_ticks = 0;
 static volatile int _rtcc_bypass = 0;
 static volatile int lock = 0, locked_ticks = 0, ticks_per_sec = 1024;
 
+// Increasing the clock scale will artifically speed up time, including
+// all timer and elapsed time calculations:
+static int rtcc_clock_scale = 1;
+
 void RTCC_IRQHandler(void)
 {
 	if (!lock)
 	{
-		rtcc_ticks++;
+		rtcc_ticks += rtcc_clock_scale;
 		if (locked_ticks != 0)
 		{
 			rtcc_ticks += locked_ticks;
@@ -155,4 +159,9 @@ time_t _time(time_t *t)
 	}
 	else
 		return rtcc_get_sec();
+}
+
+void rtcc_set_clock_scale(int scale)
+{
+	rtcc_clock_scale = scale;
 }
