@@ -29,10 +29,17 @@ void SysTick_Handler(void)
 		if (!rotor_online(rotor))
 			continue;
 
+		// Safety: keep the target in range of cal1.deg and cal2.deg:
+		if (rotor->target < rotor->cal1.deg)
+			rotor->target = rotor->cal1.deg;
+		else if (rotor->target > rotor->cal2.deg)
+			rotor->target = rotor->cal2.deg;
+
 		// Try to reach the closest degree angle.  For example, if at 360 
 		// and the rotor target is set to 630=360+270, then move to 270 instead.
 		float rpos = rotor_pos(rotor);
 		float rtarget = rotor->target;
+
 		if (rtarget+360 <= rotor->cal2.deg &&
 			fabs(rpos - rtarget) > fabs(rpos - (rtarget+360)))
 		{
