@@ -137,6 +137,7 @@ void status()
 	time_t now = rtcc_get_sec();
 	gmtime_r(&now, &rtc);
 	print_tm(&rtc);
+	printf("Uptime: %0.2f hours\r\n", (float)(now-boot_time)/3600.0);
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
@@ -167,16 +168,20 @@ void status()
 			case gpioPortD: port = 'D'; break;
 		}
 
-		printf("%s pos=%.2f deg, target=%.2f deg [%s, port=%c%d/%c%d]: speed=%.1f%%\r\n",
+		printf("%s pos=%.2f deg, target=%.2f deg [%s, port=%c%d/%c%d]: P=%.1f%% I=%.1f%% D=%.1f%% speed=%.1f%%\r\n",
 			rotors[i].motor.name,
 			rotor_pos(&rotors[i]),
 			rotors[i].target,
 			!rotor_valid(&rotors[i]) ? "invalid" : 
-				(rotor_online(&rotors[i]) ? "online" : "offline"), 
+				(rotor_online(&rotors[i]) ? "online" :
+					(!motor_online(&rotors[i].motor) ? "motor offline" : "rotor offline")), 
 			port,
 			rotors[i].motor.pin1, 
 			port,
 			rotors[i].motor.pin2,
+			rotors[i].pid.proportional * 100,
+			rotors[i].pid.integrator * 100,
+			rotors[i].pid.differentiator * 100,
 			rotors[i].motor.speed * 100
 			);
 
@@ -231,7 +236,7 @@ void motor(int argc, char **args)
 	{
 		motor_detail(m);
 	}
-	else if (match(args[2], "speed") && argc == 4 && !isalpha(args[3][0]))
+	else if (match(args[2], "speed") && argc == 4 && !isalpha((int)args[3][0]))
 	{
 		if (!motor_online(m))
 		{
@@ -442,13 +447,6 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 	cal.v = v;
 	cal.ready = 1;
 
-	if (deg < 0)
-	{
-		print("Degree angles must start at 0\r\n");
-
-		return;
-	}
-
 	if (!r->cal1.ready && !r->cal2.ready)
 	{
 		r->cal1 = cal;
@@ -505,7 +503,7 @@ void rotor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: rotor <rotor_name> (cal|detail)\r\n"
+		print("Usage: rotor <rotor_name> (cal|detail|pid|target)\r\n"
 			"Calibration assumes a linear voltage slope between degrees.\r\n"
 			"You must make 2 calibrations, and each calibration is used as\r\n"
 			"the maximum extent for the rotor. Use the `motor` command to\r\n"
@@ -532,6 +530,28 @@ void rotor(int argc, char **args)
 	else if (match(args[2], "pid"))
 	{
 		rotor_pid(r, argc-2, &args[2]);
+	}
+	else if (match(args[2], "target"))
+	{
+		if (argc < 4)
+		{
+			print("usage: <rotor_name> target (on|off)\r\n"
+				"Turning the target off will disable tracking for that rotor\r\n");
+
+			return;
+		}
+		if (match(args[3], "on"))
+			r->target_enabled = 1;
+		else if (match(args[3], "off"))
+		{
+			r->target_enabled = 0;
+
+
+			// Stop the motor or it will drift at any existing speed setting:
+			motor_speed(&r->motor, 0);
+		}
+		else
+			print("expected: on/off\r\n");
 	}
 }
 
@@ -685,28 +705,153 @@ void watch(int argc, char **args, struct linklist *history)
 
 void sat_pos(tle_t *tle)
 {
-  /** !Clear all flags! **/
-  /* Before calling a different ephemeris  */
-  /* or changing the TLE set, flow control */
-  /* flags must be cleared in main().      */
-  ClearFlag(ALL_FLAGS);
+	struct rotor *phi = rotor_get("phi");
+	struct rotor *theta = rotor_get("theta");
+	double
+		tsince,            /* Time since epoch (in minutes) */
+		jul_epoch,         /* Julian date of epoch          */
+		jul_utc,           /* Julian UTC date               */
+		eclipse_depth = 0, /* Depth of satellite eclipse    */
+		/* Satellite's observed position, range, range rate */
+		sat_azi, sat_ele, sat_range, sat_range_rate,
+		/* Satellites geodetic position and velocity */
+		sat_lat, sat_lon, sat_alt, sat_vel,
+		/* Solar azimuth and elevation */
+		sun_azi, sun_ele;
+	struct tm utc;
+	char *ephem, *sat_status;
 
-  /** Select ephemeris type **/
-  /* Will set or clear the DEEP_SPACE_EPHEM_FLAG       */
-  /* depending on the TLE parameters of the satellite. */
-  /* It will also pre-process tle members for the      */
-  /* ephemeris functions SGP4 or SDP4 so this function */
-  /* must be called each time a new tle set is used    */
-  select_ephemeris(tle);
+	/* Observer's geodetic co-ordinates.      */
+	/* Lat North, Lon East in rads, Alt in km */
+	//geodetic_t obs_geodetic = {0.6056, 0.5761, 0.15, 0.0};
+	geodetic_t obs_geodetic = {45*3.141592654/180, -122*3.141592654/180, 0.0762, 0.0};
+
+	/* Satellite's predicted geodetic position */
+	geodetic_t sat_geodetic;
+
+	/* Zero vector for initializations */
+	vector_t zero_vector = {0,0,0,0};
+
+	/* Satellite position and velocity vectors */
+	vector_t vel = zero_vector;
+	vector_t pos = zero_vector;
+	/* Satellite Az, El, Range, Range rate */
+	vector_t obs_set;
+
+	/* Solar ECI position vector  */
+	vector_t solar_vector = zero_vector;
+	/* Solar observed azi and ele vector  */
+	vector_t solar_set;
+
+	/** !Clear all flags! **/
+	/* Before calling a different ephemeris  */
+	/* or changing the TLE set, flow control */
+	/* flags must be cleared in main().      */
+	ClearFlag(ALL_FLAGS);
+
+	/** Select ephemeris type **/
+	/* Will set or clear the DEEP_SPACE_EPHEM_FLAG       */
+	/* depending on the TLE parameters of the satellite. */
+	/* It will also pre-process tle members for the      */
+	/* ephemeris functions SGP4 or SDP4 so this function */
+	/* must be called each time a new tle set is used    */
+	select_ephemeris(tle);
+
+	char c;
+	serial_read_async(&c, 1);
+
+	do  /* Loop */
+	{
+		/* Get UTC calendar and convert to Julian */
+		UTC_Calendar_Now(&utc);
+		jul_utc = Julian_Date(&utc);
+
+		/* Convert satellite's epoch time to Julian  */
+		/* and calculate time since epoch in minutes */
+		jul_epoch = Julian_Date_of_Epoch(tle->epoch);
+		tsince = (jul_utc - jul_epoch) * 24*60; // minutes per day
+
+		/* Copy the ephemeris type in use to ephem string */
+		if( isFlagSet(DEEP_SPACE_EPHEM_FLAG) )
+			ephem = "SDP4";
+		else
+			ephem = "SGP4";
+
+		/* Call NORAD routines according to deep-space flag */
+		if( isFlagSet(DEEP_SPACE_EPHEM_FLAG) )
+			SDP4(tsince, tle, &pos, &vel);
+		else
+			SGP4(tsince, tle, &pos, &vel);
+
+		/* Scale position and velocity vectors to km and km/sec */
+		Convert_Sat_State( &pos, &vel );
+
+		/* Calculate velocity of satellite */
+		Magnitude( &vel );
+		sat_vel = vel.w;
+
+		/** All angles in rads. Distance in km. Velocity in km/s **/
+		/* Calculate satellite Azi, Ele, Range and Range-rate */
+		Calculate_Obs(jul_utc, &pos, &vel, &obs_geodetic, &obs_set);
+
+		/* Calculate satellite Lat North, Lon East and Alt. */
+		Calculate_LatLonAlt(jul_utc, &pos, &sat_geodetic);
+
+		/* Calculate solar position and satellite eclipse depth */
+		/* Also set or clear the satellite eclipsed flag accordingly */
+		Calculate_Solar_Position(jul_utc, &solar_vector);
+		Calculate_Obs(jul_utc,&solar_vector,&zero_vector,&obs_geodetic,&solar_set);
+
+		if( Sat_Eclipsed(&pos, &solar_vector, &eclipse_depth) )
+			SetFlag( SAT_ECLIPSED_FLAG );
+		else
+			ClearFlag( SAT_ECLIPSED_FLAG );
+
+		/* Copy a satellite eclipse status string in sat_status */
+		if( isFlagSet( SAT_ECLIPSED_FLAG ) )
+			sat_status = "Eclipsed";
+		else
+			sat_status = "In Sunlight";
+
+		/* Convert and print satellite and solar data */
+		sat_azi = Degrees(obs_set.x);
+		sat_ele = Degrees(obs_set.y);
+		sat_range = obs_set.z;
+		sat_range_rate = obs_set.w;
+		sat_lat = Degrees(sat_geodetic.lat);
+		sat_lon = Degrees(sat_geodetic.lon);
+		sat_alt = sat_geodetic.alt;
+
+		sun_azi = Degrees(solar_set.x);
+		sun_ele = Degrees(solar_set.y);
+
+		print("\x0c\r\n");
+		status();
+		printf("\r\n Date: %02d/%02d/%04d UTC: %02d:%02d:%02d  Ephemeris: %s"
+			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.2f"
+			"\r\n Lat=%6.1f Lon=%6.1f  Alt=%8.1f  Vel=%8.3f"
+			"\r\n Stellite Status: %s - Depth: %2.3f"
+			"\r\n Sun Azi=%6.1f Sun Ele=%6.1f\r\n",
+			utc.tm_mday, utc.tm_mon, utc.tm_year,
+			utc.tm_hour, utc.tm_min, utc.tm_sec, ephem,
+			sat_azi, sat_ele, sat_range, sat_range_rate,
+			sat_lat, sat_lon, sat_alt, sat_vel,
+			sat_status, eclipse_depth,
+			sun_azi, sun_ele);
+
+		theta->target = sat_azi;
+		phi->target = sat_ele;
+		rtcc_delay_sec(1);
+	} while (!serial_read_done());
 }
 
 void sat(int argc, char **args)
 {
-	tle_t tle;
+	static tle_t tle;
 
 	char buf[128], tle_set[139];
 
-	int i, sat_idx = 0;
+	int i;
 
 	if (argc < 2)
 	{
@@ -719,10 +864,12 @@ void sat(int argc, char **args)
 	{
 		i = 0;
 
-		print("Paste TLE data and press CTRL+D when done\r\n");
+		print("Paste TLE data or press CTRL+D to abort.\r\n"
+			"Press enter at the end if it does not complete on its own.\r\n");
 		memset(&tle, 0, sizeof(tle));
 		while (serial_read_line(buf, 80))
 		{
+			printf("line%d: %s\r\n", i, buf);
 			if (i == 0)
 			{
 				strncpy(tle.sat_name, buf, sizeof(tle.sat_name));
@@ -740,27 +887,20 @@ void sat(int argc, char **args)
 				if (Good_Elements(tle_set))
 				{
 					Convert_Satellite_Data(tle_set, &tle);
-					printf("parsed tle: %s\r\n", tle.sat_name);
+					printf("\r\nParsed tle: %s\r\n", tle.sat_name);
 					sat_detail(&tle);
 				}
 				else
-					printf("invalid tle: %s\r\n", tle.sat_name);
-			}
+					printf("\r\nInvalid tle: %s\r\n", tle.sat_name);
 
+				break;
+			}
 			i++;
-			
-			if (i == 3)
-			{
-				i = 0;
-			}
 		}
-
-		if (i != 0)
-		{
-			print("ignoring partial satellite data\r\n");
-		}
-		printf("Loaded %d satellite TLEs\r\n", sat_idx);
-
+	}
+	else if (match(args[1], "pos"))
+	{
+		sat_pos(&tle);
 	}
 }
 
@@ -956,10 +1096,27 @@ void dispatch(int argc, char **args, struct linklist *history)
 	else if (match(args[0], "date"))
 	{
 		struct tm rtc;
+		memset(&rtc, 0, sizeof(rtc));
 
 		if (argc >= 2 && match(args[1], "read"))
 		{
 			ds3231_read_time(&rtc);
+			time_t now = mktime(&rtc);
+			printf("clock skew: %d\r\n",
+				(int)(rtcc_get_sec() - now));
+			rtcc_set_sec(now);
+		}
+		else if (argc >= 3 && match(args[1], "scale"))
+		{
+			int scale = atoi(args[2]);
+			rtcc_set_clock_scale(atoi(args[2]));
+
+			if (scale == 1)
+				printf("The clock is now running at normal speed.\r\n");
+			else
+				printf("The clock is now running %dx faster than normal.\r\n", scale);
+
+			return;
 		}
 		else if (argc >= 2 && match(args[1], "set"))
 		{
@@ -996,10 +1153,12 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 		else
 		{
-			printf("usage: date (read|set)\r\n"
-				"date read - show current time\r\n"
-				"date set  - set current time\r\n"
-				"date set (unixtime|YYYY MM DD hh mm ss)\r\n");
+			printf("usage: date (read|set|scale)\r\n"
+				"date read - read current time from RTC and set.\r\n"
+				"date set  - set current time.\r\n"
+				"date set (unixtime|YYYY MM DD hh mm ss)\r\n"
+				"date scale <step_size> - artifically accelerate time by step_size times normal\r\n"
+				);
 
 			return;
 		}
