@@ -114,7 +114,8 @@ void help()
 		"led (1|0)                                             # Turns LED1/0 on or off\r\n"
 		"hist|history                                          # History of commands\r\n"
 		"date                                                  # Set or get the date\r\n"
-		"debug-keys                                            # Print chars and hex\r\n";
+		"debug-keys                                            # Print chars and hex\r\n"
+		"reset|reboot                                          # Reset the CPU (reboot).\r\n";
 	print(h);
 }
 
@@ -381,9 +382,17 @@ void rotor_pid(struct rotor *r, int argc, char **args)
 {
 	float f;
 
+
+	if (argc >= 2 && match(args[1], "reset"))
+	{
+		PIDController_Init(&r->pid);
+		rotor_detail(r);
+		return;
+	}
+
 	if (argc < 3)
 	{
-		print("Usage: pid var <value>\r\n"
+		print("Usage: pid (reset|var <value>)\r\n"
 			"Set pid.var to value. See `rotor <name> detail` for available fields\r\n");
 		return;
 	}
@@ -1066,6 +1075,11 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 	else if (match(args[0], "fat"))
 		fat(argc, args);
+
+	else if (match(args[0], "reset") || match(args[0], "reboot"))
+	{
+		NVIC_SystemReset();
+	}
 
 	else if  (match(args[0], "i2c"))
 	{

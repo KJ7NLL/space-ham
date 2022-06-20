@@ -270,6 +270,7 @@ void rotor_detail(struct rotor *r)
 		"  cal2.deg:             %f       deg\r\n"
 		"  cal2.ready:           %d\r\n"
 		"  iadc:                 %d\r\n"
+		"  position:             %f       deg\r\n"
 		"  target:               %f       deg\r\n"
 		"  target_enabled:       %d\r\n"
 		"  pid.Kp:               %f\r\n"
@@ -295,6 +296,7 @@ void rotor_detail(struct rotor *r)
 			r->cal2.deg,
 			r->cal2.ready,
 			r->iadc,
+			rotor_pos(r),
 			r->target,
 			r->target_enabled,
 			r->pid.Kp,
