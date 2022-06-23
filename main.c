@@ -854,6 +854,42 @@ void sat_pos(tle_t *tle)
 	} while (!serial_read_done());
 }
 
+// tle: the tle object
+// line: the tle line number
+// tle_set: temp buffer that is filled while loading tle lines, must be >= 139 bytes
+// buf: input text line
+int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
+{
+	if (line == 0)
+	{
+		strncpy(tle->sat_name, buf, sizeof(tle->sat_name));
+		tle->sat_name[sizeof(tle->sat_name)-1] = 0;
+		line++;
+	}
+	else if (line == 1)
+	{
+		strncpy(tle_set, buf, 69);
+		tle_set[69] = 0;
+		line++;
+	}
+	else if (line == 2)
+	{
+		strncpy(tle_set+69, buf, 69);
+		tle_set[138] = 0;
+		if (Good_Elements(tle_set))
+		{
+			Convert_Satellite_Data(tle_set, tle);
+			printf("\r\nParsed tle: %s\r\n", tle->sat_name);
+			sat_detail(tle);
+			line = 0;
+		}
+		else
+			printf("\r\nInvalid tle: %s\r\n", tle->sat_name);
+	}
+
+	return line;
+}
+
 void sat(int argc, char **args)
 {
 	static tle_t tle;
@@ -879,44 +915,30 @@ void sat(int argc, char **args)
 		while (serial_read_line(buf, 80))
 		{
 			printf("line%d: %s\r\n", i, buf);
+			i = sat_tle_line(&tle, i, tle_set, buf);
 			if (i == 0)
-			{
-				strncpy(tle.sat_name, buf, sizeof(tle.sat_name));
-				tle.sat_name[sizeof(tle.sat_name)-1] = 0;
-			}
-			else if (i == 1)
-			{
-				strncpy(tle_set, buf, 69);
-				tle_set[69] = 0;
-			}
-			else if (i == 2)
-			{
-				strncpy(tle_set+69, buf, 69);
-				tle_set[138] = 0;
-				if (Good_Elements(tle_set))
-				{
-					Convert_Satellite_Data(tle_set, &tle);
-					printf("\r\nParsed tle: %s\r\n", tle.sat_name);
-					sat_detail(&tle);
-				}
-				else
-					printf("\r\nInvalid tle: %s\r\n", tle.sat_name);
-
 				break;
-			}
-			i++;
 		}
 	}
 	else if (match(args[1], "pos"))
 	{
 		sat_pos(&tle);
 	}
+	else if (match(args[1], "rx"))
+	{
+		print ("Begin sending your TLE text file via xmodem\r\n");
+		int br = xmodem_rx("tle.txt");
+
+		printf("Receved %d bytes\r\n", br);
+	}
+	else
+		print("sat: invalid argument\r\n");
 }
 
 void fat(int argc, char **args)
 {
-	FIL fil;            /* File object */
-	FRESULT res = FR_OK;        /* API result code */
+	FIL fil;              /* File object */
+	FRESULT res = FR_OK;  /* API result code */
 	UINT br, bw;          /* Bytes written */
 	BYTE work[FF_MAX_SS]; /* Work area (larger is better for processing time) */
 	MKFS_PARM mkfs = {
