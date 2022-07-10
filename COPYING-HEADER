@@ -18,8 +18,3 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
-#include "sgp4sdp4.h"
-
-void sat_info(tle_t *s);
-void sat_detail(tle_t *s);
-int sat_csum(char *s);

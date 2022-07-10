@@ -1,0 +1,144 @@
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation; either version 3 of the License, or
+//  (at your option) any later version.
+// 
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU Library General Public License for more details.
+// 
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+// 
+//  Copyright (C) 2022- by Ezekiel Wheeler, KJ7NLL and Eric Wheeler, KJ7LNW.
+//  All rights reserved.
+//
+//  The official website and doumentation for space-ham is available here:
+//    https://www.kj7nll.radio/
+
+
+## Acknowledgements and Licensing Considerations
+
+To whom it may concern:
+
+It is our intention to license the space-ham code under GPL3, however, in the
+course of developing space-ham there we worked from examples provided by
+Silicon Labs:
+
+	https://github.com/SiliconLabs/peripheral_examples
+
+The space-ham project has, from time-to-time, copied functions verbatim from
+the example tree and modified them to fit this application.  While we believe
+that those examples have changed sufficiently and specific for the purposes of
+this project to include them under the GPL3 as new work, we acknowledge that
+the original sample implementation and hardware-level interactions were taken
+from samples provided by Silicon Labs under the SPDX license.
+
+Should any conflict arise between the GPL3 license of space-ham and the
+SPDX-licensed examples that were referenced or modified from the examples
+referenced above, then we acquiesce to the inclusion of any such conflicting
+functions under the SPDX license to the minimum possible extent.  If such a
+determination is made in the future then only those conflicting functions will
+be moved to their own source files with an SPDX license header at the top.
+
+It is our intention to follow the restrictions set forth in the SPDX license
+while maintaining GPL3 as the intended license for the space-ham project
+itself.  The SPDX license is included for reference as follows:
+
+	""
+	SPDX-License-Identifier: Zlib
+
+	The licensor of this software is Silicon Laboratories Inc.
+
+	This software is provided 'as-is', without any express or implied
+	warranty. In no event will the authors be held liable for any damages
+	arising from the use of this software.
+
+	Permission is granted to anyone to use this software for any purpose,
+	including commercial applications, and to alter it and redistribute it
+	freely, subject to the following restrictions:
+
+	1. The origin of this software must not be misrepresented; you must not
+	   claim that you wrote the original software. If you use this software
+	   in a product, an acknowledgment in the product documentation would be
+	   appreciated but is not required.
+	2. Altered source versions must be plainly marked as such, and must not be
+	   misrepresented as being the original software.
+	3. This notice may not be removed or altered from any source distribution.
+	""
+
+The inclusion of the SPDX license above is for reference only: The authors of
+space-ham interpret "this software" as referenced in the SPDX license above to
+mean "only that software developed by Silicon Labs in the peripheral examples
+linked above"; such inclusion of the SPDX license for reference shall neither
+assert nor imply the licensor (or authorship) of space-ham.
+
+Accordingly: we assert by response, in turn, that this license is met as
+follows:
+
+	1. The content of this file provides such notice to meet SPDX Restriction #1.
+
+	2. To our knowledge, no single source file from the examples was taken
+	   verbatim. As such, no source file is considered an "altered source
+	   version".  However, functions from the examples were pasted into our
+	   code and modified for space-ham's purpose as a starting point.  We
+	   acknowledge that any function in the space-ham code base that
+	   reasonably matches the format from a "peripheral_examples" (linked
+	   above) provided by Silicon Labs is _not_ "original software".
+	   This response item #2 meets SPDX Restriction #2.
+
+	3. SPDX Restriction #3 is not applicable here, as we have not used any
+	   SPDX-liensed source file in space-ham in its entirety; thus, neither
+	   removal nor alteration is possible.  However, if this assertion is
+	   found to be incorrect, then the content of this file contains the
+	   original SPDX license above to meet SPDX Restriction #3.
+
+In addition, we based this project on the Ryan Kurte's amazing (!) efm32-base
+framework, available here:
+
+	https://github.com/ryankurte/efm32-base/
+
+Ryan Kurte notes the following considerations about licensing for projects
+importing the efm32-base tree as a module:
+
+	Since this is a combination of a number of Silicon Labs (ex. Energy
+	Micro) components, as well as custom additions, licensing is a little
+	interesting. A summary of the licenses involved follows, but I take no
+	responsibility for the accuracy or interpretation of such.  
+
+	The CMSIS Core falls under a fairly permissive ARM
+	[license](cmsis/Include/arm_common_tables.h). This requires that the
+	license requires the copyright and license note to be distributed in
+	the documentation accompanying binary distribution, and that the name
+	ARM LIMITED may not be used to promote any products derived from this
+	without written permission.  
+
+	The device and emlib components fall under the above ARM license
+	(startup files) as well as a permissive Silicon Labs
+	[license](device/EFM32GG/efm32gg280f1024.h). This allows use,
+	alteration and distribution for any purpose provided the origin of the
+	source is not represented, altered versions are plainly marked, and the
+	notice is not removed from the source distribution.  
+
+	Drivers are covered by the [Silabs License
+	Agreement](drivers/Silabs_License_Agreement.txt). This is similar to
+	the the license above, however prohibits sublicensing the included code
+	and use of the code on non-silabs devices.  
+
+	The CMake components of this project are distributed under the MIT
+	license.  
+
+	What does all this mean?  
+	 * Commercial use is not a problem (as you would expect)
+	 * Licenses need to be distributed with device binaries
+	 * Unless you are using the Driver module (ie. USB) you can probably re/sublicense things.
+	 * I have no idea how this interacts with common FOSS licenses :-/
+
+We are doing our best to acknowledge original authorship where appropriate and
+it is our intention to follow the licenses of other authors where appropriate.
+
+Sincerely,
+
+Eric Wheeler, KJ7LNW
