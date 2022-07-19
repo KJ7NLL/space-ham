@@ -17,7 +17,7 @@
 //
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
-//
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -128,10 +128,8 @@ void help()
 		"(help|?|h)                                            # List of commands\r\n"
 		"flash (save|load)                                     # Save to flash\r\n"
 		"sat (load|track|list|search)                          # Satellite commands\r\n"
-		"motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz|)\r\n"
-		"rotor <rotor_name> (cal)                              # Rotor commands\r\n"
-		"cam (on|off)                                          # Turns camera on or off\r\n"
-		"led (1|0)                                             # Turns LED1/0 on or off\r\n"
+		"motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz)\r\n"
+		"rotor <rotor_name> (cal|detail|pid|target)            # Rotor commands\r\n"
 		"hist|history                                          # History of commands\r\n"
 		"date                                                  # Set or get the date\r\n"
 		"debug-keys                                            # Print chars and hex\r\n"
@@ -253,6 +251,20 @@ void motor(int argc, char **args)
 	{
 		motor_speed(m, 0);
 	}
+	else if (match(args[2], "on"))
+	{
+		if (!motor_online(m))
+		{
+			printf("Motor is currently offline, please run: motor %s online\r\n", m->name);
+
+			return;
+		}
+
+		if (argc >= 3 && args[3][0] == '<')
+			motor_speed(m, -1);
+		else
+			motor_speed(m, 1);
+	}
 	else if (match(args[2], "detail"))
 	{
 		motor_detail(m);
@@ -278,22 +290,15 @@ void motor(int argc, char **args)
 
 		printf("Speed sucessfully set to %.1f%%\r\n", speed * 100);
 	}
-	else if (match(args[2], "on"))
+	else if (match(args[2], "speed"))
 	{
-		if (!motor_online(m))
+		if (argc < 5)
 		{
-			printf("Motor is currently offline, please run: motor %s online\r\n", m->name);
-
+			print("usage 1: motor <motor_name> speed (0-100)\r\n");
+			print("usage 2: motor <motor_name> speed (min|max|limit) 0-100\r\n");
 			return;
 		}
 
-		if (argc >= 3 && args[3][0] == '<')
-			motor_speed(m, -1);
-		else
-			motor_speed(m, 1);
-	}
-	else if (match(args[2], "speed") && argc >= 5)
-	{
 		float value = atof(args[4]) / 100;
 		
 		if (match(args[3], "limit") && value > 0 && value <= 1)
@@ -329,12 +334,24 @@ void motor(int argc, char **args)
 		m->online = 0;
 		motor_speed(m, 0);
 	}
-	else if (match(args[2], "name") && argc >= 4)
+	else if (match(args[2], "name"))
 	{
+		if (argc < 4)
+		{
+			print("usage: motor <motor_name> name <new_motor_name>\r\n");
+			return;
+		}
+
 		strncpy(m->name, args[3], sizeof(m->name)-1);
 	}
-	else if (match(args[2], "hz") && argc >= 4)
+	else if (match(args[2], "hz"))
 	{
+		if (argc < 4)
+		{
+			print("usage: motor <motor_name> hz <PWM_freq>\r\n");
+			return;
+		}
+
 		int hz = atoi(args[3]);
 
 		float speed = m->speed;
@@ -349,8 +366,14 @@ void motor(int argc, char **args)
 			motor_speed(m, speed);
 		}
 	}
-	else if (match(args[2], "port") && argc >= 4)
+	else if (match(args[2], "port"))
 	{
+		if (argc < 4)
+		{
+			print("usage: motor <motor_name> port <0, a-d>\r\n");
+			return;
+		}
+
 		switch (tolower(args[3][0]))
 		{
 			case '0': m->port = -1; break;
@@ -366,10 +389,16 @@ void motor(int argc, char **args)
 		if (motor_valid(m))
 			motor_init(m);
 	}
-	else if (match(args[2], "pin1") && argc >= 4)
+	else if (match(args[2], "pin1"))
 	{
+		if (argc < 4)
+		{
+			print("usage: motor <motor_name> pin1 <0-6>\r\n");
+			return;
+		}
+
 		int pin = atoi(args[3]);
-		if (pin < 0 || pin > 7)
+		if (pin < 0 || pin > 6)
 		{
 			printf("invalid pin: %s\r\n", args[3]);
 
@@ -380,10 +409,16 @@ void motor(int argc, char **args)
 		if (motor_valid(m))
 			motor_init(m);
 	}
-	else if (match(args[2], "pin2") && argc >= 4)
+	else if (match(args[2], "pin2"))
 	{
+		if (argc < 4)
+		{
+			print("usage: motor <motor_name> pin2 <0-6>\r\n");
+			return;
+		}
+
 		int pin = atoi(args[3]);
-		if (pin < 0 || pin > 7)
+		if (pin < 0 || pin > 6)
 		{
 			printf("invalid pin: %s\r\n", args[3]);
 
@@ -582,17 +617,19 @@ void rotor(int argc, char **args)
 		else
 			print("expected: on/off\r\n");
 	}
+	else
+		printf("unexpected argument: %s\r\n", args[2]);
 }
 
 void mv(int argc, char **args)
 {
 	struct rotor *r;
 
-	float deg, speed;
+	float deg;
 
 	if (argc < 3)
 	{
-		print("mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]\r\n"
+		print("mv <motor_name> <([+-]deg|n|e|s|w)>\r\n"
 			"Move rotor to a degree angle. North is 0 deg.\r\n");
 		return;
 	}
@@ -643,29 +680,6 @@ void mv(int argc, char **args)
 			r->cal1.deg, deg, r->cal2.deg);
 
 		return;
-	}
-	
-	if (argc >= 4)
-	{
-		speed = atof(args[3]) / 100;
-		if (speed < r->motor.duty_cycle_min)
-		{
-			printf("Rotor speed %.2f is too low the minimum duty cycle of %.2f for this rotor\r\n", 
-				speed * 100, r->motor.duty_cycle_min);
-
-			return;
-		}
-		else if (speed > r->motor.duty_cycle_max)
-		{
-			printf("Rotor speed %.2f is too low the maximum duty cycle of %.2f for this rotor\r\n", 
-				speed * 100, r->motor.duty_cycle_max);
-
-			return;
-		}
-		else
-		{
-			r->motor.duty_cycle_limit = speed;
-		}
 	}
 
 	// Set the target degree angle
@@ -952,7 +966,7 @@ void sat(int argc, char **args)
 		printf("Receved %d bytes\r\n", br);
 	}
 	else
-		print("sat: invalid argument\r\n");
+		print("Sat: invalid argument\r\n");
 }
 
 void fat(int argc, char **args)
@@ -1099,17 +1113,6 @@ void dispatch(int argc, char **args, struct linklist *history)
 		mv(argc, args);
 	}
 	
-	else if (match(args[0], "led") && argc >= 2)
-	{
-		if (args[1][0] == '0')
-			GPIO_PinOutToggle(gpioPortB, 0);
-
-		else if (args[1][0] == '1')
-			GPIO_PinOutToggle(gpioPortB, 1);
-		else
-			print("Invalid pin\r\n");
-	}
-
 	else if (match(args[0], "flash"))
 	{
 		flash(argc, args);
@@ -1299,6 +1302,7 @@ int main()
 	print("\r\n");
 
 	// These should be compiler errors:
+	// Make sure that the structures are NOT larger then the padding
 	if (sizeof(struct rotor) > sizeof(((struct rotor *)0)->pad))
 		printf("Warning: struct rotor (%d) is bigger than its pad (%d), increase pad size for flash "
 			"backwards compatibility\r\n",
