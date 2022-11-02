@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
+#define _GNU_SOURCE
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -99,9 +101,11 @@ void initGpio(void)
 	GPIO_PinModeSet(gpioPortC, 4, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 5, gpioModePushPull, 0);
 
+	// PD00: Theta IADC
 	GPIO_PinModeSet(gpioPortD, 2, gpioModeInput, 0);
-	GPIO_PinModeSet(gpioPortD, 3, gpioModeInput, 0);
 
+	// PD01: Phi IADC
+	GPIO_PinModeSet(gpioPortD, 3, gpioModeInput, 0);
 
 	GPIO_PinModeSet(I2C_SDA_PORT, I2C_SDA, gpioModeWiredAndPullUpFilter, 1);
 	GPIO_PinModeSet(I2C_SCL_PORT, I2C_SCL, gpioModeWiredAndPullUpFilter, 1);
@@ -926,6 +930,10 @@ int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
 
 void sat(int argc, char **args)
 {
+	FRESULT res = FR_OK;  /* API result code */
+	FIL in, out;              /* File object */
+	UINT br, bw;          /* Bytes written */
+
 	static tle_t tle;
 
 	char buf[128], tle_set[139];
@@ -934,7 +942,7 @@ void sat(int argc, char **args)
 
 	if (argc < 2)
 	{
-		 print("usage: sat (load|detail|search|list|track)\r\n");
+		 print("usage: sat (load|pos|detail|search|list|track)\r\n");
 
 		 return;
 	}
@@ -964,6 +972,59 @@ void sat(int argc, char **args)
 		int br = xmodem_rx("tle.txt");
 
 		printf("Receved %d bytes\r\n", br);
+		
+		res = f_open(&in, "tle.txt", FA_READ);
+		if (res != FR_OK)
+		{
+			printf("tle.txt: error %d: %s\r\n", res, ff_strerror(res));
+			return;
+		}
+
+		res = f_open(&out, "tle.bin", FA_CREATE_ALWAYS | FA_WRITE);
+		if (res != FR_OK)
+		{
+			printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
+			f_close(&in);
+			return;
+		}
+		
+		memset(&tle, 0, sizeof(tle));
+		i = 0;
+		while (res == FR_OK && f_gets(buf, 80, &in))
+		{
+			printf("line%d: %s\r\n", i, buf);
+			i = sat_tle_line(&tle, i, tle_set, buf);
+			if (i == 0)
+			{
+				res = f_write(&out, &tle, sizeof(tle), &bw);
+				memset(&tle, 0, sizeof(tle));
+			}
+		}
+
+		f_close(&in);
+		f_close(&out);
+	}
+	else if (match(args[1], "list") || match(args[1], "search"))
+	{
+		res = f_open(&in, "tle.bin", FA_READ);
+		if (res != FR_OK)
+		{
+			printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
+			f_close(&in);
+			return;
+		}
+		
+		i = 1;
+		do
+		{
+			res = f_read(&in, &tle, sizeof(tle), &br);
+			if (br < sizeof(tle))
+				break;
+
+			if (argc < 3 || strcasestr(tle.sat_name, args[2]))
+				printf("%d. %s (%d)\r\n", i, tle.sat_name, tle.catnr);
+			i++;
+		} while (res == FR_OK);
 	}
 	else
 		print("Sat: invalid argument\r\n");

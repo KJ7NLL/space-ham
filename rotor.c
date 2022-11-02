@@ -169,7 +169,7 @@ void motor_speed(struct motor *m, float speed)
 
 
 	aspeed = fabs(speed); // really fast situps!
-	if (aspeed < 0.03)
+	if (aspeed < 0.003)
 	{
 		duty_cycle = 0;
 		speed = 0;
