@@ -692,7 +692,10 @@ void mv(int argc, char **args)
 
 void flash(int argc, char **args)
 {
-	int offset;
+	FRESULT res = FR_OK;  /* API result code */
+	FIL in, out;              /* File object */
+	UINT bw, br;          /* Bytes written */
+
 	if (argc < 2)
 	{
 		print("Usage: flash (save|load)\r\n");
@@ -700,26 +703,55 @@ void flash(int argc, char **args)
 		return;
 	}
 
-	offset = FLASH_DATA_BASE;
+	systick_bypass(1);
 
 	if (match(args[1], "write") || match(args[1], "save"))
 	{
-		systick_bypass(1);
-		flash_write(flash_table, offset);
-		systick_bypass(0);
+		res = f_open(&out, "cal.bin", FA_CREATE_ALWAYS | FA_WRITE);
+		if (res != FR_OK)
+		{
+			printf("cal.bin: open error %d: %s\r\n", res, ff_strerror(res));
+			goto out;
+		}
+
+		res = f_write(&out, rotors, sizeof(rotors), &bw);
+		if (res != FR_OK || bw != sizeof(rotors))
+		{
+			printf("cal.bin: write error %d: %s (bytes written=%d/%d)\r\n",
+				res, ff_strerror(res), bw, sizeof(rotors));
+			goto out;
+		}
+
+		f_close(&out);
 	}
 	else if (match(args[1], "load"))
 	{
-		systick_bypass(1);
-		flash_read(flash_table, offset);
-		systick_bypass(0);
+		res = f_open(&in, "cal.bin", FA_READ);
+		if (res != FR_OK)
+		{
+			printf("cal.bin: open error %d: %s\r\n", res, ff_strerror(res));
+			goto out;
+		}
+
+		res = f_read(&in, rotors, sizeof(rotors), &br);
+		if (res != FR_OK || br != sizeof(rotors))
+		{
+			printf("cal.bin: read error %d: %s (bytes written=%d/%d)\r\n",
+				res, ff_strerror(res), br, sizeof(rotors));
+			goto out;
+		}
+
+		f_close(&in);
 	}
 	else
 	{
 		printf("Unkown argument: %s\r\n", args[1]);
 
-		return;
+		goto out;
 	}
+
+out:
+	systick_bypass(0);
 }
 
 
