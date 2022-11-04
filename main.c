@@ -692,9 +692,6 @@ void mv(int argc, char **args)
 
 void flash(int argc, char **args)
 {
-	FRESULT res = FR_OK;  /* API result code */
-	FIL in, out;              /* File object */
-	UINT bw, br;          /* Bytes written */
 
 	if (argc < 2)
 	{
@@ -707,51 +704,17 @@ void flash(int argc, char **args)
 
 	if (match(args[1], "write") || match(args[1], "save"))
 	{
-		res = f_open(&out, "cal.bin", FA_CREATE_ALWAYS | FA_WRITE);
-		if (res != FR_OK)
-		{
-			printf("cal.bin: open error %d: %s\r\n", res, ff_strerror(res));
-			goto out;
-		}
-
-		res = f_write(&out, rotors, sizeof(rotors), &bw);
-		if (res != FR_OK || bw != sizeof(rotors))
-		{
-			printf("cal.bin: write error %d: %s (bytes written=%d/%d)\r\n",
-				res, ff_strerror(res), bw, sizeof(rotors));
-			f_close(&out);
-			goto out;
-		}
-
-		f_close(&out);
+		rotor_cal_save();
 	}
 	else if (match(args[1], "load"))
 	{
-		res = f_open(&in, "cal.bin", FA_READ);
-		if (res != FR_OK)
-		{
-			printf("cal.bin: open error %d: %s\r\n", res, ff_strerror(res));
-			goto out;
-		}
-
-		res = f_read(&in, rotors, sizeof(rotors), &br);
-		if (res != FR_OK || br != sizeof(rotors))
-		{
-			printf("cal.bin: read error %d: %s (bytes written=%d/%d)\r\n",
-				res, ff_strerror(res), br, sizeof(rotors));
-			goto out;
-		}
-
-		f_close(&in);
+		rotor_cal_load();
 	}
 	else
 	{
 		printf("Unkown argument: %s\r\n", args[1]);
-
-		goto out;
 	}
 
-out:
 	systick_bypass(0);
 }
 
@@ -1356,8 +1319,21 @@ int main()
 	initIADC();
 	initI2C();
 
+	// Initialize realtime clock
+	rtcc_init(128);
+	struct tm rtc;
+
+	ds3231_read_time(&rtc);
+	boot_time = mktime(&rtc);
+
+	rtcc_set_sec(boot_time);
+
+	// Mount fatfs
+	res = f_mount(&fatfs, "", 0);
+	if (res != FR_OK)
+		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
 	
-	// Initialize our features
+	// Initialize rotors
 	initRotors();
 
 	theta->motor.port = gpioPortB;
@@ -1368,10 +1344,8 @@ int main()
 	phi->motor.pin1 = 4;
 	phi->motor.pin2 = 5;
 
-	help();
-	print("\r\n");
-
-	flash_read(flash_table, FLASH_DATA_BASE);
+	// Load calibrations from FAT
+	rotor_cal_load();
 
 	// Initalize motors that were loaded from flash if they were valid
 	for (i = 0; i < NUM_ROTORS; i++)
@@ -1382,21 +1356,14 @@ int main()
 		}
 	}
 
-	// Initalize systick after reading flash so that it does not change
+	// Initalize systick after reading flash so that it does not change.
+	// This must happen after rotors are initalized because systick moves
+	// the rotor target.
 	if (systick_init(100) != 0)
 		print("Failed to set systick to 100 Hz\r\n");
+
+	help();
 	print("\r\n");
-	rtcc_init(128);
-	struct tm rtc;
-
-	ds3231_read_time(&rtc);
-	boot_time = mktime(&rtc);
-
-	rtcc_set_sec(boot_time);
-	
-	res = f_mount(&fatfs, "", 0);
-	if (res != FR_OK)
-		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
 
 	status();
 	print("\r\n");

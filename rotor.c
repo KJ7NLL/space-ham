@@ -25,6 +25,9 @@
 
 #include "em_gpio.h"
 
+#include "ff.h"
+#include "fatfs-efr32.h"
+
 #include "pwm.h"
 #include "linklist.h"
 #include "serial.h"
@@ -334,4 +337,50 @@ void rotor_detail(struct rotor *r)
 			r->pid.integrator,
 			r->pid.differentiator,
 			r->pid.out);
+}
+
+void rotor_cal_load()
+{
+	FRESULT res = FR_OK;  /* API result code */
+	FIL in;              /* File object */
+	UINT br;          /* Bytes written */
+
+	res = f_open(&in, "cal.bin", FA_READ);
+	if (res != FR_OK)
+	{
+		printf("cal.bin: open error %d: %s\r\n", res, ff_strerror(res));
+		return;
+	}
+
+	res = f_read(&in, rotors, sizeof(rotors), &br);
+	if (res != FR_OK || br != sizeof(rotors))
+	{
+		printf("cal.bin: read error %d: %s (bytes written=%d/%d)\r\n",
+			res, ff_strerror(res), br, sizeof(rotors));
+	}
+
+	f_close(&in);
+}
+
+void rotor_cal_save()
+{
+	FRESULT res = FR_OK;  /* API result code */
+	FIL out;              /* File object */
+	UINT bw;          /* Bytes written */
+
+	res = f_open(&out, "cal.bin", FA_CREATE_ALWAYS | FA_WRITE);
+	if (res != FR_OK)
+	{
+		printf("cal.bin: open error %d: %s\r\n", res, ff_strerror(res));
+		return;
+	}
+
+	res = f_write(&out, rotors, sizeof(rotors), &bw);
+	if (res != FR_OK || bw != sizeof(rotors))
+	{
+		printf("cal.bin: write error %d: %s (bytes written=%d/%d)\r\n",
+			res, ff_strerror(res), bw, sizeof(rotors));
+	}
+
+	f_close(&out);
 }

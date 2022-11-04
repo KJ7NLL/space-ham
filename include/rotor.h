@@ -112,3 +112,6 @@ struct rotor *rotor_get(char *name);
 
 void rotor_detail(struct rotor *r);
 void motor_detail(struct motor *m);
+
+void rotor_cal_load();
+void rotor_cal_save();
