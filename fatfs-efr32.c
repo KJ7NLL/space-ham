@@ -92,7 +92,7 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buf, LBA_t sector, UINT count)
 {
 	DRESULT status;
 	unsigned char tmp[FLASH_PAGE_SIZE];
-	UINT i;
+	LBA_t i, offset;
 	void *prev_page, *page;
 
 	prev_page = page = lba_page(sector);
@@ -114,7 +114,8 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buf, LBA_t sector, UINT count)
 			memcpy(tmp, page, FLASH_PAGE_SIZE);
 		}
 
-		memcpy(tmp+lba_page_offset(i), buf, FLASH_FAT_LBA_SIZE);
+		offset = (i-sector)*FLASH_FAT_LBA_SIZE;
+		memcpy(tmp+lba_page_offset(i), buf+offset, FLASH_FAT_LBA_SIZE);
 		prev_page = page;
 	}
 
@@ -134,18 +135,21 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buf)
 	{
 		case CTRL_SYNC: return RES_OK;
 
+		// Retrieves number of available sectors, the largest allowable LBA + 1
 		case GET_SECTOR_COUNT: 
 			*lba = FLASH_FAT_LBA_COUNT;
 			printf("GET_SECTOR_COUNT: %lu\r\n", FLASH_FAT_LBA_COUNT);
 			return RES_OK;
 
+		// Valid sector sizes are 512, 1024, 2048 and 4096.
 		case GET_SECTOR_SIZE:
 			*word = FLASH_FAT_LBA_SIZE;
-			printf("FLASH_FAT_LBA_SIZE: %lu\r\n", FLASH_FAT_LBA_COUNT);
+			printf("FLASH_FAT_LBA_SIZE: %u\r\n", FLASH_FAT_LBA_SIZE);
 			return RES_OK;
 
+		// Retrieves erase block size in unit of sector
 		case GET_BLOCK_SIZE:
-			*dword = FLASH_PAGE_SIZE;
+			*dword = FLASH_PAGE_SIZE / FLASH_FAT_LBA_SIZE;
 			printf("FLASH_PAGE_SIZE: %lu\r\n", FLASH_PAGE_SIZE);
 			return RES_OK;
 
