@@ -1,0 +1,5 @@
+These files can be uploaded as calibrations using xmodem:
+	fat rx cal.bin
+	flash load
+
+The calibrations are specific to the hardware.
