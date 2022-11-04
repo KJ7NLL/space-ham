@@ -96,3 +96,55 @@ int xmodem_rx(char *filename)
 
 	return len;
 }
+
+void xmodem_tx_chunk(void *ctx, void *buf, int len)
+{
+	FIL *in = (FIL*)ctx;
+	UINT br;
+	FRESULT fr;
+
+	fr = f_read(in, buf, len, &br);
+
+	if (fr != FR_OK)
+		printf("Chunk Read Error %d: %s\r\n", fr, ff_strerror(fr));
+
+	if ((int)br < len)
+		printf("Chunk Read Error: Only %d of %d bytes were read\r\n", br, len);
+}
+
+
+int xmodem_tx(char *filename)
+{
+	FIL in;
+	FRESULT fr;          /* FatFs function common result code */
+	int len;
+
+	fr = f_open(&in, filename, FA_READ);
+
+	if (fr != FR_OK)
+	{
+		printf("error %d: %s: %s\r\n", fr, filename, ff_strerror(fr));
+		return -(fr+10);
+	}
+	printf("sending %s: %d bytes\r\n", filename, (int)f_size(&in));
+
+
+	// IADC and systick handlers drown the CPU in IRQ triggers
+	// so turn them off while transferring:
+	int iadc = NVIC_GetEnableIRQ(IADC_IRQn);
+	if (iadc)
+	{
+		NVIC_DisableIRQ(IADC_IRQn);
+		NVIC_ClearPendingIRQ(IADC_IRQn);
+	}
+	systick_bypass(1);
+
+	len = XmodemTransmit(xmodem_tx_chunk, &in, (int)f_size(&in), 1, 0);
+
+	systick_bypass(0);
+	if (iadc) NVIC_EnableIRQ(IADC_IRQn);
+
+	f_close(&in);
+
+	return len;
+}

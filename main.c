@@ -719,6 +719,7 @@ void flash(int argc, char **args)
 		{
 			printf("cal.bin: write error %d: %s (bytes written=%d/%d)\r\n",
 				res, ff_strerror(res), bw, sizeof(rotors));
+			f_close(&out);
 			goto out;
 		}
 
@@ -1130,6 +1131,12 @@ void fat(int argc, char **args)
 		br = xmodem_rx(args[2]);
 
 		printf("Receved %d bytes\r\n", br);
+	}
+	else if (match(args[1], "tx") && argc >= 3)
+	{
+		bw = xmodem_tx(args[2]);
+
+		printf("sent %d bytes\r\n", bw);
 	}
 	else
 	{
