@@ -870,6 +870,7 @@ void sat_pos(tle_t *tle)
 
 		print("\x0c\r\n");
 		status();
+		printf("\r\nTracking %s (%d)\r\n", tle->sat_name, tle->catnr);
 		printf("\r\n Date: %02d/%02d/%04d UTC: %02d:%02d:%02d  Ephemeris: %s"
 			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.2f"
 			"\r\n Lat=%6.1f Lon=%6.1f  Alt=%8.1f  Vel=%8.3f"
@@ -1010,15 +1011,19 @@ void sat(int argc, char **args)
 			return;
 		}
 		
+		tle_t tle_tmp;
 		i = 1;
 		do
 		{
-			res = f_read(&in, &tle, sizeof(tle), &br);
-			if (br < sizeof(tle))
+			res = f_read(&in, &tle_tmp, sizeof(tle_tmp), &br);
+			if (br < sizeof(tle_tmp))
 				break;
 
-			if (argc < 3 || strcasestr(tle.sat_name, args[2]))
+			if (argc < 3 || strcasestr(tle_tmp.sat_name, args[2]))
+			{
+				memcpy(&tle, &tle_tmp, sizeof(tle_t));
 				printf("%d. %s (%d)\r\n", i, tle.sat_name, tle.catnr);
+			}
 			i++;
 		} while (res == FR_OK);
 	}
