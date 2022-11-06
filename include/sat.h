@@ -44,11 +44,11 @@ typedef struct {
 		deep_space;
 } sat_t;
 
-void sat_info(tle_t *s);
-void sat_detail(tle_t *s);
-int sat_csum(char *s);
+void tle_info(tle_t *s);
+void tle_detail(tle_t *s);
+int tle_csum(char *s);
 
-void sat_init(sat_t *sat);
-void sat_update(sat_t *sat);
-void sat_status(sat_t *sat);
+void sat_init(tle_t *tle);
+const sat_t *sat_update();
+void sat_status();
 int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf);

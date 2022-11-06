@@ -748,25 +748,24 @@ void watch(int argc, char **args, struct linklist *history)
 
 void sat_pos(tle_t *tle)
 {
-	struct rotor *phi = rotor_get("phi");
-	struct rotor *theta = rotor_get("theta");
-	sat_t sat;
+	struct rotor *phi = rotor_get("1");
+	struct rotor *theta = rotor_get("0");
+	const sat_t *sat;
 
-	sat.tle = *tle;
-
-	sat_init(&sat);
+	sat_init(tle);
 	char c;
 	serial_read_async(&c, 1);
 
 	do  /* Loop */
 	{
-		sat_update(&sat);
+		sat = sat_update();
+		theta->target = sat->sat_az;
+		phi->target = sat->sat_el;
+
 		print("\x0c\r\n");
 		status();
-		sat_status(&sat);
+		sat_status();
 
-		theta->target = sat.sat_az;
-		phi->target = sat.sat_el;
 		rtcc_delay_sec(1);
 	} while (!serial_read_done());
 }
@@ -835,7 +834,6 @@ void sat(int argc, char **args)
 		i = 0;
 		while (res == FR_OK && f_gets(buf, 80, &in))
 		{
-			printf("line%d: %s\r\n", i, buf);
 			i = sat_tle_line(&tle, i, tle_set, buf);
 			if (i == 0)
 			{

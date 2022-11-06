@@ -27,19 +27,23 @@
 
 #include "sat.h"
 
+// Global sat state structure. We want a pointer in case we wish to support
+// tracking multiple satellites. 
+static sat_t _sat, *sat = &_sat;
+
 /* Observer's geodetic co-ordinates.      */
 /* Lat North, Lon East in rads, Alt in km */
 static geodetic_t obs_geodetic =
 	{45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0};
 
-void sat_info(tle_t *s)
+void tle_info(tle_t *s)
 {
 	printf("%s (%d)\r\n",
 		s->sat_name,
 		s->catnr);
 }
 
-void sat_detail(tle_t *s)
+void tle_detail(tle_t *s)
 {
 	printf("%s (%s)\r\n"
 		"  epoch:         %f\r\n"
@@ -73,7 +77,7 @@ void sat_detail(tle_t *s)
 		);
 }
 
-int sat_csum(char *s)
+int tle_csum(char *s)
 {
 	int csum = 0;
 	unsigned int i = 0;
@@ -92,8 +96,11 @@ int sat_csum(char *s)
 	return csum % 10;
 }
 
-void sat_init(sat_t *sat)
+void sat_init(tle_t *tle)
 {
+	// Copy the provided tle into our static private satellite structure
+	sat->tle = *tle;
+
 	// Clear all flags:
 	//
 	// Before calling a different ephemeris
@@ -111,7 +118,7 @@ void sat_init(sat_t *sat)
 	select_ephemeris(&sat->tle);
 }
 
-void sat_update(sat_t *sat)
+const sat_t *sat_update()
 {
 	struct tm utc;
 	double
@@ -198,9 +205,11 @@ void sat_update(sat_t *sat)
 
 	sat->sun_az = Degrees(solar_set.x);
 	sat->sun_el = Degrees(solar_set.y);
+
+	return sat;
 }
 
-void sat_status(sat_t *sat)
+void sat_status()
 {
 		printf("\r\nTracking %s (%d): %s\r\n"
 			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.2f"
@@ -241,8 +250,7 @@ int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
 		if (Good_Elements(tle_set))
 		{
 			Convert_Satellite_Data(tle_set, tle);
-			printf("\r\nParsed tle: %s\r\n", tle->sat_name);
-			sat_detail(tle);
+			tle_info(tle);
 			line = 0;
 		}
 		else
