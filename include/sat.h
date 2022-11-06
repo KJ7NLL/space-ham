@@ -37,6 +37,9 @@ typedef struct {
 		sun_az, sun_el;
 
 	int
+		// True if the TLE is valid for tracking
+		ready,
+
 		// True if the satellite is in the Earth's shadow
 		eclipsed,
 
@@ -52,3 +55,4 @@ void sat_init(tle_t *tle);
 const sat_t *sat_update();
 void sat_status();
 int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf);
+void sat_reset();

@@ -759,12 +759,19 @@ void sat_pos(tle_t *tle)
 	do  /* Loop */
 	{
 		sat = sat_update();
-		theta->target = sat->sat_az;
-		phi->target = sat->sat_el;
+		if (! sat)
+		{
+			print("sat_update failed, press a key to exit\r\n");
+		}
+		else
+		{
+			theta->target = sat->sat_az;
+			phi->target = sat->sat_el;
 
-		print("\x0c\r\n");
-		status();
-		sat_status();
+			print("\x0c\r\n");
+			status();
+			sat_status();
+		}
 
 		rtcc_delay_sec(1);
 	} while (!serial_read_done());

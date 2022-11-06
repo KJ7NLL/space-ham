@@ -116,6 +116,9 @@ void sat_init(tle_t *tle)
 	// ephemeris functions SGP4 or SDP4 so this function
 	// must be called each time a new tle set is used
 	select_ephemeris(&sat->tle);
+
+	sat->ready = 1;
+	sat_update();
 }
 
 const sat_t *sat_update()
@@ -142,6 +145,9 @@ const sat_t *sat_update()
 	vector_t solar_vector = zero_vector;
 	// Solar observed azi and ele vectorg
 	vector_t solar_set;
+
+	if (! sat->ready)
+		return NULL;
 
 	// Get UTC calendar and convert to Juliang
 	UTC_Calendar_Now(&utc);
@@ -211,6 +217,9 @@ const sat_t *sat_update()
 
 void sat_status()
 {
+	if (! sat->ready)
+		printf("No satellite is being tracked\r\n");
+	else
 		printf("\r\nTracking %s (%d): %s\r\n"
 			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.2f"
 			"\r\n Lat=%6.1f Lon=%6.1f  Alt=%8.1f  Vel=%8.3f"
@@ -260,3 +269,7 @@ int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
 	return line;
 }
 
+void sat_reset()
+{
+	memset(sat, 0, sizeof(sat_t));
+}
