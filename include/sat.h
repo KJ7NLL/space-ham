@@ -20,6 +20,34 @@
 //
 #include "sgp4sdp4.h"
 
+typedef struct {
+	tle_t tle;
+
+	double
+		// Depth of satellite eclipseg
+		eclipse_depth,
+
+		// Satellite's observed position, range, range rate
+		sat_az, sat_el, sat_range, sat_range_rate,
+
+		// Satellites geodetic position and velocityg
+		sat_lat, sat_long, sat_alt, sat_vel,
+
+		// Solar azmuth and elvationg
+		sun_az, sun_el;
+
+	int
+		// True if the satellite is in the Earth's shadow
+		eclipsed,
+
+		// True if orbital period is more than 225 minutes (SDP4)
+		deep_space;
+} sat_t;
+
 void sat_info(tle_t *s);
 void sat_detail(tle_t *s);
 int sat_csum(char *s);
+
+void sat_init(sat_t *sat);
+void sat_update(sat_t *sat);
+void sat_status(sat_t *sat);

@@ -18,11 +18,19 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
+
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
+#include "sgp4sdp4.h"
+
 #include "sat.h"
+
+/* Observer's geodetic co-ordinates.      */
+/* Lat North, Lon East in rads, Alt in km */
+static geodetic_t obs_geodetic =
+	{45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0};
 
 void sat_info(tle_t *s)
 {
@@ -82,4 +90,128 @@ int sat_csum(char *s)
 	}
 
 	return csum % 10;
+}
+
+void sat_init(sat_t *sat)
+{
+	// Clear all flags:
+	//
+	// Before calling a different ephemeris
+	// or changing the TLE set, flow control
+	// flags must be cleared in main().
+	ClearFlag(ALL_FLAGS);
+
+	// Select ephemeris type:
+	//
+	// Will set or clear the DEEP_SPACE_EPHEM_FLAG
+	// depending on the TLE parameters of the satellite.
+	// It will also pre-process tle members for the
+	// ephemeris functions SGP4 or SDP4 so this function
+	// must be called each time a new tle set is used
+	select_ephemeris(&sat->tle);
+}
+
+void sat_update(sat_t *sat)
+{
+	struct tm utc;
+	double
+		tsince,            // Time since epoch (in minutes)g
+		jul_epoch,         // Julian date of epochg
+		jul_utc;           // Julian UTC dateg
+
+	// Satellite's predicted geodetic positiong
+	geodetic_t sat_geodetic;
+
+	// Zero vector for initializationsg
+	vector_t zero_vector = {0,0,0,0};
+
+	// Satellite position and velocity vectorsg
+	vector_t vel = zero_vector;
+	vector_t pos = zero_vector;
+	// Satellite Az, El, Range, Range rateg
+	vector_t obs_set;
+
+	// Solar ECI position vectorg
+	vector_t solar_vector = zero_vector;
+	// Solar observed azi and ele vectorg
+	vector_t solar_set;
+
+	// Get UTC calendar and convert to Juliang
+	UTC_Calendar_Now(&utc);
+	jul_utc = Julian_Date(&utc);
+
+	// Convert satellite's epoch time to Juliang
+	// and calculate time since epoch in minutesg
+	jul_epoch = Julian_Date_of_Epoch(sat->tle.epoch);
+	tsince = (jul_utc - jul_epoch) * 24*60; // minutes per day
+
+	// Call NORAD routines according to deep-space flagg
+	if( isFlagSet(DEEP_SPACE_EPHEM_FLAG) )
+	{
+		SDP4(tsince, &sat->tle, &pos, &vel);
+		sat->deep_space = 1;
+	}
+	else
+	{
+		SGP4(tsince, &sat->tle, &pos, &vel);
+		sat->deep_space = 0;
+	}
+
+	// Scale position and velocity vectors to km and km/secg
+	Convert_Sat_State( &pos, &vel );
+
+	// Calculate velocity of satelliteg
+	Magnitude( &vel );
+	sat->sat_vel = vel.w;
+
+	//* All angles in rads. Distance in km. Velocity in km/s *g
+	// Calculate satellite Azi, Ele, Range and Range-rateg
+	Calculate_Obs(jul_utc, &pos, &vel, &obs_geodetic, &obs_set);
+
+	// Calculate satellite Lat North, Lon East and Alt.g
+	Calculate_LatLonAlt(jul_utc, &pos, &sat_geodetic);
+
+	// Calculate solar position and satellite eclipse depthg
+	// Also set or clear the satellite eclipsed flag accordingly
+	Calculate_Solar_Position(jul_utc, &solar_vector);
+	Calculate_Obs(jul_utc, &solar_vector, &zero_vector, &obs_geodetic, &solar_set);
+
+	if( Sat_Eclipsed(&pos, &solar_vector, &sat->eclipse_depth) )
+	{
+		SetFlag( SAT_ECLIPSED_FLAG );
+		sat->eclipsed = 1;
+	}
+	else
+	{
+		ClearFlag( SAT_ECLIPSED_FLAG );
+		sat->eclipsed = 0;
+	}
+
+	// Convert and print satellite and solar datag
+	sat->sat_az = Degrees(obs_set.x);
+	sat->sat_el = Degrees(obs_set.y);
+	sat->sat_range = obs_set.z;
+	sat->sat_range_rate = obs_set.w;
+	sat->sat_lat = Degrees(sat_geodetic.lat);
+	sat->sat_long = Degrees(sat_geodetic.lon);
+	sat->sat_alt = sat_geodetic.alt;
+
+	sat->sun_az = Degrees(solar_set.x);
+	sat->sun_el = Degrees(solar_set.y);
+}
+
+void sat_status(sat_t *sat)
+{
+		printf("\r\nTracking %s (%d): %s\r\n"
+			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.2f"
+			"\r\n Lat=%6.1f Lon=%6.1f  Alt=%8.1f  Vel=%8.3f"
+			"\r\n Stellite Status: %s - Depth: %2.3f"
+			"\r\n Sun Azi=%6.1f Sun Ele=%6.1f\r\n",
+			sat->tle.sat_name, sat->tle.catnr,
+				isFlagSet(DEEP_SPACE_EPHEM_FLAG) ? "SDP4" : "SGP4",
+			sat->sat_az, sat->sat_el, sat->sat_range, sat->sat_range_rate,
+			sat->sat_lat, sat->sat_long, sat->sat_alt, sat->sat_vel,
+			sat->eclipsed ? "eclipsed" : "in sunlight",
+				sat->eclipse_depth,
+			sat->sun_az, sat->sun_el);
 }
