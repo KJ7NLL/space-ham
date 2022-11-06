@@ -51,3 +51,4 @@ int sat_csum(char *s);
 void sat_init(sat_t *sat);
 void sat_update(sat_t *sat);
 void sat_status(sat_t *sat);
+int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf);

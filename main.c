@@ -771,42 +771,6 @@ void sat_pos(tle_t *tle)
 	} while (!serial_read_done());
 }
 
-// tle: the tle object
-// line: the tle line number
-// tle_set: temp buffer that is filled while loading tle lines, must be >= 139 bytes
-// buf: input text line
-int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
-{
-	if (line == 0)
-	{
-		strncpy(tle->sat_name, buf, sizeof(tle->sat_name));
-		tle->sat_name[sizeof(tle->sat_name)-1] = 0;
-		line++;
-	}
-	else if (line == 1)
-	{
-		strncpy(tle_set, buf, 69);
-		tle_set[69] = 0;
-		line++;
-	}
-	else if (line == 2)
-	{
-		strncpy(tle_set+69, buf, 69);
-		tle_set[138] = 0;
-		if (Good_Elements(tle_set))
-		{
-			Convert_Satellite_Data(tle_set, tle);
-			printf("\r\nParsed tle: %s\r\n", tle->sat_name);
-			sat_detail(tle);
-			line = 0;
-		}
-		else
-			printf("\r\nInvalid tle: %s\r\n", tle->sat_name);
-	}
-
-	return line;
-}
-
 void sat(int argc, char **args)
 {
 	FRESULT res = FR_OK;  /* API result code */
