@@ -151,8 +151,6 @@ int _gettimeofday(struct timeval *tv, void *tz)
 	tv->tv_sec = sec;
 	tv->tv_usec = usec;
 
-	printf("s=%lu usec=%lu\n", (long)sec, (long)usec);
-
 	return 0;
 }
 
