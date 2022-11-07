@@ -93,4 +93,6 @@ int systick_init(int tps)
 void systick_bypass(int b)
 {
 	_systick_bypass = b;
+	if (_systick_bypass)
+		rotor_suspend_all();
 }

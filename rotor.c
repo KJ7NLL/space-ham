@@ -385,6 +385,10 @@ void rotor_cal_save()
 	f_close(&out);
 }
 
+// Set the target of the rotor to the current position and set motor speed to 0.
+// This is a temporary change that will be overriden if systick is enabled.
+// This function is used by `sat reset` to stop all motion and by xmodem
+// to prevent rotor drift during transfer.
 void rotor_suspend_all()
 {
 	int i;

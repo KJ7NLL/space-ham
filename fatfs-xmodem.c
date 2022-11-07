@@ -29,6 +29,7 @@
 #include "systick.h"
 
 #include "fatfs-efr32.h"
+#include "rotor.h"
 
 
 // msec timeout
@@ -138,7 +139,7 @@ int xmodem_tx(char *filename)
 		NVIC_ClearPendingIRQ(IADC_IRQn);
 	}
 	systick_bypass(1);
-
+	
 	len = XmodemTransmit(xmodem_tx_chunk, &in, (int)f_size(&in), 1, 0);
 
 	systick_bypass(0);
