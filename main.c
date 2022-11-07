@@ -750,36 +750,6 @@ void watch(int argc, char **args, struct linklist *history)
 	while (!serial_read_done());
 }
 
-void sat_pos(tle_t *tle)
-{
-	struct rotor *phi = rotor_get("1");
-	struct rotor *theta = rotor_get("0");
-	const sat_t *sat;
-
-	sat_init(tle);
-	char c;
-	serial_read_async(&c, 1);
-
-	do  /* Loop */
-	{
-		sat = sat_update();
-		if (! sat)
-		{
-			print("sat_update failed, press a key to exit\r\n");
-		}
-		else
-		{
-			theta->target = sat->sat_az;
-			phi->target = sat->sat_el;
-
-			print("\x0c\r\n");
-			status();
-		}
-
-		rtcc_delay_sec(1, NULL);
-	} while (!serial_read_done());
-}
-
 void sat(int argc, char **args)
 {
 	FRESULT res = FR_OK;  /* API result code */
@@ -818,10 +788,6 @@ void sat(int argc, char **args)
 			}
 		}
 	}
-	else if (match(args[1], "pos"))
-	{
-		sat_pos(&tle);
-	}
 	else if (match(args[1], "rx"))
 	{
 		print ("Begin sending your TLE text file via xmodem\r\n");
@@ -859,7 +825,9 @@ void sat(int argc, char **args)
 		f_close(&in);
 		f_close(&out);
 	}
-	else if (match(args[1], "list") || match(args[1], "search"))
+	else if (match(args[1], "list") ||
+		match(args[1], "search") ||
+		match(args[1], "track"))
 	{
 		res = f_open(&in, "tle.bin", FA_READ);
 		if (res != FR_OK)
@@ -871,19 +839,39 @@ void sat(int argc, char **args)
 		
 		tle_t tle_tmp;
 		i = 1;
+		int n = 0, found = 0;
+		if (argc >= 3)
+			n = atoi(args[2]);
 		do
 		{
 			res = f_read(&in, &tle_tmp, sizeof(tle_tmp), &br);
 			if (br < sizeof(tle_tmp))
 				break;
 
-			if (argc < 3 || strcasestr(tle_tmp.sat_name, args[2]))
+			if (argc < 3 ||
+				n == i ||
+				n == tle.catnr ||
+				(n == 0 && strcasestr(tle_tmp.sat_name, args[2])))
 			{
 				memcpy(&tle, &tle_tmp, sizeof(tle_t));
 				printf("%d. %s (%d)\r\n", i, tle.sat_name, tle.catnr);
+				found++;
 			}
 			i++;
 		} while (res == FR_OK);
+
+		if (match(args[1], "track"))
+		{
+			if (found == 1)
+			{
+				sat_init(&tle);
+				status();
+			}
+			else
+				printf("\r\nYou found %d satellites, restrict your"
+					" search and try again\r\n", found);
+
+		}
 	}
 	else
 		print("Sat: invalid argument\r\n");
