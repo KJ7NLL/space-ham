@@ -25,3 +25,5 @@ FRESULT scan_files(char *path);   /* Start node to be scanned (***also used as w
 int xmodem_rx(char *filename);
 int xmodem_tx(char *filename);
 
+FRESULT f_write_file(char *filename, void *data, size_t len);
+FRESULT f_read_file(char *filename, void *data, size_t len);

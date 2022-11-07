@@ -232,13 +232,52 @@ char *ff_strerror(FRESULT r)
 	return errors[r];
 }
 
+FRESULT f_read_file(char *filename, void *data, size_t len)
+{
+	FRESULT res = FR_OK;  /* API result code */
+	FIL in;              /* File object */
+	UINT br;          /* Bytes written */
 
+	res = f_open(&in, filename, FA_READ);
+	if (res != FR_OK)
+	{
+		printf("%s: open error %d: %s\r\n", filename, res, ff_strerror(res));
+		return res;
+	}
 
+	res = f_read(&in, data, len, &br);
+	if (res != FR_OK || br != len)
+	{
+		printf("%s: read error %d: %s (bytes written=%d/%d)\r\n",
+			filename, res, ff_strerror(res), br, len);
+	}
 
+	f_close(&in);
 
+	return res;
+}
 
+FRESULT f_write_file(char *filename, void *data, size_t len)
+{
+	FRESULT res = FR_OK;  /* API result code */
+	FIL out;              /* File object */
+	UINT bw;          /* Bytes written */
 
+	res = f_open(&out, filename, FA_CREATE_ALWAYS | FA_WRITE);
+	if (res != FR_OK)
+	{
+		printf("%s: open error %d: %s\r\n", filename, res, ff_strerror(res));
+		return res;
+	}
 
+	res = f_write(&out, data, len, &bw);
+	if (res != FR_OK || bw != len)
+	{
+		printf("%s: write error %d: %s (bytes written=%d/%d)\r\n",
+			filename, res, ff_strerror(res), bw, len);
+	}
 
+	f_close(&out);
 
-
+	return res;
+}
