@@ -223,14 +223,12 @@ void serial_read_async_cancel()
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 }
 
-
-
 int serial_read_done()
 {
 	return bufrx == NULL;
 }
 
-void serial_read(void *s, int len)
+void serial_read_idle(void *s, int len, void (*idle)())
 {
 	serial_read_async(s, len);
 
@@ -240,9 +238,19 @@ void serial_read(void *s, int len)
 		// was called before bufrx configured by serial_read_async().
 		read_buf_to_bufrx();
 		if (!serial_read_done())
-			EMU_EnterEM1();
+		{
+			if (idle != NULL)
+				idle();
+			else
+				EMU_EnterEM1();
+		}
 	}
 
+}
+
+void serial_read(void *s, int len)
+{
+	serial_read_idle(s, len, NULL);
 }
 
 int serial_read_timeout(void *s, int len, float timeout)

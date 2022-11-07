@@ -25,6 +25,7 @@ void USART1_RX_IRQHandler(void);
 void USART1_TX_IRQHandler(void);
 void serial_write(void *s, int len);
 void serial_read(void *s, int len);
+void serial_read_idle(void *s, int len, void (*idle)());
 int serial_read_timeout(void *s, int len, float timeout);
 int serial_read_line(char *s, int len);
 int serial_read_done();
