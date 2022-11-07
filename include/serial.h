@@ -36,4 +36,4 @@ void print_lots(char c, int n);
 void print_bs(int n);
 void print_back_more(char *s, char c, int n);
 int esc_key(char **keys);
-int input(char *buf, int len, struct linklist **history);
+int input(char *buf, int len, struct linklist **history, void (*idle)());

@@ -211,6 +211,9 @@ void status()
 	//	motor_detail(&rotors[i].motor);
 	//	rotor_detail(&rotors[i]);
 	}
+
+	// print satellite status
+	sat_status();
 }
 
 void motor(int argc, char **args)
@@ -770,7 +773,6 @@ void sat_pos(tle_t *tle)
 
 			print("\x0c\r\n");
 			status();
-			sat_status();
 		}
 
 		rtcc_delay_sec(1);
@@ -808,7 +810,11 @@ void sat(int argc, char **args)
 			printf("line%d: %s\r\n", i, buf);
 			i = sat_tle_line(&tle, i, tle_set, buf);
 			if (i == 0)
+			{
+				sat_init(&tle);
+				status();
 				break;
+			}
 		}
 	}
 	else if (match(args[1], "pos"))
@@ -1154,6 +1160,24 @@ void dispatch(int argc, char **args, struct linklist *history)
 	}
 }
 
+void idle()
+{
+	static int az_rotor_idx = 0;
+	static int el_rotor_idx = 1;
+	const sat_t *sat = NULL;
+
+	sat = sat_update();
+
+	// Set the rotor target for az/el if a satellite is being tracked.
+	if (sat != NULL)
+	{
+		rotors[az_rotor_idx].target = sat->sat_az;
+		rotors[el_rotor_idx].target = sat->sat_el;
+	}
+	else
+		EMU_EnterEM1();
+}
+
 int main()
 {
 	FRESULT res;
@@ -1239,7 +1263,7 @@ int main()
 	for (;;)
 	{
 		print("[Zeke&Daddy@console]# ");
-		input(buf, sizeof(buf)-1, &history);
+		input(buf, sizeof(buf)-1, &history, idle);
 		print("\r\n");
 		
 		argc = parse_args(buf, args, MAX_ARGS);

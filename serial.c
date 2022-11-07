@@ -408,7 +408,7 @@ int esc_key(char **keys)
 	return 0;
 }
 
-int input(char *buf, int len, struct linklist **history)
+int input(char *buf, int len, struct linklist **history, void (*idle)())
 {
 	struct linklist *hist = *history;
 

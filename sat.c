@@ -173,7 +173,7 @@ const sat_t *sat_update()
 	// Scale position and velocity vectors to km and km/secg
 	Convert_Sat_State( &pos, &vel );
 
-	// Calculate velocity of satelliteg
+	// Calculate velocity of satellite
 	Magnitude( &vel );
 	sat->sat_vel = vel.w;
 
