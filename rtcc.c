@@ -117,18 +117,21 @@ void rtcc_set_sec(time_t sec)
 	rtcc_set(sec*(uint64_t)ticks_per_sec);
 }
 
-void rtcc_delay_ticks(uint64_t delay)
+void rtcc_delay_ticks(uint64_t delay, void (*idle)())
 {
 	uint64_t cur = rtcc_get();
 
 	while ((rtcc_get() - cur) < delay)
-		EMU_EnterEM1();
+		if (idle != NULL)
+			idle();
+		else
+			EMU_EnterEM1();
 
 }
 
-void rtcc_delay_sec(float sec)
+void rtcc_delay_sec(float sec, void (*idle)())
 {
-	rtcc_delay_ticks(sec * (float)ticks_per_sec);
+	rtcc_delay_ticks(sec * (float)ticks_per_sec, idle);
 }
 
 // return the number of seeconds elapsed given a starting tick count

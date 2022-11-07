@@ -372,7 +372,7 @@ void print_back_more(char *s, char c, int n)
 	print_bs(n + strlen(s));
 }
 
-int esc_key(char **keys)
+int esc_key(char **keys, void (*idle)())
 {
 	char esc[7], c;
 
@@ -383,7 +383,7 @@ int esc_key(char **keys)
 
 	do
 	{
-		serial_read(&c, 1);
+		serial_read_idle(&c, 1, idle);
 		esc[escidx] = c;
 		escidx++;
 
@@ -429,7 +429,7 @@ int input(char *buf, int len, struct linklist **history, void (*idle)())
 	buf[0] = 0;
 	while (end < len && c != '\r' && c != '\n')
 	{
-		serial_read(&c, 1);
+		serial_read_idle(&c, 1, idle);
 		
 		if (isprint(c))
 		{
@@ -469,7 +469,7 @@ int input(char *buf, int len, struct linklist **history, void (*idle)())
 		}
 		else if (c == 27)	// Escape
 		{
-			key = esc_key(vt102);
+			key = esc_key(vt102, idle);
 			switch (key)
 			{
 				case KEY_DEL:

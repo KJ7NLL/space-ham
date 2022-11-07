@@ -61,6 +61,7 @@
 time_t boot_time;
 
 void dispatch(int argc, char **args, struct linklist *history);
+void main_idle();
 
 FATFS fatfs;           /* Filesystem object */
 
@@ -740,7 +741,7 @@ void watch(int argc, char **args, struct linklist *history)
 	do
 	{
 		dispatch(argc-1, &args[1], history);
-		rtcc_delay_sec(1);
+		rtcc_delay_sec(1, main_idle);
 		if (!serial_read_done())
 		{
 			print("\x0c");
@@ -775,7 +776,7 @@ void sat_pos(tle_t *tle)
 			status();
 		}
 
-		rtcc_delay_sec(1);
+		rtcc_delay_sec(1, NULL);
 	} while (!serial_read_done());
 }
 
@@ -1160,7 +1161,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 	}
 }
 
-void idle()
+void main_idle()
 {
 	static int az_rotor_idx = 0;
 	static int el_rotor_idx = 1;
@@ -1263,7 +1264,7 @@ int main()
 	for (;;)
 	{
 		print("[Zeke&Daddy@console]# ");
-		input(buf, sizeof(buf)-1, &history, idle);
+		input(buf, sizeof(buf)-1, &history, main_idle);
 		print("\r\n");
 		
 		argc = parse_args(buf, args, MAX_ARGS);
