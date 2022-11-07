@@ -115,3 +115,5 @@ void motor_detail(struct motor *m);
 
 void rotor_cal_load();
 void rotor_cal_save();
+
+void rotor_suspend_all();

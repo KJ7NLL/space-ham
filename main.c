@@ -825,6 +825,11 @@ void sat(int argc, char **args)
 		f_close(&in);
 		f_close(&out);
 	}
+	else if (match(args[1], "reset"))
+	{
+		sat_reset();
+		rotor_suspend_all();
+	}
 	else if (match(args[1], "list") ||
 		match(args[1], "search") ||
 		match(args[1], "track"))

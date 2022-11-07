@@ -384,3 +384,14 @@ void rotor_cal_save()
 
 	f_close(&out);
 }
+
+void rotor_suspend_all()
+{
+	int i;
+
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		rotors[i].target = rotor_pos(&rotors[i]);
+		motor_speed(motors[i], 0);
+	}
+}
