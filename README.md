@@ -2,7 +2,7 @@
 
 The reason I started ham radio was because I wanted to contact the International Space Station.
 
-Part of doing that is creating an antenna rotor that can follow a satellite in the sky, and of course there is much more to it then that! This program is made to control for tracking satellites using the Silicon Labs EFR32MG21. If you would like to follow the entire project, then please visit my youtube channel for more information including demonstration videos:
+Part of doing that is creating an antenna rotor that can follow a satellite in the sky, and of course there is much more to it than that! This program is made to control for tracking satellites using the Silicon Labs EFR32MG21. If you would like to follow the entire project, then please visit my youtube channel for more information including demonstration videos:
 - [Zeke, KJ7NLL's YouTube Channel](https://www.youtube.com/channel/UCbcLQGEDcnNrOn7Hp0hvtUA)
 - [Demonstration: Tracking The International Space Station with LEGO's!](https://www.youtube.com/channel/UCbcLQGEDcnNrOn7Hp0hvtUA)
 
