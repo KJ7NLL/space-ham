@@ -26,15 +26,12 @@
 #include "sgp4sdp4.h"
 
 #include "sat.h"
+#include "config.h"
+
 
 // Global sat state structure. We want a pointer in case we wish to support
 // tracking multiple satellites. 
 static sat_t _sat, *sat = &_sat;
-
-/* Observer's geodetic co-ordinates.      */
-/* Lat North, Lon East in rads, Alt in km */
-static geodetic_t obs_geodetic =
-	{45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0};
 
 void tle_info(tle_t *s)
 {
@@ -179,7 +176,7 @@ const sat_t *sat_update()
 
 	//* All angles in rads. Distance in km. Velocity in km/s *g
 	// Calculate satellite Azi, Ele, Range and Range-rateg
-	Calculate_Obs(jul_utc, &pos, &vel, &obs_geodetic, &obs_set);
+	Calculate_Obs(jul_utc, &pos, &vel, &config.observer, &obs_set);
 
 	// Calculate satellite Lat North, Lon East and Alt.g
 	Calculate_LatLonAlt(jul_utc, &pos, &sat_geodetic);
@@ -187,7 +184,7 @@ const sat_t *sat_update()
 	// Calculate solar position and satellite eclipse depthg
 	// Also set or clear the satellite eclipsed flag accordingly
 	Calculate_Solar_Position(jul_utc, &solar_vector);
-	Calculate_Obs(jul_utc, &solar_vector, &zero_vector, &obs_geodetic, &solar_set);
+	Calculate_Obs(jul_utc, &solar_vector, &zero_vector, &config.observer, &solar_set);
 
 	if( Sat_Eclipsed(&pos, &solar_vector, &sat->eclipse_depth) )
 	{
@@ -272,4 +269,12 @@ int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
 void sat_reset()
 {
 	memset(sat, 0, sizeof(sat_t));
+}
+
+const sat_t *sat_get()
+{
+	if (sat->ready)
+		return sat;
+	else
+		return NULL;
 }

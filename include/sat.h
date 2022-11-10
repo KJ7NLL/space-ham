@@ -56,3 +56,4 @@ const sat_t *sat_update();
 void sat_status();
 int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf);
 void sat_reset();
+const sat_t *sat_get();

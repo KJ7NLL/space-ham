@@ -52,6 +52,8 @@
 
 #include "sat.h"
 
+#include "config.h"
+
 #define LED_PORT gpioPortB
 #define LED0_PIN 0
 #define LED1_PIN 1
@@ -72,6 +74,12 @@ struct flash_entry
 		NULL
 	};
 
+config_t config = {
+	// Observer's geodetic co-ordinates.
+	// Lat North, Lon East in rads, Alt in km 
+	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
+	.username = "Zeke&Daddy"
+};
 
 void initGpio(void)
 {
@@ -161,7 +169,11 @@ void status()
 	time_t now = rtcc_get_sec();
 	gmtime_r(&now, &rtc);
 	print_tm(&rtc);
-	printf("Uptime: %0.2f hours\r\n", (float)(now-boot_time)/3600.0);
+	printf("Uptime: %0.2f hours - ", (float)(now-boot_time)/3600.0);
+
+	printf("Your lat/long: %f N %f E; altitude: %f\r\n",
+		Degrees(config.observer.lat), Degrees(config.observer.lon),
+		config.observer.alt);
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
@@ -1044,6 +1056,30 @@ void dispatch(int argc, char **args, struct linklist *history)
 	{
 		NVIC_SystemReset();
 	}
+	else if (match(args[0], "config"))
+	{
+		if (argc < 3)
+		{
+			print("usage: config (latitude|longitude|altitude|username) <value>\r\n");
+			return;
+		}
+
+		if (match(args[1], "lat") || match(args[1], "latitude"))
+			config.observer.lat = Radians(atof(args[2]));
+		else if (match(args[1], "long") || match(args[1], "longitude"))
+			config.observer.lon = Radians(atof(args[2]));
+		else if (match(args[1], "alt") || match(args[1], "altitude"))
+			config.observer.alt = atof(args[2]);
+		else if (match(args[1], "user") || match(args[1], "username"))
+			strncpy(config.username, args[2], sizeof(config.username)-1);
+		else
+		{
+			printf("invalid setting: %s\r\n", args[1]);
+			return;
+		}
+
+		f_write_file("config.bin", &config, sizeof(config));
+	}
 
 	else if  (match(args[0], "i2c"))
 	{
@@ -1221,6 +1257,9 @@ int main()
 	// Load calibrations from FAT
 	rotor_cal_load();
 
+	// Load user config
+	f_read_file("config.bin", &config, sizeof(config));
+
 	// Initalize motors that were loaded from flash if they were valid
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
@@ -1256,7 +1295,11 @@ int main()
 
 	for (;;)
 	{
-		print("[Zeke&Daddy@console]# ");
+		printf("[%s@%s]# ", config.username,
+			sat_get() ? sat_get()->tle.sat_name : "console");
+
+		fflush(stdout);
+
 		input(buf, sizeof(buf)-1, &history, main_idle);
 		print("\r\n");
 		
