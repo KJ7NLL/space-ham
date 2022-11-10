@@ -16,6 +16,8 @@
 use strict;
 use warnings;
 
+use lib '/home/zeke/src/perl-PDL-Opt-Simplex-Simple/lib';
+
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 
@@ -31,7 +33,7 @@ $port = Device::SerialPort->new($ARGV[0]) or die "$ARGV[0]: $!";
 my $rotor = 'phi';
 our $init_deg = 0;
 
-my $timeout = 10;
+my $timeout = 20;
 my $req_good_count = 20;
 
 my %var_init = (
@@ -61,24 +63,28 @@ my %var_init = (
 
 	# phi
 	"rotor $rotor pid kp" => {
-		values => 46,
-		minmax => [0, 100],
-		perturb_scale => 2
+		values => 74.5,
+		round_each => 0.01,
+		minmax => [0, 200],
+		perturb_scale => 1
 	},
 	"rotor $rotor pid ki" => {
-		values => 43,
-		minmax => [0, 100],
-		perturb_scale => 2
+		values => 34.38,
+		round_each => 0.01,
+		minmax => [0, 200],
+		perturb_scale => 1
 	},
 	"rotor $rotor pid kd" => {
-		values => 22,
-		minmax => [0, 100],
-		perturb_scale => 2
+		values => 1.8,
+		round_each => 0.01,
+		minmax => [0, 200],
+		perturb_scale => 1
 	},
 	"rotor $rotor pid tau" => {
-		values => 20,
-		minmax => [0, 100],
-		perturb_scale => 2
+		values => 3,
+		round_each => 0.01,
+		minmax => [0.01, 6],
+		perturb_scale => 0.1
 	},
 	#"motor $rotor hz" => {
 	#		values => 1047,
@@ -109,7 +115,7 @@ my $s = PDL::Opt::Simplex::Simple->new(
 	vars => {
 		%var_init
 	},
-	ssize => .01,
+	ssize => 30,
 	tolerance => 0.01,
 	log => sub { my ($vars, $state) = @_; print "LOG: " . Dumper($vars, $state); },
 	f => \&run_test
@@ -236,7 +242,7 @@ sub run_test_ang
 
 		# it is "good" if the distance between the target and current position
 		# is less than 1 degree.  Break the loop after enough "good" counts:
-		if ($last_dist < 1)
+		if ($last_dist < 0.5)
 		{
 			$good_count++;
 		}
@@ -311,8 +317,12 @@ sub run_test_ang
 
 	$rms *= 100;
 
+	# Penalize timeouts
+	$elapsed = $timeout*5 if ($elapsed > $timeout);
+		
+
 	my $range = $max - $min;
-	my $score = $dist + $range + $elapsed**2 + 10*2**$osc_dist + $osc_speed**2 + $rms**2;
+	my $score = $dist + $range + $elapsed**2 + 10*2**$osc_dist + $osc_speed + $rms**2;
 	#my $score = 0.5*$dist + $range**2 + 10*$elapsed**2 + 10*2**$osc;
 	printf "\nScore=%.2f: elapsed=%.2f osc-dist=%.2f osc-speed=%.2f dist=%.2f range=%.2f rms=%.2f\n\n",
 		$score,
