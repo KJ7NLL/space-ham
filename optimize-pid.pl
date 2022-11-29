@@ -16,7 +16,7 @@
 use strict;
 use warnings;
 
-use lib '/home/zeke/src/perl-PDL-Opt-Simplex-Simple/lib';
+use lib '/home/ewheeler/src/perl-PDL-Opt-Simplex-Simple/lib';
 
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
@@ -31,10 +31,18 @@ my ($port);
 $port = Device::SerialPort->new($ARGV[0]) or die "$ARGV[0]: $!";
 
 my $rotor = 'phi';
-our $init_deg = 0;
+
+my $init_deg = 0;
+my $next_deg = 45;
+
+# Abort if it gets dangerous:
+my $position_hi_limit = 70;
+my $position_lo_limit = -70;
+
 
 my $timeout = 20;
 my $req_good_count = 20;
+my $target_accuracy_deg = 1.5;
 
 my %var_init = (
 	########## theta
@@ -63,29 +71,42 @@ my %var_init = (
 
 	# phi
 	"rotor $rotor pid kp" => {
-		values => 74.5,
-		round_each => 0.01,
+		values =>  20.144,
+		round_each => 0.001,
 		minmax => [0, 200],
-		perturb_scale => 1
+		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values => 34.38,
-		round_each => 0.01,
+		values =>   0.015,
+		round_each => 0.001,
 		minmax => [0, 200],
-		perturb_scale => 1
+		#perturb_scale => 5
 	},
 	"rotor $rotor pid kd" => {
-		values => 1.8,
-		round_each => 0.01,
+		values => 7.581,
+		round_each => 0.001,
 		minmax => [0, 200],
-		perturb_scale => 1
+		#perturb_scale => 5
 	},
 	"rotor $rotor pid tau" => {
-		values => 3,
-		round_each => 0.01,
-		minmax => [0.01, 6],
-		perturb_scale => 0.1
+		values => 0.81217,
+
+		round_each => 0.00001,
+		minmax => [0.0001, 10],
+		#perturb_scale => 0.5
 	},
+	#"rotor $rotor pid int_min" => {
+	#	values => 0.0625,
+	#	round_each => 0.0001,
+	#	minmax => [-5, 1],
+	#	perturb_scale => 0.1
+	#},
+	#"rotor $rotor pid int_max" => {
+	#	values => 2.5,
+	#	round_each => 0.0001,
+	#	minmax => [-1, 5],
+	#	perturb_scale => 0.1
+	#},
 	#"motor $rotor hz" => {
 	#		values => 1047,
 	#		perturb_scale => 100,
@@ -115,9 +136,21 @@ my $s = PDL::Opt::Simplex::Simple->new(
 	vars => {
 		%var_init
 	},
-	ssize => 30,
+	ssize => [ 10, 5, 2.5, 1 ],
+	max_iter => 20,
 	tolerance => 0.01,
-	log => sub { my ($vars, $state) = @_; print "LOG: " . Dumper($vars, $state); },
+	log => sub {
+			my ($vars, $state) = @_;
+			our $lc++;
+
+			print Dumper($vars, $state);
+			print "^ LOG $lc ^\n";
+
+			# Rest the motor for 10s:
+			cmd("rotor $rotor target off");
+			cmd("rotor $rotor target off");
+			sleep 10;
+		},
 	f => \&run_test
 	);
 
@@ -127,27 +160,70 @@ print Dumper $s->optimize;
 exit 0;
 
 
+# https://towardsdatascience.com/on-average-youre-using-the-wrong-average-geometric-harmonic-means-in-data-analysis-2a703e21ea0
+sub harmonic_mean
+{
+	my @a = @_;
+
+	my $s = 0;
+
+	$s += 1/$_ foreach @a;
+
+	return scalar(@a)/$s;
+}
+
+# Geometric mean, but: 
+#
+# If values can be negative, then take the most negative number and increase
+# all numbers by the absoluate-value of that negative.  Then perform the
+# geo-mean:
+sub geometric_mean_adj
+{
+	my @a = @_;
+
+	my $s = 1;
+
+	my $min;
+	foreach my $v (@a)
+	{
+		$min = $v if (!defined($min) || $v < $min)
+	}
+
+	my $adj = 0;
+	$adj = (-$min)+1 if ($min <= 0);
+
+	$s *= $_+$adj foreach @a;
+
+	return $s**(1/scalar(@a)) - $adj;
+}
+
 ###########################################################################
 sub run_test
 {
 	my ($vars) = @_;
 
-	my $ret = 0;
+	our $run_count;
+	$run_count++;
+
+	my @scores;
+
+	reset_pos($init_deg);
+	push @scores, run_test_ang($next_deg, $vars);
+
+	reset_pos($next_deg);
+	push @scores, run_test_ang($init_deg, $vars);
+
+	reset_pos($init_deg/4);
+	push @scores, run_test_ang($next_deg/4, $vars);
+
+	reset_pos($next_deg/4);
+	push @scores, run_test_ang($init_deg/4, $vars);
 
 
-	#reset_pos(360);
-	#$ret += run_test_ang(360+30, $vars);
-	#reset_pos(360+30);
-	#$ret += run_test_ang(360, $vars);
+	#my $ret = harmonic_mean(@scores);
+	my $ret = geometric_mean_adj(@scores);
 
-	reset_pos(0);
-	$ret += run_test_ang(45, $vars);
-	reset_pos(45);
-	$ret += run_test_ang(0, $vars);
-
-	$ret /= 2;
-
-	print "RUN FINISHED: Average score: $ret\n";
+	print "RUN $run_count FINISHED: Average score: $ret\n";
 
 	return $ret;
 }
@@ -182,7 +258,7 @@ sub run_test_ang
 	my ($ang, $vars) = @_;
 
 #print Dumper $vars;
-	printf "========================== Kp=%.2f Ki=%.2f Kd=%.2f tau=%.2f target=%.2f\n",
+	printf "========================== Kp=%.4f Ki=%.4f Kd=%.4f tau=%.5f target=%.2f\n",
 		$vars->{"rotor $rotor pid kp"},
 		$vars->{"rotor $rotor pid ki"},
 		$vars->{"rotor $rotor pid kd"},
@@ -197,7 +273,7 @@ sub run_test_ang
 	cmd("rotor $rotor pid reset");
 	foreach my $var (keys %$vars) 
 	{
-		$vars->{$var} = 0.1 if $vars->{$var} <= 0;
+		#$vars->{$var} = 0.1 if $vars->{$var} <= 0;
 		cmd("$var $vars->{$var}");
 		cmd("$var $vars->{$var}");
 	}
@@ -212,6 +288,7 @@ sub run_test_ang
 	my $dist = 0;
 	my $count = 0;
 	my $good_count = 0;
+	my $good_count_max = 0;
 	my $start = time();
 	my $elapsed = 0;
 	my @hist;
@@ -227,6 +304,15 @@ sub run_test_ang
 
 		$dist += $last_dist;
 
+		if ($stat->{position} > $position_hi_limit ||
+			$stat->{position} < $position_lo_limit)
+		{
+			print "**** ABORT: out of range\n";
+			print Dumper($stat);
+			$dist += 1e9;
+			last;
+		}
+
 		if (@hist > 50)
 		{
 			my $first = $hist[$#hist-50]->{dist};
@@ -234,17 +320,18 @@ sub run_test_ang
 
 			if ($last_dist > 3 && $first - $last < 5)
 			{
-				print "*** ABORT: first=$first last=$last\n";
-				$dist = $dist**2;
-				last;
+				print "*** ABORT? first=$first last=$last\n";
+				#$dist = $dist**2;
+				#last;
 			}
 		}
 
 		# it is "good" if the distance between the target and current position
 		# is less than 1 degree.  Break the loop after enough "good" counts:
-		if ($last_dist < 0.5)
+		if ($last_dist < $target_accuracy_deg)
 		{
 			$good_count++;
+			$good_count_max = $good_count if $good_count > $good_count_max;
 		}
 		else
 		{
@@ -274,7 +361,9 @@ sub run_test_ang
 	my $i;
 	# oscillation
 	my $osc_dist = 0;
+	my $osc_dist_count = 0;
 	my $osc_speed = 0;
+	my $osc_speed_count = 0;
 	my ($min, $max);
 
 	for ($i = 0; $i < @hist; $i++)
@@ -298,7 +387,8 @@ sub run_test_ang
 		if ($prev_dist < 0 && $cur_dist > 0
 			|| $prev_dist > 0 && $cur_dist < 0)
 		{
-			$osc_dist++;
+			$osc_dist += abs($prev_dist) + abs($cur_dist);
+			$osc_dist_count++;
 		}
 
 		# Work to minimize the back-and-forth motion.  If we
@@ -307,7 +397,8 @@ sub run_test_ang
 		if ($prev->{speed} < 0 && $cur->{speed} > 0
 			|| $prev->{speed} > 0 && $cur->{speed} < 0)
 		{
-			$osc_speed += abs($prev->{speed} - $cur->{speed})*100;
+			$osc_speed += abs($prev->{speed}) + abs($cur->{speed})*100;
+			$osc_speed_count++;
 		}
 
 
@@ -315,23 +406,47 @@ sub run_test_ang
 
 	}
 
+	my $last_hist = $hist[$#hist];
+	my $last_dist = abs($last_hist->{target} - $last_hist->{position});
+	my $last_speed = abs($last_hist->{speed});
+
 	$rms *= 100;
 
 	# Penalize timeouts
-	$elapsed = $timeout*5 if ($elapsed > $timeout);
-		
+	$elapsed = $timeout*1.5 if ($elapsed > $timeout);
+
 
 	my $range = $max - $min;
-	my $score = $dist + $range + $elapsed**2 + 10*2**$osc_dist + $osc_speed + $rms**2;
-	#my $score = 0.5*$dist + $range**2 + 10*$elapsed**2 + 10*2**$osc;
-	printf "\nScore=%.2f: elapsed=%.2f osc-dist=%.2f osc-speed=%.2f dist=%.2f range=%.2f rms=%.2f\n\n",
+	my $range_err = abs($next_deg-$range);
+		
+	my $score = 0
+		+ 10*$dist
+		#+ $range_err**2
+		+ $elapsed**2
+		+ 10*2**$osc_dist_count		+ $osc_dist
+		+ 10*2**$osc_speed_count 	#+ $osc_speed
+		
+		- 10/$last_dist
+		- 10/$last_speed
+		- 100*$good_count
+		- 10*$good_count_max
+		
+		#+ $rms**2
+		;
+
+	printf "\nScore=%.2f: elapsed=%.2f osc-dist-count=%.2f osc-dist=%.2f osc-speed-count=%.2f osc-speed=%.2f dist=%.2f last_dist=%.3f range=%.2f range_err=%.2f rms=%.2f, gc_max=%d\n\n",
 		$score,
 		$elapsed,
+		$osc_dist_count,
 		$osc_dist,
+		$osc_speed_count,
 		$osc_speed,
 		$dist,
+		$last_dist,
 		$range,
+		$range_err,
 		$rms,
+		$good_count_max
 		;
 
 	return $score
@@ -366,29 +481,30 @@ sub reset_pos
 	cmd("reset");
 	sleep 0.1;
 
-	foreach my $var (keys %var_init) 
-	{
-		my $val = $var_init{$var};
-		$val = $val->{values} if (ref($val));
-		cmd("$var $val");
-	}
-
-	my $stat;
-
-	cmd("mv $rotor $ang") if defined $ang;
-	cmd("mv $rotor $ang") if defined $ang;
-	cmd("rotor $rotor target on");
-	cmd("rotor $rotor target on");
+	# Re-run the commands every iteration in case we need to
+	# hardware reset during the run:
+	my $good = 0;
 	do
 	{
+		foreach my $var (keys %var_init) 
+		{
+			my $val = $var_init{$var};
+			$val = $val->{values} if (ref($val));
+			cmd("$var $val");
+		}
+
+		my $stat;
+
+		cmd("mv $rotor $ang") if defined $ang;
+		cmd("rotor $rotor target on");
+
 		$stat = rotor_stat($rotor);
-		print "reset: $stat->{position} => $stat->{target}\n";
+		$good++ if (abs($stat->{target} - $stat->{position}) < $target_accuracy_deg);
+
+		print "reset[$good]: $stat->{position} => $stat->{target}\n";
 		sleep 0.5;
 	}
-	while (abs($stat->{target} - $stat->{position}) > 1);
-
-
-
+	while ($good < 3);
 }
 
 sub cmd
