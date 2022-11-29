@@ -587,7 +587,7 @@ void rotor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: rotor <rotor_name> (cal|detail|pid|target)\r\n"
+		print("Usage: rotor <rotor_name> (cal|detail|pid|target|ramptime)\r\n"
 			"Calibration assumes a linear voltage slope between degrees.\r\n"
 			"You must make 2 calibrations, and each calibration is used as\r\n"
 			"the maximum extent for the rotor. Use the `motor` command to\r\n"
@@ -619,7 +619,7 @@ void rotor(int argc, char **args)
 	{
 		if (argc < 4)
 		{
-			print("usage: <rotor_name> target (on|off)\r\n"
+			print("usage: rotor <rotor_name> target (on|off)\r\n"
 				"Turning the target off will disable tracking for that rotor\r\n");
 
 			return;
@@ -630,6 +630,15 @@ void rotor(int argc, char **args)
 		{
 			r->target_enabled = 0;
 
+			// Move these to a pid_reset() function?
+			// check `pid reset`
+			r->pid.prevError = 0;
+			r->pid.prevMeasurement = 0;
+
+			r->pid.proportional = 0;
+			r->pid.integrator = 0;
+			r->pid.differentiator = 0;
+
 
 			// Stop the motor or it will drift at any existing speed setting:
 			motor_speed(&r->motor, 0);
@@ -637,6 +646,26 @@ void rotor(int argc, char **args)
 		else
 			print("expected: on/off\r\n");
 	}
+	else if (match(args[2], "ramptime"))
+	{
+		if (argc < 4)
+		{
+			print("usage: rotor <rotor_name> ramptime <seconds>\r\n"
+				"Set the time to maximum speed in seconds, or 0 to disable\r\n");
+
+			return;
+		}
+
+		r->ramp_time = atof(args[3]);
+		if (r->ramp_time < 0)
+		{
+			print("What are you thinking?!, this is not a time\r\n"
+				"machine. Ramp time has been disabled\r\n");
+
+			r->ramp_time = 0;
+		}
+	}
+
 	else
 		printf("unexpected argument: %s\r\n", args[2]);
 }

@@ -175,7 +175,6 @@ void motor_speed(struct motor *m, float speed)
 	if (aspeed < 0.003)
 	{
 		duty_cycle = 0;
-		speed = 0;
 	}
 	else
 	{
