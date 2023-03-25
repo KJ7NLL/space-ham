@@ -295,6 +295,7 @@ void rotor_detail(struct rotor *r)
 		"  position:             %f       deg\r\n"
 		"  target:               %f       deg\r\n"
 		"  target_enabled:       %d\r\n"
+		"  ramp_time:            %f\r\n"
 		"  pid.Kp:               %f\r\n"
 		"  pid.Ki:               %f\r\n"
 		"  pid.Kd:               %f\r\n"
@@ -321,6 +322,7 @@ void rotor_detail(struct rotor *r)
 			rotor_pos(r),
 			r->target,
 			r->target_enabled,
+			r->ramp_time,
 			r->pid.Kp,
 			r->pid.Ki,
 			r->pid.Kd,
