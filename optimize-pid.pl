@@ -30,19 +30,19 @@ my ($port);
 
 $port = Device::SerialPort->new($ARGV[0]) or die "$ARGV[0]: $!";
 
-my $rotor = 'phi';
+my $rotor = 'theta';
 
-my $init_deg = 0;
-my $next_deg = 45;
+my $init_deg = 360;
+my $next_deg = 390;
 
 # Abort if it gets dangerous:
-my $position_hi_limit = 70;
-my $position_lo_limit = -70;
+my $position_hi_limit = 410;
+my $position_lo_limit = 310;
 
-
-my $timeout = 20;
-my $req_good_count = 20;
-my $target_accuracy_deg = 1.5;
+my $iteration_delay = 0.5;
+my $timeout = 30;
+my $req_good_count = 10;
+my $target_accuracy_deg = 2;
 
 my %var_init = (
 	########## theta
@@ -71,28 +71,28 @@ my %var_init = (
 
 	# phi
 	"rotor $rotor pid kp" => {
-		values =>  20.144,
+		values =>  52.891,
 		round_each => 0.001,
 		minmax => [0, 200],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values =>   0.015,
+		values =>   11.953,
 		round_each => 0.001,
 		minmax => [0, 200],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kd" => {
-		values => 7.581,
+		values => 0,
 		round_each => 0.001,
-		minmax => [0, 200],
+		minmax => [-200, 200],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid tau" => {
-		values => 0.81217,
+		values => 0.02,
 
 		round_each => 0.00001,
-		minmax => [0.0001, 10],
+		minmax => [0.0111, 10],
 		#perturb_scale => 0.5
 	},
 	#"rotor $rotor pid int_min" => {
@@ -136,7 +136,8 @@ my $s = PDL::Opt::Simplex::Simple->new(
 	vars => {
 		%var_init
 	},
-	ssize => [ 10, 5, 2.5, 1 ],
+	#ssize => [ 10, 5, 2.5, 1 ],
+	ssize => 1,
 	max_iter => 20,
 	tolerance => 0.01,
 	log => sub {
@@ -213,11 +214,11 @@ sub run_test
 	reset_pos($next_deg);
 	push @scores, run_test_ang($init_deg, $vars);
 
-	reset_pos($init_deg/4);
-	push @scores, run_test_ang($next_deg/4, $vars);
+	#reset_pos($init_deg/4);
+	#push @scores, run_test_ang($next_deg/4, $vars);
 
-	reset_pos($next_deg/4);
-	push @scores, run_test_ang($init_deg/4, $vars);
+	#reset_pos($next_deg/4);
+	#push @scores, run_test_ang($init_deg/4, $vars);
 
 
 	#my $ret = harmonic_mean(@scores);
@@ -307,7 +308,7 @@ sub run_test_ang
 		if ($stat->{position} > $position_hi_limit ||
 			$stat->{position} < $position_lo_limit)
 		{
-			print "**** ABORT: out of range\n";
+			print "**** ABORT: out of range: pos=$stat->{position}\n";
 			print Dumper($stat);
 			$dist += 1e9;
 			last;
@@ -353,7 +354,7 @@ sub run_test_ang
 			$stat->{speed}*100,
 			;
 
-		sleep(0.05);
+		sleep($iteration_delay);
 	}
 	my $rms = 0;
 	#$rms = rms_end();
@@ -426,15 +427,15 @@ sub run_test_ang
 		+ 10*2**$osc_dist_count		+ $osc_dist
 		+ 10*2**$osc_speed_count 	#+ $osc_speed
 		
-		- 10/$last_dist
-		- 10/$last_speed
+		- min(1000, 10/$last_dist)
+		- min(1000, 10/$last_speed)
 		- 100*$good_count
 		- 10*$good_count_max
 		
 		#+ $rms**2
 		;
 
-	printf "\nScore=%.2f: elapsed=%.2f osc-dist-count=%.2f osc-dist=%.2f osc-speed-count=%.2f osc-speed=%.2f dist=%.2f last_dist=%.3f range=%.2f range_err=%.2f rms=%.2f, gc_max=%d\n\n",
+	printf "\nScore=%.2f: elapsed=%.2f osc-dist-count=%.2f osc-dist=%.2f osc-speed-count=%.2f osc-speed=%.2f dist=%.2f last_dist=%.3f last_speed=%.3f range=%.2f range_err=%.2f rms=%.2f, gc_max=%d\n\n",
 		$score,
 		$elapsed,
 		$osc_dist_count,
@@ -443,6 +444,7 @@ sub run_test_ang
 		$osc_speed,
 		$dist,
 		$last_dist,
+		$last_speed,
 		$range,
 		$range_err,
 		$rms,
@@ -562,3 +564,6 @@ sub _cmd
 
 	return $ret;
 }
+
+sub max ($$) { $_[$_[0] < $_[1]] }
+sub min ($$) { $_[$_[0] > $_[1]] }
