@@ -96,15 +96,19 @@ void initGpio(void)
 	// PA04 is used for VCOMCTS and does not work for general use
 	//GPIO_PinModeSet(gpioPortA, 4, gpioModePushPull, 0);
 
-	// Configure PD4 as output and set high (VCOM_ENABLE)
-	// comment out next line to disable VCOM
-	GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
+	// Configure PD04 as output and set high (VCOM_ENABLE)
+	//
+	// Comment out next line to disable VCOM.  You can force VCOM enabled
+	// by pulling up PD04 (P31 on the WSTK) to 3.3v through a 1k resistor
+	// if you need it.
+	//
+	// Keeping this disabled makes PA04 (and PC01?) available for GPIO use,
+	// but you have to directly access the UART via PA05(tx) and PA06(rx)
+	// when PD04 is disabled.
+	//
+	//GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
 	
-	// pwm ports
-	GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
-
-	// PC01 is used for vcom rts but seems to work fine for a motor
-	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 0);
+	// PWM ports:
 	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 4, gpioModePushPull, 0);
@@ -116,6 +120,14 @@ void initGpio(void)
 	// PD01: Phi IADC
 	GPIO_PinModeSet(gpioPortD, 3, gpioModeInput, 0);
 
+	// PA00: Telescope IADC
+	GPIO_PinModeSet(gpioPortA, 0, gpioModeInput, 0);
+
+	// PA04: UNUSED IADC
+	GPIO_PinModeSet(gpioPortA, 4, gpioModeInput, 0);
+
+	// PC00: I2C SCL
+	// PC01: I2C SDA
 	GPIO_PinModeSet(I2C_SDA_PORT, I2C_SDA, gpioModeWiredAndPullUpFilter, 1);
 	GPIO_PinModeSet(I2C_SCL_PORT, I2C_SCL, gpioModeWiredAndPullUpFilter, 1);
 

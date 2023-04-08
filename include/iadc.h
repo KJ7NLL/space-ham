@@ -23,7 +23,7 @@
 #define CLK_ADC_FREQ              10000000	// CLK_ADC - 10MHz max in
 
 // Number of scan channels
-#define IADC_NUM_INPUTS 2
+#define IADC_NUM_INPUTS 4
 
 // Number of samples to average (must be a power of 2)
 #define IADC_NUM_AVG_BITS 8
@@ -36,9 +36,15 @@
 #define IADC_INPUT_0_BUSALLOC     GPIO_CDBUSALLOC_CDEVEN0_ADC0
 #define IADC_INPUT_1_BUS          CDBUSALLOC
 #define IADC_INPUT_1_BUSALLOC     GPIO_CDBUSALLOC_CDODD0_ADC0
+#define IADC_INPUT_2_BUS          ABUSALLOC
+#define IADC_INPUT_2_BUSALLOC     GPIO_ABUSALLOC_AEVEN0_ADC0
+#define IADC_INPUT_3_BUS          ABUSALLOC
+#define IADC_INPUT_3_BUSALLOC     GPIO_ABUSALLOC_AODD0_ADC0
 
 #define IADC_INPUT_0              iadcPosInputPortDPin2
 #define IADC_INPUT_1              iadcPosInputPortDPin3
+#define IADC_INPUT_2              iadcPosInputPortAPin0
+#define IADC_INPUT_3              iadcPosInputPortAPin4
 
 void initIADC(void);
 float iadc_get_result(int i);

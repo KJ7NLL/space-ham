@@ -93,6 +93,16 @@ void initIADC(void)
 	initScanTable.entries[1].includeInScan = true;
 	initScanTable.entries[1].negInput = iadcNegInputGnd;
 
+	// Telescope
+	initScanTable.entries[2].posInput = IADC_INPUT_2;
+	initScanTable.entries[2].includeInScan = true;
+	initScanTable.entries[2].negInput = iadcNegInputGnd;
+
+	// UNUSED
+	initScanTable.entries[3].posInput = IADC_INPUT_3;
+	initScanTable.entries[3].includeInScan = true;
+	initScanTable.entries[3].negInput = iadcNegInputGnd;
+
 	// Initialize IADC
 	IADC_init(IADC0, &init, &initAllConfigs);
 
@@ -100,8 +110,11 @@ void initIADC(void)
 	IADC_initScan(IADC0, &initScan, &initScanTable);
 
 	// Allocate the analog bus for ADC0 inputs
+	// Note that "IADC_INPUT_0_BUS" is a #define in iadc.h
 	GPIO->IADC_INPUT_0_BUS |= IADC_INPUT_0_BUSALLOC;
 	GPIO->IADC_INPUT_1_BUS |= IADC_INPUT_1_BUSALLOC;
+	GPIO->IADC_INPUT_2_BUS |= IADC_INPUT_2_BUSALLOC;
+	GPIO->IADC_INPUT_3_BUS |= IADC_INPUT_3_BUSALLOC;
 
 	// Clear any previous interrupt flags
 	IADC_clearInt(IADC0, _IADC_IF_MASK);
