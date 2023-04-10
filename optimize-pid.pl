@@ -51,78 +51,86 @@ my %var_init = (
 	#kd => 5,
 	#tau => 3
 	
-	# theta
-#	"rotor $rotor pid kp" => {
-#		values => 190.90,
-#		perturb_scale => 5
-#	},
-#	"rotor $rotor pid ki" => {
-#		values => 166.33,
-#		perturb_scale => 5
-#	},
-#	"rotor $rotor pid kd" => {
-#		values => 1.02,
-#		perturb_scale => 0.5
-#	},
-#	"rotor $rotor pid tau" => {
-#		values => 15.48,
-#		perturb_scale => 1
-#	},
-
-	# phi
+	# demo theta
 	"rotor $rotor pid kp" => {
-		values =>  52.891,
+		values =>  191.187,
 		round_each => 0.001,
 		minmax => [0, 200],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values =>   11.953,
+		values =>   165.745,
 		round_each => 0.001,
 		minmax => [0, 200],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kd" => {
-		values => 0,
+		values => 1.956,
 		round_each => 0.001,
 		minmax => [-200, 200],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid tau" => {
-		values => 0.02,
+		values => 4.11263,
 
 		round_each => 0.00001,
 		minmax => [0.0111, 10],
 		#perturb_scale => 0.5
 	},
-	#"rotor $rotor pid int_min" => {
-	#	values => 0.0625,
-	#	round_each => 0.0001,
-	#	minmax => [-5, 1],
-	#	perturb_scale => 0.1
-	#},
-	#"rotor $rotor pid int_max" => {
-	#	values => 2.5,
-	#	round_each => 0.0001,
-	#	minmax => [-1, 5],
-	#	perturb_scale => 0.1
-	#},
-	#"motor $rotor hz" => {
-	#		values => 1047,
-	#		perturb_scale => 100,
-	#		minmax => [900, 20000]
-	#}
-	
-	########## phi
-	#kp => 15,
-	#ki => 20,
-	#kd => 10,
-	#tau => 3
-	
-#	kp => 46.07,
-#	ki => 43.29,
-#	kd => 22.90,
-#	tau => 20.09
+
+	# big theta 
+#	"rotor $rotor pid kp" => {
+#		values =>  52.401,
+#		round_each => 0.001,
+#		minmax => [0, 200],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid ki" => {
+#		values =>   12.286,
+#		round_each => 0.001,
+#		minmax => [0, 200],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid kd" => {
+#		values => 0.185,
+#		round_each => 0.001,
+#		minmax => [-200, 200],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid tau" => {
+#		values => 0.09314,
+#
+#		round_each => 0.00001,
+#		minmax => [0.0111, 10],
+#		#perturb_scale => 0.5
+#	},
+
+	# big phi
+#	"rotor $rotor pid kp" => {
+#		values =>  52.401,
+#		round_each => 0.001,
+#		minmax => [0, 200],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid ki" => {
+#		values =>   12.286,
+#		round_each => 0.001,
+#		minmax => [0, 200],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid kd" => {
+#		values => 0.185,
+#		round_each => 0.001,
+#		minmax => [-200, 200],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid tau" => {
+#		values => 0.09314,
+#
+#		round_each => 0.00001,
+#		minmax => [0.0111, 10],
+#		#perturb_scale => 0.5
+#	},
 	);
 
 
@@ -137,7 +145,7 @@ my $s = PDL::Opt::Simplex::Simple->new(
 		%var_init
 	},
 	#ssize => [ 10, 5, 2.5, 1 ],
-	ssize => 1,
+	ssize => 3,
 	max_iter => 20,
 	tolerance => 0.01,
 	log => sub {
