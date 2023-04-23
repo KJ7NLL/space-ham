@@ -61,7 +61,7 @@ include(${BASE_LOCATION}/toolchain/efm32-base.cmake)
 # Note that "Release" has different flags.
 # See efm32-base/toolchain/efm32-base.cmake
 #set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_C_FLAGS_DEBUG "-O2 -ffast-math -Wall -Werror -Wno-error=cpp")
+set(CMAKE_C_FLAGS_DEBUG "-O2 -ffast-math -Wall -Werror -Wno-error=cpp -Wno-error=array-bounds")
 
 
 # Enable protocols / BLE if desired
