@@ -931,6 +931,48 @@ void sat(int argc, char **args)
 
 		}
 	}
+	else if (match(args[1], "demo"))
+	{
+		res = f_open(&in, "tle.bin", FA_READ);
+		if (res != FR_OK)
+		{
+			printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
+			f_close(&in);
+			return;
+		}
+
+		tle_t tle_tmp;
+		i = 1;
+		int n = 3;
+		char c = 0;
+		if (argc >= 3)
+			n = atoi(args[2]);
+
+		// Watch uses serial_read_async(&c) so watch's character is replaced.
+		// this is safe because watch never uses &c again.
+		serial_read_async(&c, 1);
+
+		do
+		{
+			res = f_read(&in, &tle_tmp, sizeof(tle_tmp), &br);
+			if (br < sizeof(tle_tmp))
+				break;
+
+			memcpy(&tle, &tle_tmp, sizeof(tle_t));
+			sat_init(&tle);
+			for (int t = 0; t < n && !serial_read_done(); t++)
+			{
+				print("\x0c");
+				status();
+				rtcc_delay_sec(1, main_idle);
+			}
+			printf("%d. %s (%d)\r\n", i, tle.sat_name, tle.catnr);
+			i++;
+		} while (res == FR_OK && !serial_read_done());
+
+		serial_read_async_cancel();
+
+	}
 	else
 		print("Sat: invalid argument\r\n");
 }
