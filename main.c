@@ -109,10 +109,10 @@ void initGpio(void)
 	//GPIO_PinModeSet(gpioPortD, 4, gpioModePushPull, 1);
 	
 	// PWM ports:
+	GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 0);
+	GPIO_PinModeSet(gpioPortC, 1, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 2, gpioModePushPull, 0);
 	GPIO_PinModeSet(gpioPortC, 3, gpioModePushPull, 0);
-	GPIO_PinModeSet(gpioPortC, 4, gpioModePushPull, 0);
-	GPIO_PinModeSet(gpioPortC, 5, gpioModePushPull, 0);
 
 	// PD00: Theta IADC
 	GPIO_PinModeSet(gpioPortD, 2, gpioModeInput, 0);

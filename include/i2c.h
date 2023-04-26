@@ -22,8 +22,8 @@
 
 #define I2C_SCL_PORT gpioPortC
 #define I2C_SDA_PORT gpioPortC
-#define I2C_SCL 0
-#define I2C_SDA 1
+#define I2C_SCL 4
+#define I2C_SDA 5
 #define I2C_TXBUFFER_SIZE 32
 
 void initI2C();
