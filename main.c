@@ -1295,7 +1295,7 @@ int main()
 {
 	FRESULT res;
 
-	struct rotor *theta = &rotors[0], *phi = &rotors[1];
+	struct rotor *theta = &rotors[0], *phi = &rotors[1], *focus = &rotors[3];
 	struct linklist *history = NULL;
 	char buf[128], *args[MAX_ARGS];
 	
@@ -1334,8 +1334,12 @@ int main()
 	theta->motor.pin2 = 1;
 
 	phi->motor.port = gpioPortC;
-	phi->motor.pin1 = 4;
-	phi->motor.pin2 = 5;
+	phi->motor.pin1 = 0;
+	phi->motor.pin2 = 1;
+
+	focus->motor.port = gpioPortC;
+	focus->motor.pin1 = 2;
+	focus->motor.pin2 = 3;
 
 	// Load calibrations from FAT
 	rotor_cal_load();
