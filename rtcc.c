@@ -186,3 +186,14 @@ void rtcc_set_clock_scale(int scale)
 {
 	rtcc_clock_scale = scale;
 }
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp)
+{
+	struct timeval tv;
+	_gettimeofday(&tv, NULL);
+
+	tp->tv_sec = tv.tv_sec;
+	tp->tv_nsec = tv.tv_usec*1000;
+
+	return 0;
+}
