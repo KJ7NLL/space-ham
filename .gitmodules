@@ -7,3 +7,6 @@
 [submodule "sgp4sdp4"]
 	path = sgp4sdp4
 	url = https://github.com/KJ7LNW/sgp4sdp4.git
+[submodule "astronomy"]
+	path = astronomy
+	url = https://github.com/cosinekitty/astronomy.git
