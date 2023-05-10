@@ -64,12 +64,12 @@ include(${BASE_LOCATION}/toolchain/efm32-base.cmake)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_POSIX_TIMERS")
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O2")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -ffast-math")
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Werror")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-error=cpp")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-error=array-bounds")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-error=missing-field-initializers")
 
 
 # Enable protocols / BLE if desired
@@ -93,6 +93,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 include_directories(${BASE_LOCATION}/include
 	include
 	sgp4sdp4
+	astronomy/source/c
 	xmodem
 	fatfs
 	)
@@ -121,6 +122,8 @@ add_executable(${PROJECT_NAME}
 	sgp4sdp4/sgp_obs.c
 	sgp4sdp4/sgp_time.c
 	sgp4sdp4/solar.c
+
+	astronomy/source/c/astronomy.c
 
 	xmodem/xmodem.c
 
