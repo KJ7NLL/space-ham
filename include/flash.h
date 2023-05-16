@@ -18,8 +18,7 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
-#define FLASH_DATA_BASE (1024*140)
-#define FLASH_FAT_BASE (FLASH_DATA_BASE + 1024*4)
+#define FLASH_FAT_BASE (1024*256)
 #define FLASH_FAT_SIZE (FLASH_SIZE - FLASH_FAT_BASE)
 #define FLASH_FAT_LBA_SIZE 512
 #define FLASH_FAT_LBA_COUNT (FLASH_FAT_SIZE/FLASH_FAT_LBA_SIZE)
