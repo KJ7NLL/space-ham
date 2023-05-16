@@ -37,6 +37,8 @@
 #include "ff.h"
 #include "fatfs-efr32.h"
 
+#include "astronomy.h"
+
 #include "linklist.h"
 #include "serial.h"
 #include "strutil.h"
@@ -1291,11 +1293,95 @@ void main_idle()
 		EMU_EnterEM1();
 }
 
+int PrintTime(astro_time_t time)
+{
+	astro_status_t status;
+	char text[TIME_TEXT_BYTES];
+
+	status = Astronomy_FormatTime(time, TIME_FORMAT_SECOND, text,
+				      sizeof(text));
+	if (status != ASTRO_SUCCESS)
+	{
+		fprintf(stderr, "\nFATAL(PrintTime): status %d\n", status);
+
+		return 1;
+	}
+	printf("%s", text);
+
+	return 0;
+}
+
+int test_astro()
+{
+	static const astro_body_t body[] = {
+		BODY_SUN, BODY_MOON, BODY_MERCURY, BODY_VENUS, BODY_EARTH, BODY_MARS,
+		BODY_JUPITER, BODY_SATURN, BODY_URANUS, BODY_NEPTUNE,
+		BODY_STAR1, 
+	};
+
+	// Kepler 22b
+	// https://en.wikipedia.org/wiki/Kepler-22
+	// https://en.wikipedia.org/wiki/Kepler-22b
+	Astronomy_DefineStar(BODY_STAR1, 19+16/60. + 52.19023/3600., 47 + 53/60. +  3.9486/3600, 644);
+
+	astro_observer_t observer;
+	astro_time_t time;
+	astro_equatorial_t equ_2000, equ_ofdate;
+	astro_horizon_t hor;
+	int i;
+	int num_bodies = sizeof(body) / sizeof(body[0]);
+
+	time = Astronomy_CurrentTime();
+
+	observer.latitude = config.observer.lat;
+	observer.longitude = config.observer.lon;
+	observer.height = config.observer.alt * 1000;	// km to m
+	printf("UTC date = ");
+	PrintTime(time);
+	printf("\r\n");
+
+	printf("BODY           RA      DEC       AZ      ALT\r\n");
+	for (i = 0; i < num_bodies; ++i)
+	{
+		/*equ_2000 =
+			Astronomy_Equator(body[i], &time, observer,
+					  EQUATOR_J2000, ABERRATION);
+		if (equ_2000.status != ASTRO_SUCCESS)
+		{
+			fprintf(stderr,
+				"ERROR: Astronomy_Equator returned status %d trying to get J2000 coordinates.\n",
+				equ_2000.status);
+			return 1;
+		}
+		*/
+
+		equ_2000 =
+		equ_ofdate =
+			Astronomy_Equator(body[i], &time, observer,
+					  EQUATOR_OF_DATE, ABERRATION);
+		if (equ_ofdate.status != ASTRO_SUCCESS)
+		{
+			fprintf(stderr,
+				"ERROR: Astronomy_Equator returned status %d trying to get coordinates of date.\n",
+				equ_ofdate.status);
+			return 1;
+		}
+
+		hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra,
+					equ_ofdate.dec, REFRACTION_NORMAL);
+		printf("%-8s %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
+		       Astronomy_BodyName(body[i]), equ_2000.ra, equ_2000.dec,
+		       hor.azimuth, hor.altitude);
+	}
+
+	return 0;
+}
+
 int main()
 {
 	FRESULT res;
 
-	struct rotor *theta = &rotors[0], *phi = &rotors[1], *focus = &rotors[3];
+	struct rotor *theta = &rotors[0], *phi = &rotors[1], *focus = &rotors[3]; // not a typo
 	struct linklist *history = NULL;
 	char buf[128], *args[MAX_ARGS];
 	
@@ -1380,6 +1466,7 @@ int main()
 			"backwards compatibility\r\n",
 			sizeof(struct motor), sizeof(((struct motor *)0)->pad));
 
+	test_astro();
 	for (;;)
 	{
 		printf("[%s@%s]# ", config.username,
