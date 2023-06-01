@@ -61,6 +61,8 @@ include(${BASE_LOCATION}/toolchain/efm32-base.cmake)
 # Note that "Release" has different flags.
 # See efm32-base/toolchain/efm32-base.cmake
 #set(CMAKE_BUILD_TYPE Release)
+
+# for clock_gettime():
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_POSIX_TIMERS")
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O2")
@@ -113,6 +115,7 @@ add_executable(${PROJECT_NAME}
 	pid.c
 	sat.c
 	i2c.c
+	stars.c
 
 	i2c/rtc-ds3231.c
 
