@@ -18,7 +18,8 @@ cmake_minimum_required(VERSION 2.8.4)
 
 set(BASE_LOCATION efm32-base)
 
-set(COMPILER_PREFIX /opt/gcc-arm-none-eabi/bin/)
+# Set this if gcc-arm-none-eabi is not in path
+#set(COMPILER_PREFIX /opt/gcc-arm-none-eabi/bin/)
 
 # Set the compiler (must be prior to project setup)
 include(${BASE_LOCATION}/toolchain/arm-gcc.cmake)
