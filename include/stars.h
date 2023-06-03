@@ -1,9 +1,6 @@
 typedef struct star_t { 
-	// Bayer name for the star.
-	char *name_bayer;
-
-	// Proper name of the star.  Usually a weird arabic name. :)
-	char *name_proper;
+	// Name for the star (followed by its "proper" name in parenthesis).
+	char *name;
 
 	// Spectral classification of the main stars in the system.
 	char *spec_type;
