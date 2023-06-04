@@ -65,6 +65,9 @@
 
 time_t boot_time;
 
+char *astro_tracked_name = NULL;
+astro_body_t astro_tracked_body = BODY_INVALID;
+
 void dispatch(int argc, char **args, struct linklist *history);
 void main_idle();
 
@@ -242,6 +245,10 @@ void status()
 
 	// print satellite status
 	sat_status();
+	if (astro_tracked_name != NULL)
+		printf("Tracking celestial body: %s\r\n", astro_tracked_name);
+	else
+		printf("No celestial body is being tracked\r\n");
 }
 
 void motor(int argc, char **args)
@@ -931,7 +938,6 @@ void sat(int argc, char **args)
 			else
 				printf("\r\nYou found %d satellites, restrict your"
 					" search and try again\r\n", found);
-
 		}
 	}
 	else if (match(args[1], "demo"))
@@ -1075,8 +1081,10 @@ void astro(int argc, char **args)
 
 	astro_observer_t observer;
 	astro_time_t time;
-	astro_equatorial_t equ_ofdate;
+	astro_equatorial_t equ_ofdate, equ_2000;
 	astro_horizon_t hor;
+	astro_illum_t imag;
+	int found_planet_idx = -1, found_star_idx = -1;
 	int i;
 	int num_bodies = sizeof(body) / sizeof(body[0]);
 
@@ -1089,61 +1097,118 @@ void astro(int argc, char **args)
 	if (argc < 2)
 		printf("usage: astro (list|search <body>|track <body>)\r\n");
 
+	else if (match(args[1], "reset"))
+	{
+		astro_tracked_name = NULL;
+		astro_tracked_body = BODY_INVALID;
+	}
+
 	else if (match(args[1], "list") ||
 		match(args[1], "search") ||
 		match(args[1], "track"))
 	{
-		printf("BODY                            AZ      ALT\r\n");
-		for (i = 0; i < num_bodies; ++i)
+		int n = 0, found = 0, idx = 0;
+		if (argc >= 3)
+			n = atoi(args[2]);
+		printf("  n. BODY                                        RA      DEC       AZ      ALT      MAG\r\n");
+		for (i = 0; i < num_bodies; i++)
 		{
-			if (argc >= 3 && !strcasestr(Astronomy_BodyName(body[i]), args[2]))
+			idx++;
+
+			if (n != idx
+				&& argc >= 3
+				&& !strcasestr(Astronomy_BodyName(body[i]), args[2]))
 				continue;
 
-			equ_ofdate =
-				Astronomy_Equator(body[i], &time, observer,
-						  EQUATOR_OF_DATE, ABERRATION);
+			found++;
+			found_planet_idx = i;
+
+			equ_2000 = Astronomy_Equator(body[i], &time, observer, EQUATOR_J2000, ABERRATION);
+			if (equ_2000.status != ASTRO_SUCCESS)
+			{
+				printf("%s: Astronomy_Equator returned status %d trying to get J2000 coordinates.\r\n",
+					Astronomy_BodyName(body[i]),
+					equ_2000.status);
+			}
+
+			equ_ofdate = Astronomy_Equator(body[i], &time, observer, EQUATOR_OF_DATE, ABERRATION);
 			if (equ_ofdate.status != ASTRO_SUCCESS)
 			{
-				fprintf(stderr,
-					"ERROR: Astronomy_Equator returned status %d trying to get coordinates of date.\n",
+				printf("%s: Astronomy_Equator returned status %d trying to get coordinates of date.\r\n",
+					Astronomy_BodyName(body[i]),
 					equ_ofdate.status);
-				return;
 			}
+
+			imag = Astronomy_Illumination(body[i], time);
 
 			hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra,
 						equ_ofdate.dec, REFRACTION_NORMAL);
-			printf("%-25s %8.2lf %8.2lf\r\n",
-			       Astronomy_BodyName(body[i]),
-			       hor.azimuth, hor.altitude);
+			printf("%3d. %-37s %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
+			       idx, Astronomy_BodyName(body[i]),
+			       equ_2000.ra, equ_2000.dec,
+			       hor.azimuth, hor.altitude, imag.mag);
 		}
 
-		for (i = 0; i < NUM_STARS && i < NUM_STARS; i++)
+		for (i = 0; i < NUM_STARS; i++)
 		{
-			if (argc >= 3
-				&& !strcasestr(stars[i].name_bayer, args[2])
-				&& !strcasestr(stars[i].name_proper, args[2]))
+			idx++;
+
+			if (n != idx
+				&& argc >= 3
+				&& !strcasestr(stars[i].name, args[2]))
 				continue;
 
-			Astronomy_DefineStar(BODY_STAR1,
+			found++;
+			found_star_idx = i;
+
+			Astronomy_DefineStar(BODY_STAR8,
 				stars[i].ra, stars[i].dec, stars[i].dist_ly);
 
-			equ_ofdate =
-				Astronomy_Equator(BODY_STAR1, &time, observer,
-						  EQUATOR_OF_DATE, ABERRATION);
+			equ_ofdate = Astronomy_Equator(BODY_STAR8, &time, observer, EQUATOR_OF_DATE, ABERRATION);
 			if (equ_ofdate.status != ASTRO_SUCCESS)
 			{
-				fprintf(stderr,
-					"ERROR: Astronomy_Equator returned status %d trying to get coordinates of date.\n",
+				printf("%s: Astronomy_Equator returned status %d trying to get coordinates of date.\r\n",
+					stars[i].name,
 					equ_ofdate.status);
-				return;
 			}
 
-			hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra,
-						equ_ofdate.dec, REFRACTION_NORMAL);
-			printf("%-25s %8.2lf %8.2lf %8.2lf\r\n",
-			       stars[i].name_bayer,
+			// Secretly use the ra/dec from Astronomy_Equator(EQUATOR_OF_DATE)
+			// for horizontal position to correct for light travel,
+			// parallax, and aberration---but show the star's
+			// actual J2000 ra/dec for informational display.
+			hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NORMAL);
+			printf("%3d. %-37s %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
+			       idx, stars[i].name,
+			       stars[i].ra, //equ_ofdate.ra,
+			       stars[i].dec,// equ_ofdate.dec,
 			       hor.azimuth, hor.altitude,
 			       stars[i].mag_vis);
+		}
+
+		if (match(args[1], "track"))
+		{
+			if (found == 1)
+			{
+				if (found_planet_idx >= 0)
+				{
+					astro_tracked_name = (char*)Astronomy_BodyName(body[found_planet_idx]);
+
+					astro_tracked_body = body[found_planet_idx];
+				}
+
+				if (found_star_idx >= 0)
+				{
+					Astronomy_DefineStar(BODY_STAR1,
+						stars[found_star_idx].ra, stars[found_star_idx].dec, stars[found_star_idx].dist_ly);
+					astro_tracked_name = stars[found_star_idx].name;
+					astro_tracked_body = BODY_STAR1;
+				}
+
+				status();
+			}
+			else
+				printf("\r\nYou found %d celestial bodies, restrict your"
+					" search and try again\r\n", found);
 		}
 	}
 	else
@@ -1379,6 +1444,40 @@ void main_idle()
 		rotors[az_rotor_idx].target = sat->sat_az;
 		rotors[el_rotor_idx].target = sat->sat_el;
 	}
+	else if (astro_tracked_body != BODY_INVALID)
+	{
+		astro_observer_t observer;
+		astro_time_t time;
+		astro_equatorial_t equ_ofdate;
+		astro_horizon_t hor;
+
+		time = Astronomy_CurrentTime();
+
+		observer.latitude = Degrees(config.observer.lat);
+		observer.longitude = Degrees(config.observer.lon);
+		observer.height = config.observer.alt * 1000;	// km to m
+
+		equ_ofdate = Astronomy_Equator(astro_tracked_body, &time, observer, EQUATOR_OF_DATE, ABERRATION);
+		if (equ_ofdate.status != ASTRO_SUCCESS)
+		{
+			printf("%s: Astronomy_Equator returned status %d trying to get coordinates of date.\r\n",
+				astro_tracked_name,
+				equ_ofdate.status);
+
+			astro_tracked_body = BODY_INVALID;
+			astro_tracked_name = NULL;
+
+			return;
+		}
+
+		hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra,
+					equ_ofdate.dec, REFRACTION_NORMAL);
+
+		rotors[az_rotor_idx].target = hor.azimuth;
+		rotors[el_rotor_idx].target = hor.altitude;
+
+
+	}
 	else
 		EMU_EnterEM1();
 }
@@ -1474,8 +1573,16 @@ int main()
 
 	for (;;)
 	{
-		printf("[%s@%s]# ", config.username,
-			sat_get() ? sat_get()->tle.sat_name : "console");
+		char *name = "console";
+
+		if (sat_get())
+		{
+			name = (char*)sat_get()->tle.sat_name;
+		}
+		else if (astro_tracked_name != NULL)
+			name = astro_tracked_name;
+
+		printf("[%s@%s]# ", config.username, name);
 
 		fflush(stdout);
 
