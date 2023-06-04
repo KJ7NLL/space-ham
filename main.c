@@ -84,7 +84,7 @@ config_t config = {
 	// Observer's geodetic co-ordinates.
 	// Lat North, Lon East in rads, Alt in km 
 	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
-	.username = "Zeke&Daddy"
+	.username = "user"
 };
 
 void initGpio(void)
@@ -154,17 +154,25 @@ void print_tm(struct tm *rtc)
 void help()
 {
 	char *h =
-		"status [watch]                                        # Display system status\r\n"
-		"mv <motor_name> <([+-]deg|n|e|s|w)> [<speed=0-100>]   # Moves antenna\r\n"
-		"(help|?|h)                                            # List of commands\r\n"
-		"flash (save|load)                                     # Save to flash\r\n"
-		"sat (load|track|list|search)                          # Satellite commands\r\n"
-		"motor <motor_name> (speed|online|offline|on|off|name|port|pin1|pin2|hz)\r\n"
-		"rotor <rotor_name> (cal|detail|pid|target)            # Rotor commands\r\n"
-		"hist|history                                          # History of commands\r\n"
-		"date                                                  # Set or get the date\r\n"
-		"debug-keys                                            # Print chars and hex\r\n"
-		"reset|reboot                                          # Reset the CPU (reboot).\r\n";
+		"status|stat                                                     # Display system status\r\n"
+		"stop                                                            # Offline all motors\r\n"
+		"date (read|set|scale)                                           # Set or get the date\r\n"
+		"config (latitude|longitude|altitude|username) <value>           # User configuration\r\n"
+		"motor <motor_name> (speed|online|offline|...)                   # Motor commands\r\n"
+		"rotor <rotor_name> (cal|detail|pid|target|ramptime)             # Rotor commands\r\n"
+		"flash (save|load)                                               # Save to flash\r\n"
+		"mv <motor_name> <([+-]deg|n|e|s|w)>                             # Moves antenna\r\n"
+		"sat (load|rx|demo|track|list|search)                            # Track satellites\r\n"
+		"astro (list|search <body>|track <body>)                         # Track celestial bodies\r\n"
+		"fat (mkfs|mount|rx <file>|cat <file>|load <file>|find|umount)   # FAT filesystem\r\n"
+		"hist|history                                                    # History of commands\r\n"
+		"reset|reboot                                                    # Reset the CPU (reboot)\r\n"
+		"watch <command>                                                 # Repeat commands 1/sec\r\n"
+		"debug-keys                                                      # Print chars and hex\r\n"
+		"i2c <hex_addr> <num_bytes>                                      # Print i2c register\r\n"
+		"\r\n"
+		"Run commands by themselves for additional help.\r\n";
+
 	print(h);
 }
 
@@ -827,7 +835,14 @@ void sat(int argc, char **args)
 
 	if (argc < 2)
 	{
-		 print("usage: sat (load|pos|detail|search|list|track)\r\n");
+		 print("usage: sat (load|rx|search|list|track|demo)\r\n"
+			"load                  # Paste a single TLE for for tracking\r\n"
+			"rx                    # Recieve TLEs via xmodem\r\n"
+			"list                  # Show all loaded satellites\r\n"
+			"search <text>         # Find satellite by name\r\n"
+			"track <satname|N>     # Track a satellite by name or number\r\n"
+			"demo [<seconds>]      # Track each satellite for N seconds\r\n"
+		 );
 
 		 return;
 	}
@@ -1063,7 +1078,7 @@ void fat(int argc, char **args)
 	}
 	else
 	{
-		printf("usage: fat (rx <file>|cat <file>|load <file>|find|mkfs|mount|umount\r\n");
+		printf("usage: fat (mkfs|mount|rx <file>|cat <file>|load <file>|find|umount\r\n");
 
 		return;
 	}
@@ -1095,7 +1110,11 @@ void astro(int argc, char **args)
 	observer.height = config.observer.alt * 1000;	// km to m
 
 	if (argc < 2)
-		printf("usage: astro (list|search <body>|track <body>)\r\n");
+		printf("usage: astro (list|search <body>|track <body>)\r\n"
+			"list                  # Show all celestial bodies\r\n"
+			"search <text>         # Find celestial body by name\r\n"
+			"track <body|N>        # Track a body by name or number\r\n"
+		);
 
 	else if (match(args[1], "reset"))
 	{
@@ -1300,7 +1319,12 @@ void dispatch(int argc, char **args, struct linklist *history)
 	{
 		if (argc < 3)
 		{
-			print("usage: config (latitude|longitude|altitude|username) <value>\r\n");
+			print("usage: config (latitude|longitude|altitude|username) <value>\r\n"
+				"latitude|lat   <deg>  # North latitude in degrees (-deg for south)\r\n"
+				"longitude|long <deg>  # East longitude in degrees (-deg for west)\r\n"
+				"altitude|alt   <km>   # Altitude in kilometers\r\n"
+				"username|user  <user> # Your callsign/name\r\n"
+			);
 			return;
 		}
 
@@ -1395,7 +1419,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 			}
 			else
 			{
-				print("i2c date set (unixtime|YYYY MM DD hh mm ss)\r\n"
+				print("date set (unixtime|YYYY MM DD hh mm ss)\r\n"
 					"  If a single integer is given, then it is seconds since Jan 1, 1970 UTC\r\n"
 					"  If 6 integers are passed, then parse as YYYY MM DD hh mm ss\r\n"
 					"  Note: clock only supports dates after the year 2000.\r\n");
@@ -1408,10 +1432,11 @@ void dispatch(int argc, char **args, struct linklist *history)
 		else
 		{
 			printf("usage: date (read|set|scale)\r\n"
-				"date read - read current time from RTC and set.\r\n"
-				"date set  - set current time.\r\n"
-				"date set (unixtime|YYYY MM DD hh mm ss)\r\n"
-				"date scale <step_size> - artifically accelerate time by step_size times normal\r\n"
+				"date read             # Read current time from RTC and set.\r\n"
+				"date set <time>       # Set current time. Date formats:\r\n"
+				"                      #  - unixtime\r\n"
+				"                      #  - YYYY MM DD hh mm ss)\r\n"
+				"date scale <scale>    # Artifically accelerate time by step_size times normal\r\n"
 				);
 
 			return;
