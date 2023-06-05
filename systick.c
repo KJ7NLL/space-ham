@@ -55,20 +55,29 @@ void SysTick_Handler(void)
 		else if (rotor->target > rotor->cal2.deg)
 			rotor->target = rotor->cal2.deg;
 
-		// Try to reach the closest degree angle.  For example, if at 360 
-		// and the rotor target is set to 630=360+270, then move to 270 instead.
 		float rpos = rotor_pos(rotor);
 		float rtarget = rotor->target;
 
-		if (rtarget+360 <= rotor->cal2.deg &&
-			fabs(rpos - rtarget) > fabs(rpos - (rtarget+360)))
+		// Return to relative positioning when we are within 90 degrees
+		// so it will not backtrack
+		if (fabs(rtarget - rpos) < 90)
+			rotor->target_absolute = 0;
+
+		if (!rotor->target_absolute)
 		{
-			rotor->target = rtarget + 360;
-		}
-		else if (rtarget-360 >= rotor->cal1.deg &&
-			fabs(rpos - rtarget) > fabs(rpos - (rtarget-360)))
-		{
-			rotor->target = rtarget - 360;
+			// Try to reach the closest degree angle.  For example, if at 360
+			// and the rotor target is set to 630=360+270, then move to 270 instead.
+
+			if (rtarget+360 <= rotor->cal2.deg &&
+				fabs(rpos - rtarget) > fabs(rpos - (rtarget+360)))
+			{
+				rotor->target = rtarget + 360;
+			}
+			else if (rtarget-360 >= rotor->cal1.deg &&
+				fabs(rpos - rtarget) > fabs(rpos - (rtarget-360)))
+			{
+				rotor->target = rtarget - 360;
+			}
 		}
 
 		float range = rotor->cal2.deg - rotor->cal1.deg;

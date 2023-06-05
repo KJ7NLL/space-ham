@@ -86,6 +86,8 @@ struct rotor
 			PIDController pid;
 
 			float ramp_time;
+
+			char target_absolute;
 		};
 
 		char pad[256];

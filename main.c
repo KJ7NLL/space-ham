@@ -706,10 +706,19 @@ void mv(int argc, char **args)
 
 	float deg;
 
-	if (argc < 3)
+	if (argc != 3)
 	{
-		print("mv <motor_name> <([+-]deg|n|e|s|w)>\r\n"
-			"Move rotor to a degree angle. North is 0 deg.\r\n");
+		print("mv <motor_name> <([=+-]deg|n|e|s|w)>\r\n"
+			"Move rotor to a degree angle.\r\n"
+			"<deg>                 # Move to nearest <deg> mod 360\r\n"
+			"=<deg>                # Move to absolute position <deg>\r\n"
+			"+<deg>                # Add <deg> degrees to current position\r\n"
+			"-<deg>                # Subtract <deg> degrees from current position\r\n"
+			"north|n               # Point north (deg=0)\r\n"
+			"east|e                # Point east  (deg=90)\r\n"
+			"south|s               # Point south (deg=180)\r\n"
+			"west|w                # Point west  (deg=270)\r\n"
+			);
 		return;
 	}
 
@@ -728,12 +737,18 @@ void mv(int argc, char **args)
 		return;
 	}
 
-	deg = atof(args[2]);
 	switch (tolower(args[2][0]))
 	{
 		case '+':
 		case '-':
+			deg = atof(args[2]);
 			deg = r->target + deg;
+			r->target_absolute = 1;
+			break;
+
+		case '=':
+			deg = atof(args[2]+1);
+			r->target_absolute = 1;
 			break;
 
 		case 'w':
@@ -750,6 +765,10 @@ void mv(int argc, char **args)
 
 		case 'n':
 			deg = 0;
+			break;
+
+		default:
+			deg = atof(args[2]);
 			break;
 	}
 
