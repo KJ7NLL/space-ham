@@ -733,7 +733,12 @@ void mv(int argc, char **args)
 	if (!r->cal1.ready || !r->cal2.ready)
 	{
 		printf("Rotor %s is not calibrated, please calibrate and try again.\r\n", r->motor.name);
+		return;
+	}
 
+	if (!r->target_enabled)
+	{
+		printf("Rotor target is disabled. Use `rotor %s target on`\r\n", r->motor.name);
 		return;
 	}
 
