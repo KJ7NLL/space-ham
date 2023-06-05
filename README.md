@@ -13,6 +13,7 @@ Part of doing that is creating an antenna rotor that can follow a satellite in t
 - We are using the [sgp4sdp4 library](https://github.com/KJ7LNW/sgp4sdp4) that was ported from Pascal to C by [Neoklis, 5B4AZ](http://www.5b4az.org) to track orbiting satellites
 - The pid controller that sets the PWM duty_cycle for each rotor to track satellites was written by [Philip Salmony](https://github.com/pms67/PID)
 - [FatFs by ChaN](http://elm-chan.org/fsw/ff/00index_e.html)
+- Celestial body tracking using [Astronomy Engine](https://github.com/cosinekitty/astronomy)
 
 ### Features
 
