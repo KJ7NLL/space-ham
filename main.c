@@ -170,6 +170,7 @@ void help()
 		"watch <command>                                                 # Repeat commands 1/sec\r\n"
 		"debug-keys                                                      # Print chars and hex\r\n"
 		"i2c <hex_addr> <num_bytes>                                      # Print i2c register\r\n"
+		"free                                                            # Print memory info\r\n"
 		"\r\n"
 		"Run commands by themselves for additional help.\r\n";
 
@@ -1258,6 +1259,19 @@ void astro(int argc, char **args)
 		printf("unkown sub-command: %s\r\n", args[1]);
 }
 
+void meminfo()
+{
+	// 0x20000000 is the memory base on the EFR32:
+	char *p = malloc(1);
+	printf("heap : %p\r\n", p);
+	printf("stack: %p\r\n", &p);
+	printf("heap used : %5d bytes\r\n", (int)p - 0x20000000);
+	printf("stack used: %5d bytes\r\n", (0x20000000+96*1024)- (int)(&p));
+	free(p);
+
+	printf("sizeof(rotors): %d bytes\r\n", sizeof(rotors));
+}
+
 void dispatch(int argc, char **args, struct linklist *history)
 {
 	int i, c;
@@ -1275,6 +1289,11 @@ void dispatch(int argc, char **args, struct linklist *history)
 	else if (match(args[0], "watch"))
 	{
 		watch(argc, args, history);
+	}
+
+	else if (match(args[0], "free"))
+	{
+		meminfo();
 	}
 
 	else if (match(args[0], "debug-keys"))
@@ -1549,6 +1568,20 @@ int main()
 	initUsart0();
 	print("\x0c\r\n");
 
+	// These should be compiler errors:
+	// Make sure that the structures are NOT larger then the padding
+	if (sizeof(struct rotor) > sizeof(((struct rotor *)0)->pad))
+		printf("Warning: struct rotor (%d) is bigger than its pad (%d), increase pad size for flash "
+			"backwards compatibility\r\n",
+			sizeof(struct rotor), sizeof(((struct rotor *)0)->pad));
+
+	if (sizeof(struct motor) > sizeof(((struct motor *)0)->pad))
+		printf("Warning: struct motor (%d) is bigger than its pad (%d), increase pad size for flash "
+			"backwards compatibility\r\n",
+			sizeof(struct motor), sizeof(((struct motor *)0)->pad));
+
+	meminfo();
+
 	initIADC();
 	initI2C();
 
@@ -1607,18 +1640,6 @@ int main()
 
 	status();
 	print("\r\n");
-
-	// These should be compiler errors:
-	// Make sure that the structures are NOT larger then the padding
-	if (sizeof(struct rotor) > sizeof(((struct rotor *)0)->pad))
-		printf("Warning: struct rotor (%d) is bigger than its pad (%d), increase pad size for flash "
-			"backwards compatibility\r\n",
-			sizeof(struct rotor), sizeof(((struct rotor *)0)->pad));
-
-	if (sizeof(struct motor) > sizeof(((struct motor *)0)->pad))
-		printf("Warning: struct motor (%d) is bigger than its pad (%d), increase pad size for flash "
-			"backwards compatibility\r\n",
-			sizeof(struct motor), sizeof(((struct motor *)0)->pad));
 
 	for (;;)
 	{
