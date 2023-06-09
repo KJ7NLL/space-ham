@@ -35,6 +35,20 @@
 #include "strutil.h"
 #include "iadc.h"
 
+#define ROTOR_CAL_MAGIC 0x458FD1E9
+
+// Rotor calibration file header (cal.bin)
+struct rotor_cal_header
+{
+	uint32_t magic;
+
+	uint32_t version;
+	uint32_t size;
+	uint32_t n;
+
+	char pad[96];
+};
+
 struct rotor rotors[NUM_ROTORS];
 
 // These motors will reference the motor in each rotor.
@@ -342,12 +356,117 @@ void rotor_detail(struct rotor *r)
 
 void rotor_cal_load()
 {
-	f_read_file("cal.bin", rotors, sizeof(rotors));
+	struct rotor_cal_header h;
+
+	uint32_t i;
+
+	char *filename = "cal.bin";
+
+	FRESULT res = FR_OK;  /* API result code */
+	FIL in;              /* File object */
+	UINT br;          /* Bytes written */
+
+	res = f_open(&in, filename, FA_READ);
+	if (res != FR_OK)
+	{
+		printf("%s: open error %d: %s\r\n", filename, res, ff_strerror(res));
+		return;
+	}
+
+	res = f_read(&in, &h, sizeof(h), &br);
+	if (res != FR_OK || br != sizeof(h))
+	{
+		printf("%s[header]: read error %d: %s (bytes read=%d/%d)\r\n",
+			filename, res, ff_strerror(res), br, sizeof(h));
+	}
+
+	// Load cal.bin version 1 files
+	if (h.magic == ROTOR_CAL_MAGIC && h.version == 1)
+	{
+		for (i = 0; i < h.n; i++)
+		{
+			uint32_t len = h.size;
+			if (sizeof(struct rotor) < len)
+				len = sizeof(struct rotor);
+
+			f_lseek(&in, sizeof(h) + i * h.size);
+			res = f_read(&in, &rotors[i], len, &br);
+			if (res != FR_OK || br != len)
+			{
+				printf("%s[%ld]: V1: read error %d: %s (bytes read=%d/%ld)\r\n",
+					filename, i, res, ff_strerror(res), br, len);
+			}
+		}
+	}
+	else
+	{
+		// Load version 0 files if there is no header
+		for (i = 0; i < NUM_ROTORS; i++)
+		{
+			uint32_t len = 256;
+			if (sizeof(struct rotor) < len)
+				len = sizeof(struct rotor);
+
+			f_lseek(&in, i * 256);
+
+			res = f_read(&in, &rotors[i], len, &br);
+			if (res != FR_OK || br != len)
+			{
+				printf("%s[%ld]: V0: read error %d: %s (bytes read=%d/%ld)\r\n",
+					filename, i, res, ff_strerror(res), br, len);
+			}
+		}
+	}
+
+	f_close(&in);
 }
 
 void rotor_cal_save()
 {
-	f_write_file("cal.bin", rotors, sizeof(rotors));
+	struct rotor_cal_header h;
+
+	FRESULT res = FR_OK;  /* API result code */
+	FIL out;              /* File object */
+	UINT bw;          /* Bytes written */
+
+	char *filename = "cal.bin";
+
+	size_t len;
+
+	res = f_open(&out, filename, FA_CREATE_ALWAYS | FA_WRITE);
+	if (res != FR_OK)
+	{
+		printf("%s: open error %d: %s\r\n", filename, res, ff_strerror(res));
+		return;
+	}
+
+	memset(&h, 0, sizeof(h));
+
+	// Write calibration file version 1 format:
+	//   The structure defines the number of records
+	//   and the size of each record.
+	h.magic = ROTOR_CAL_MAGIC;
+	h.version = 1;
+	h.size = sizeof(struct rotor);
+	h.n = NUM_ROTORS;
+
+	len = sizeof(h);
+	res = f_write(&out, &h, len, &bw);
+	if (res != FR_OK || bw != len)
+	{
+		printf("%s: write error %d: %s (bytes written=%d/%d)\r\n",
+			filename, res, ff_strerror(res), bw, len);
+	}
+
+	len = sizeof(rotors);
+	res = f_write(&out, rotors, len, &bw);
+	if (res != FR_OK || bw != len)
+	{
+		printf("%s: write error %d: %s (bytes written=%d/%d)\r\n",
+			filename, res, ff_strerror(res), bw, len);
+	}
+
+	f_close(&out);
 }
 
 // Set the target of the rotor to the current position and set motor speed to 0.
