@@ -248,7 +248,7 @@ FRESULT f_read_file(char *filename, void *data, size_t len)
 	res = f_read(&in, data, len, &br);
 	if (res != FR_OK || br != len)
 	{
-		printf("%s: read error %d: %s (bytes written=%d/%d)\r\n",
+		printf("%s: read error %d: %s (bytes read=%d/%d)\r\n",
 			filename, res, ff_strerror(res), br, len);
 	}
 
