@@ -1570,11 +1570,6 @@ int main()
 
 	// These should be compiler errors:
 	// Make sure that the structures are NOT larger then the padding
-	if (sizeof(struct rotor) > sizeof(((struct rotor *)0)->pad))
-		printf("Warning: struct rotor (%d) is bigger than its pad (%d), increase pad size for flash "
-			"backwards compatibility\r\n",
-			sizeof(struct rotor), sizeof(((struct rotor *)0)->pad));
-
 	if (sizeof(struct motor) > sizeof(((struct motor *)0)->pad))
 		printf("Warning: struct motor (%d) is bigger than its pad (%d), increase pad size for flash "
 			"backwards compatibility\r\n",

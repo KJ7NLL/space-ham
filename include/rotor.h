@@ -72,26 +72,20 @@ struct rotor_cal
 
 struct rotor
 {
-	union {
-		struct {
-			struct motor motor;
-			struct rotor_cal cal1, cal2;
-			
-			int iadc;
+	struct motor motor;
+	struct rotor_cal cal1, cal2;
 
-			float target;
+	int iadc;
 
-			char target_enabled;
+	float target;
 
-			PIDController pid;
+	char target_enabled;
 
-			float ramp_time;
+	PIDController pid;
 
-			char target_absolute;
-		};
+	float ramp_time;
 
-		char pad[256];
-	};
+	char target_absolute;
 };
 
 extern struct rotor rotors[NUM_ROTORS];
