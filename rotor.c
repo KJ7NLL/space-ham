@@ -35,7 +35,8 @@
 #include "strutil.h"
 #include "iadc.h"
 
-#define ROTOR_CAL_MAGIC 0x458FD1E9
+#define ROTOR_CAL_MAGIC   0x458FD1E9
+#define ROTOR_CUR_VERSION 1
 
 // Rotor calibration file header (cal.bin)
 struct rotor_cal_header
@@ -76,6 +77,8 @@ void initRotors()
 		rotors[i].pid.int_max = +1;
 		rotors[i].pid.out_min = -1;
 		rotors[i].pid.out_max = +1;
+
+		rotors[i].version = ROTOR_CUR_VERSION;
 
 		motors[i] = &rotors[i].motor;
 	}
@@ -404,6 +407,7 @@ void rotor_cal_load()
 		for (i = 0; i < NUM_ROTORS; i++)
 		{
 			uint32_t len = 256;
+			memset(&rotors[i], 0, sizeof(struct rotor));
 			if (sizeof(struct rotor) < len)
 				len = sizeof(struct rotor);
 
@@ -433,6 +437,8 @@ void rotor_cal_save()
 
 	size_t len;
 
+	int i;
+
 	res = f_open(&out, filename, FA_CREATE_ALWAYS | FA_WRITE);
 	if (res != FR_OK)
 	{
@@ -459,6 +465,10 @@ void rotor_cal_save()
 	}
 
 	len = sizeof(rotors);
+
+	for (i = 0; i < NUM_ROTORS; i++)
+		rotors[i].version = ROTOR_CUR_VERSION;
+
 	res = f_write(&out, rotors, len, &bw);
 	if (res != FR_OK || bw != len)
 	{

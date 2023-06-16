@@ -72,6 +72,8 @@ struct rotor_cal
 
 struct rotor
 {
+	// Version 0
+	// Do not re-order
 	struct motor motor;
 	struct rotor_cal cal1, cal2;
 
@@ -86,6 +88,13 @@ struct rotor
 	float ramp_time;
 
 	char target_absolute;
+
+	// Version 1
+	char version;
+
+	float offset;
+
+	struct rotor_cal cal[90];
 };
 
 extern struct rotor rotors[NUM_ROTORS];
