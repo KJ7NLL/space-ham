@@ -25,9 +25,28 @@ set(BASE_LOCATION efm32-base)
 include(${BASE_LOCATION}/toolchain/arm-gcc.cmake)
 
 ##### Project Setup #####
+# Set build
 
-# Configure project and languages
-project(space-ham C CXX ASM)
+# Note that "Release" has different flags.
+# See efm32-base/toolchain/efm32-base.cmake
+set(CMAKE_BUILD_TYPE Release)
+
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE DEBUG)
+endif ()
+
+# for clock_gettime():
+set(MY_C_FLAGS "${MY_C_FLAGS} -D_POSIX_TIMERS")
+
+set(MY_C_FLAGS "${MY_C_FLAGS} -fdiagnostics-color")
+
+set(MY_C_FLAGS "${MY_C_FLAGS} -O2")
+
+set(MY_C_FLAGS "${MY_C_FLAGS} -Wall")
+set(MY_C_FLAGS "${MY_C_FLAGS} -Werror")
+set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=cpp")
+set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=array-bounds")
+set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=missing-field-initializers")
 
 # ${DEVICE} sets the target specific model name
 if (NOT DEVICE)
@@ -45,11 +64,6 @@ endif ()
 # When ${JLINK_SERVER_IP} is set, JLink will try to connect over IP to a JLink server
 # set(JLINK_SERVER_IP 127.0.0.1)
 
-# Set build
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE DEBUG)
-endif ()
-
 ##### Modules #####
 
 # Libraries can be added to the LIBS variable
@@ -58,23 +72,11 @@ endif ()
 # Add base libs (emlib, CMSIS, device files)
 include(${BASE_LOCATION}/toolchain/efm32-base.cmake)
 
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${MY_C_FLAGS}")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${MY_C_FLAGS}")
 
-# Note that "Release" has different flags.
-# See efm32-base/toolchain/efm32-base.cmake
-#set(CMAKE_BUILD_TYPE Release)
-
-# for clock_gettime():
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_POSIX_TIMERS")
-
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fdiagnostics-color")
-
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O2")
-
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Werror")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-error=cpp")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-error=array-bounds")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wno-error=missing-field-initializers")
+# Configure project and languages
+project(space-ham C ASM)
 
 
 # Enable protocols / BLE if desired
@@ -92,16 +94,6 @@ add_subdirectory(${BASE_LOCATION}/hardware)
 set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map -Wl,--gc-sections -Wl,-v -u _printf_float")
 
 ##### Files #####
-
-# Add project headers
-#include_directories(bsp)
-include_directories(${BASE_LOCATION}/include
-	./include
-	sgp4sdp4
-	astronomy/source/c
-	xmodem
-	fatfs
-	)
 
 # Generate executable and link
 add_executable(${PROJECT_NAME}
@@ -137,6 +129,16 @@ add_executable(${PROJECT_NAME}
 	fatfs-xmodem.c
 	fatfs/ff.c
 	)
+
+# Add project headers
+target_include_directories(${PROJECT_NAME} PRIVATE
+       ${BASE_LOCATION}/include
+       include
+       sgp4sdp4
+       astronomy/source/c
+       xmodem
+       fatfs
+       )
 
 efm32_configure_linker_addresses(${PROJECT_NAME})
 
