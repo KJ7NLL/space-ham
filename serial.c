@@ -41,7 +41,7 @@
 
 volatile unsigned char read_buf[READ_BUF_SIZE];
 volatile int read_buf_cur = 0, read_buf_next = 0;
-volatile int bytes_read = 0;
+volatile int serial_read_async_bytes_read = 0;
 
 // Receive data buf provided by user code
 volatile unsigned char *bufrx = NULL;
@@ -130,7 +130,7 @@ int _read_buf_to_bufrx()
 		i++;
 	}
 
-	bytes_read += i;
+	serial_read_async_bytes_read += i;
 
 	return i;
 }
@@ -205,13 +205,8 @@ void serial_read_async(void *s, int len)
 	USART_IntDisable(USART0, USART_IEN_RXDATAV);
 	bufrx = s;
 	bufrxlen = len;
-	bytes_read = 0;
+	serial_read_async_bytes_read = 0;
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
-}
-
-inline int serial_read_async_bytes_read()
-{
-	return bytes_read;
 }
 
 void serial_read_async_cancel()
@@ -219,7 +214,7 @@ void serial_read_async_cancel()
 	USART_IntDisable(USART0, USART_IEN_RXDATAV);
 	bufrxlen = 0;
 	bufrx = NULL;
-	bytes_read = 0;
+	serial_read_async_bytes_read = 0;
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 }
 
@@ -270,7 +265,7 @@ int serial_read_timeout(void *s, int len, float timeout)
 			EMU_EnterEM1();
 	}
 
-	count = serial_read_async_bytes_read();
+	count = serial_read_async_bytes_read;
 	
 	serial_read_async_cancel();
 
