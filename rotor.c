@@ -131,7 +131,7 @@ int motor_online(struct motor *m)
 
 int rotor_valid(struct rotor *r)
 {
-	return r != NULL && motor_valid(&r->motor) && r->cal1.ready && r->cal2.ready;
+	return r != NULL && motor_valid(&r->motor) && r->cal[0].ready && r->cal[1].ready;
 }
 
 int rotor_online(struct rotor *r)
@@ -146,13 +146,13 @@ float rotor_pos(struct rotor *r)
 
 	v = iadc_get_result(r->iadc);
 
-	v_range = r->cal2.v - r->cal1.v;
+	v_range = r->cal[1].v - r->cal[0].v;
 	if (v_range != 0)
-		v_frac = (v - r->cal1.v) / v_range;
+		v_frac = (v - r->cal[0].v) / v_range;
 	else
 		v_frac = 0;
 
-	return r->cal1.deg + v_frac * (r->cal2.deg - r->cal1.deg);
+	return r->cal[0].deg + v_frac * (r->cal[1].deg - r->cal[0].deg);
 }
 
 void motor_init(struct motor *m)
@@ -329,12 +329,12 @@ void rotor_detail(struct rotor *r)
 		"  pid.differentiator:   %f\r\n"
 		"  pid.out:              %f\r\n",
 			r->motor.name,
-			r->cal1.v * 1000,
-			r->cal1.deg,
-			r->cal1.ready,
-			r->cal2.v * 1000,
-			r->cal2.deg,
-			r->cal2.ready,
+			r->cal[0].v * 1000,
+			r->cal[0].deg,
+			r->cal[0].ready,
+			r->cal[1].v * 1000,
+			r->cal[1].deg,
+			r->cal[1].ready,
 			r->iadc,
 			rotor_pos(r),
 			r->target,
@@ -419,6 +419,17 @@ void rotor_cal_load()
 				printf("%s[%ld]: V0: read error %d: %s (bytes read=%d/%ld)\r\n",
 					filename, i, res, ff_strerror(res), br, len);
 			}
+		}
+	}
+
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		// Upgrade rotor structures if they are an old version
+		if (rotors[i].version < 1)
+		{
+			rotors[i].cal[0] = rotors[i].old_cal1;
+			rotors[i].cal[1] = rotors[i].old_cal2;
+			rotors[i].version = 1;
 		}
 	}
 

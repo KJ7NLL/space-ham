@@ -75,7 +75,10 @@ struct rotor
 	// Version 0
 	// Do not re-order
 	struct motor motor;
-	struct rotor_cal cal1, cal2;
+
+	// The below calibrations are no longer used, but keep them so we can
+	// load and upgrade old calibration files:
+	struct rotor_cal old_cal1, old_cal2;
 
 	int iadc;
 

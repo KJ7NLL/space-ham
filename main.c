@@ -212,9 +212,9 @@ void status()
 	{
 		printf("%s cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f mV/deg\r\n", 
 			rotors[i].motor.name,
-			rotors[i].cal1.deg, rotors[i].cal2.deg,
-			rotors[i].cal1.v, rotors[i].cal2.v,
-			(rotors[i].cal2.v - rotors[i].cal1.v) / (rotors[i].cal2.deg - rotors[i].cal1.deg) * 1000
+			rotors[i].cal[0].deg, rotors[i].cal[1].deg,
+			rotors[i].cal[0].v, rotors[i].cal[1].v,
+			(rotors[i].cal[1].v - rotors[i].cal[0].v) / (rotors[i].cal[1].deg - rotors[i].cal[0].deg) * 1000
 			);
 	}
 
@@ -548,8 +548,8 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 
 	if (match(args[1], "reset"))
 	{
-		memset(&r->cal1, 0, sizeof(r->cal1));
-		memset(&r->cal2, 0, sizeof(r->cal2));
+		memset(&r->cal[0], 0, sizeof(r->cal[0]));
+		memset(&r->cal[1], 0, sizeof(r->cal[1]));
 
 		printf("Calibration reset: %s\r\n", r->motor.name);
 
@@ -562,51 +562,51 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 	cal.v = v;
 	cal.ready = 1;
 
-	if (!r->cal1.ready && !r->cal2.ready)
+	if (!r->cal[0].ready && !r->cal[1].ready)
 	{
-		r->cal1 = cal;
+		r->cal[0] = cal;
 	}
-	else if (r->cal1.ready && !r->cal2.ready)
+	else if (r->cal[0].ready && !r->cal[1].ready)
 	{
-		if (deg > r->cal1.deg)
+		if (deg > r->cal[0].deg)
 		{
-			r->cal2 = cal;
+			r->cal[1] = cal;
 		}
 		else
 		{
-			r->cal2 = r->cal1;
-			r->cal1 = cal;
+			r->cal[1] = r->cal[0];
+			r->cal[0] = cal;
 		}
 	}
-	else if (!r->cal1.ready && r->cal2.ready)
+	else if (!r->cal[0].ready && r->cal[1].ready)
 	{
-		if (deg > r->cal2.deg)
+		if (deg > r->cal[1].deg)
 		{
-			r->cal1 = r->cal2;
-			r->cal2 = cal;
+			r->cal[0] = r->cal[1];
+			r->cal[1] = cal;
 		}
 		else
 		{
-			r->cal1 = cal;
+			r->cal[0] = cal;
 		}
 	}
 	else
 	{
-		if (deg < r->cal2.deg)
+		if (deg < r->cal[1].deg)
 		{	
-			r->cal1 = cal;
+			r->cal[0] = cal;
 		}
 		else
 		{
-			r->cal2 = cal;
+			r->cal[1] = cal;
 		}
 	}
 
-	if (!r->cal1.ready || !r->cal2.ready)
+	if (!r->cal[0].ready || !r->cal[1].ready)
 	{
 		print("~~~Not done yet! Please enter cal 2.~~~\r\n");
 	}
-	else if (r->cal1.ready && r->cal2.ready)
+	else if (r->cal[0].ready && r->cal[1].ready)
 	{
 		print("~~~Done calibrating!~~~\r\n");
 	}
@@ -731,7 +731,7 @@ void mv(int argc, char **args)
 		return;
 	}
 
-	if (!r->cal1.ready || !r->cal2.ready)
+	if (!r->cal[0].ready || !r->cal[1].ready)
 	{
 		printf("Rotor %s is not calibrated, please calibrate and try again.\r\n", r->motor.name);
 		return;
@@ -778,10 +778,10 @@ void mv(int argc, char **args)
 			break;
 	}
 
-	if (deg < r->cal1.deg || deg > r->cal2.deg)
+	if (deg < r->cal[0].deg || deg > r->cal[1].deg)
 	{
 		printf("Cannot move rotor outside of calibrated range: %.2f !< %.2f !< %.2f\r\n",
-			r->cal1.deg, deg, r->cal2.deg);
+			r->cal[0].deg, deg, r->cal[1].deg);
 
 		return;
 	}
