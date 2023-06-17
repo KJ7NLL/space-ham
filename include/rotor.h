@@ -98,6 +98,8 @@ struct rotor
 	float offset;
 
 	struct rotor_cal cal[90];
+
+	int cal_count;
 };
 
 extern struct rotor rotors[NUM_ROTORS];
@@ -109,11 +111,6 @@ void initRotors();
 
 void motor_init(struct motor *m);
 void motor_speed(struct motor *m, float speed);
-
-int motor_valid(struct motor *m);
-int motor_online(struct motor *m);
-int rotor_valid(struct rotor *r);
-int rotor_online(struct rotor *r);
 
 float rotor_pos(struct rotor *r);
 
@@ -127,3 +124,46 @@ void rotor_cal_load();
 void rotor_cal_save();
 
 void rotor_suspend_all();
+
+static inline int motor_valid(struct motor *m)
+{
+	return m != NULL && m->pwm_Hz > 0 &&
+		(m->port == gpioPortA ||
+			m->port == gpioPortB ||
+			m->port == gpioPortC ||
+			m->port == gpioPortD);
+}
+
+static inline int motor_online(struct motor *m)
+{
+	return m != NULL && m->online && motor_valid(m);
+}
+
+static inline int rotor_valid(struct rotor *r)
+{
+	return r != NULL && motor_valid(&r->motor) && r->cal_count >= 2;
+}
+
+static inline int rotor_online(struct rotor *r)
+{
+	return r != NULL && rotor_valid(r) && motor_online(&r->motor) && r->target_enabled;
+}
+
+// rotor_cal_min/max return the calibration structure with the minimum or
+// maximum degree angle. If there are no calibrations, then both functions
+// return NULL.
+static inline struct rotor_cal *rotor_cal_min(struct rotor *r)
+{
+	if (r->cal_count == 0)
+		return NULL;
+
+	return &r->cal[0];
+}
+
+static inline struct rotor_cal *rotor_cal_max(struct rotor *r)
+{
+	if (r->cal_count == 0)
+		return NULL;
+
+	return &r->cal[r->cal_count - 1];
+}

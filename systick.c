@@ -50,10 +50,10 @@ void SysTick_Handler(void)
 			continue;
 
 		// Safety: keep the target in range of cal1.deg and cal2.deg:
-		if (rotor->target < rotor->cal[0].deg)
-			rotor->target = rotor->cal[0].deg;
-		else if (rotor->target > rotor->cal[1].deg)
-			rotor->target = rotor->cal[1].deg;
+		if (rotor->target < rotor_cal_min(rotor)->deg)
+			rotor->target = rotor_cal_min(rotor)->deg;
+		else if (rotor->target > rotor_cal_max(rotor)->deg)
+			rotor->target = rotor_cal_max(rotor)->deg;
 
 		float rpos = rotor_pos(rotor);
 		float rtarget = rotor->target;
@@ -68,21 +68,21 @@ void SysTick_Handler(void)
 			// Try to reach the closest degree angle.  For example, if at 360
 			// and the rotor target is set to 630=360+270, then move to 270 instead.
 
-			if (rtarget+360 <= rotor->cal[1].deg &&
+			if (rtarget+360 <= rotor_cal_max(rotor)->deg &&
 				fabs(rpos - rtarget) > fabs(rpos - (rtarget+360)))
 			{
 				rotor->target = rtarget + 360;
 			}
-			else if (rtarget-360 >= rotor->cal[0].deg &&
+			else if (rtarget-360 >= rotor_cal_min(rotor)->deg &&
 				 fabs(rpos - rtarget) > fabs(rpos - (rtarget-360)))
 			{
 				rotor->target = rtarget - 360;
 			}
 		}
 
-		float range = rotor->cal[1].deg - rotor->cal[0].deg;
-		float target = (rotor->target - rotor->cal[0].deg) / range;
-		float pos = (rpos - rotor->cal[0].deg) / range;
+		float range = rotor_cal_max(rotor)->deg - rotor_cal_min(rotor)->deg;
+		float target = (rotor->target - rotor_cal_min(rotor)->deg) / range;
+		float pos = (rpos - rotor_cal_min(rotor)->deg) / range;
 		float newspeed = PIDController_Update(&rotor->pid, target, pos);
 
 		// Limit the speed increse to stay under a maximum ramping time:

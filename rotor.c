@@ -115,44 +115,23 @@ struct motor *motor_get(char *name)
 		return NULL;
 }
 
-int motor_valid(struct motor *m)
-{
-	return m != NULL && m->pwm_Hz > 0 &&
-		(m->port == gpioPortA || 
-			m->port == gpioPortB || 
-			m->port == gpioPortC || 
-			m->port == gpioPortD);
-}
-
-int motor_online(struct motor *m)
-{
-	return m != NULL && m->online && motor_valid(m);
-}
-
-int rotor_valid(struct rotor *r)
-{
-	return r != NULL && motor_valid(&r->motor) && r->cal[0].ready && r->cal[1].ready;
-}
-
-int rotor_online(struct rotor *r)
-{
-	return r != NULL && rotor_valid(r) && motor_online(&r->motor) && r->target_enabled;
-}
-
 // Return the degree position of the motor baised on the voltage and calibrated values
 float rotor_pos(struct rotor *r)
 {
 	float v, v_range, v_frac;
 
+	if (!rotor_valid(r))
+		return NAN;
+
 	v = iadc_get_result(r->iadc);
 
-	v_range = r->cal[1].v - r->cal[0].v;
+	v_range = rotor_cal_max(r)->v - rotor_cal_min(r)->v;
 	if (v_range != 0)
-		v_frac = (v - r->cal[0].v) / v_range;
+		v_frac = (v - rotor_cal_min(r)->v) / v_range;
 	else
 		v_frac = 0;
 
-	return r->cal[0].deg + v_frac * (r->cal[1].deg - r->cal[0].deg);
+	return rotor_cal_min(r)->deg + v_frac * (rotor_cal_max(r)->deg - rotor_cal_min(r)->deg);
 }
 
 void motor_init(struct motor *m)
@@ -329,12 +308,12 @@ void rotor_detail(struct rotor *r)
 		"  pid.differentiator:   %f\r\n"
 		"  pid.out:              %f\r\n",
 			r->motor.name,
-			r->cal[0].v * 1000,
-			r->cal[0].deg,
-			r->cal[0].ready,
-			r->cal[1].v * 1000,
-			r->cal[1].deg,
-			r->cal[1].ready,
+			rotor_cal_min(r)->v * 1000,
+			rotor_cal_min(r)->deg,
+			rotor_cal_min(r)->ready,
+			rotor_cal_max(r)->v * 1000,
+			rotor_cal_max(r)->deg,
+			rotor_cal_max(r)->ready,
 			r->iadc,
 			rotor_pos(r),
 			r->target,
@@ -429,6 +408,14 @@ void rotor_cal_load()
 		{
 			rotors[i].cal[0] = rotors[i].old_cal1;
 			rotors[i].cal[1] = rotors[i].old_cal2;
+
+			if (rotors[i].cal[0].ready && rotors[i].cal[1].ready)
+				rotors[i].cal_count = 2;
+			else if (rotors[i].cal[0].ready)
+				rotors[i].cal_count = 1;
+			else
+				rotors[i].cal_count = 0;
+
 			rotors[i].version = 1;
 		}
 	}

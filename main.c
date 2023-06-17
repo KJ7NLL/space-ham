@@ -210,12 +210,20 @@ void status()
 	
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
-		printf("%s cal: [%.2f, %.2f] deg = [%.2f, %.2f] volts, %.4f mV/deg\r\n", 
-			rotors[i].motor.name,
-			rotors[i].cal[0].deg, rotors[i].cal[1].deg,
-			rotors[i].cal[0].v, rotors[i].cal[1].v,
-			(rotors[i].cal[1].v - rotors[i].cal[0].v) / (rotors[i].cal[1].deg - rotors[i].cal[0].deg) * 1000
-			);
+		if (rotor_valid(&rotors[i]))
+		{
+			printf("%-8s cal: [%7.2f, %7.2f] deg: [%4.2f, %4.2f] volts, %8.4f mV/deg\r\n",
+				rotors[i].motor.name,
+				rotor_cal_min(&rotors[i])->deg,
+				rotor_cal_max(&rotors[i])->deg,
+				rotor_cal_min(&rotors[i])->v, rotor_cal_max(&rotors[i])->v,
+				(rotor_cal_max(&rotors[i])->v - rotor_cal_min(&rotors[i])->v) /
+					(rotor_cal_max(&rotors[i])->deg - rotor_cal_min(&rotors[i])->deg) * 1000
+				);
+		}
+		else
+			printf("%-8s not calibrated\r\n", rotors[i].motor.name);
+
 	}
 
 	print("\r\n");
@@ -231,10 +239,11 @@ void status()
 			case gpioPortD: port = 'D'; break;
 		}
 
-		printf("%s pos=%.2f deg, target=%.2f deg [%s, port=%c%d/%c%d]: P=%.1f%% I=%.1f%% D=%.1f%% speed=%.1f%%\r\n",
+		printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg [%s, port:%c%d/%c%d]: P:%6.1f%% I:%6.1f%% D:%6.1f%% speed:%6.1f%%\r\n",
 			rotors[i].motor.name,
 			rotor_pos(&rotors[i]),
 			rotors[i].target,
+			rotor_pos(&rotors[i]) - rotors[i].target,
 			!rotor_valid(&rotors[i]) ? "invalid" : 
 				(rotor_online(&rotors[i]) ? "online" :
 					(!motor_online(&rotors[i].motor) ? "motor offline" : "rotor offline")), 
@@ -562,13 +571,13 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 	cal.v = v;
 	cal.ready = 1;
 
-	if (!r->cal[0].ready && !r->cal[1].ready)
+	if (!rotor_cal_min(r)->ready && !rotor_cal_max(r)->ready)
 	{
 		r->cal[0] = cal;
 	}
-	else if (r->cal[0].ready && !r->cal[1].ready)
+	else if (rotor_cal_min(r)->ready && !rotor_cal_max(r)->ready)
 	{
-		if (deg > r->cal[0].deg)
+		if (deg > rotor_cal_min(r)->deg)
 		{
 			r->cal[1] = cal;
 		}
@@ -578,9 +587,9 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 			r->cal[0] = cal;
 		}
 	}
-	else if (!r->cal[0].ready && r->cal[1].ready)
+	else if (!rotor_cal_min(r)->ready && rotor_cal_max(r)->ready)
 	{
-		if (deg > r->cal[1].deg)
+		if (deg > rotor_cal_max(r)->deg)
 		{
 			r->cal[0] = r->cal[1];
 			r->cal[1] = cal;
@@ -592,7 +601,7 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 	}
 	else
 	{
-		if (deg < r->cal[1].deg)
+		if (deg < rotor_cal_max(r)->deg)
 		{	
 			r->cal[0] = cal;
 		}
@@ -602,11 +611,11 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 		}
 	}
 
-	if (!r->cal[0].ready || !r->cal[1].ready)
+	if (!rotor_cal_min(r)->ready || !rotor_cal_max(r)->ready)
 	{
 		print("~~~Not done yet! Please enter cal 2.~~~\r\n");
 	}
-	else if (r->cal[0].ready && r->cal[1].ready)
+	else if (rotor_cal_min(r)->ready && rotor_cal_max(r)->ready)
 	{
 		print("~~~Done calibrating!~~~\r\n");
 	}
@@ -731,7 +740,7 @@ void mv(int argc, char **args)
 		return;
 	}
 
-	if (!r->cal[0].ready || !r->cal[1].ready)
+	if (!rotor_valid(r))
 	{
 		printf("Rotor %s is not calibrated, please calibrate and try again.\r\n", r->motor.name);
 		return;
@@ -778,10 +787,10 @@ void mv(int argc, char **args)
 			break;
 	}
 
-	if (deg < r->cal[0].deg || deg > r->cal[1].deg)
+	if (deg < rotor_cal_min(r)->deg || deg > rotor_cal_max(r)->deg)
 	{
 		printf("Cannot move rotor outside of calibrated range: %.2f !< %.2f !< %.2f\r\n",
-			r->cal[0].deg, deg, r->cal[1].deg);
+			rotor_cal_min(r)->deg, deg, rotor_cal_max(r)->deg);
 
 		return;
 	}
