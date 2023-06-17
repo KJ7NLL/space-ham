@@ -96,7 +96,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -W
 # Add project headers
 #include_directories(bsp)
 include_directories(${BASE_LOCATION}/include
-	include
+	./include
 	sgp4sdp4
 	astronomy/source/c
 	xmodem
