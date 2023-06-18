@@ -24,6 +24,10 @@
 // but timers 2 only work on ports a/b and timer 3 works on c/d
 #define NUM_ROTORS 4
 
+// WARNING: Changing this value changes the size of `struct rotors`. This may
+// break backwards compatibility of cal.bin files.
+#define ROTOR_CAL_NUM 90
+
 struct motor
 {
 	union {
@@ -97,7 +101,7 @@ struct rotor
 
 	float offset;
 
-	struct rotor_cal cal[90];
+	struct rotor_cal cal[ROTOR_CAL_NUM];
 
 	int cal_count;
 };
@@ -122,6 +126,8 @@ void motor_detail(struct motor *m);
 
 void rotor_cal_load();
 void rotor_cal_save();
+void rotor_cal_add(struct rotor *r, float deg);
+void rotor_cal_remove(struct rotor *r, int idx);
 
 void rotor_suspend_all();
 

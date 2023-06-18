@@ -115,23 +115,72 @@ struct motor *motor_get(char *name)
 		return NULL;
 }
 
-// Return the degree position of the motor baised on the voltage and calibrated values
+// Return the degree position of the motor based on the voltage and calibrated values
 float rotor_pos(struct rotor *r)
 {
+	struct rotor_cal *cal_min = NULL, *cal_max = NULL;
+
 	float v, v_range, v_frac;
+
+	int i;
+	int ascending;
 
 	if (!rotor_valid(r))
 		return NAN;
 
+	if (rotor_cal_min(r)->v < rotor_cal_max(r)->v)
+		ascending = 1;
+	else
+		ascending = 0;
+
 	v = iadc_get_result(r->iadc);
 
-	v_range = rotor_cal_max(r)->v - rotor_cal_min(r)->v;
+	if (ascending && v < rotor_cal_min(r)->v)
+	{
+		cal_min = &r->cal[0];
+		cal_max = &r->cal[1];
+	}
+	else if (ascending && v > rotor_cal_max(r)->v)
+	{
+		cal_min = &r->cal[r->cal_count - 2];
+		cal_max = &r->cal[r->cal_count - 1];
+	}
+	else if (!ascending && v > rotor_cal_min(r)->v)
+	{
+		cal_min = &r->cal[0];
+		cal_max = &r->cal[1];
+	}
+	else if (!ascending && v < rotor_cal_max(r)->v)
+	{
+		cal_min = &r->cal[r->cal_count - 2];
+		cal_max = &r->cal[r->cal_count - 1];
+	}
+
+	for (i = 1; cal_min == NULL && cal_max == NULL && i < r->cal_count; i++)
+	{
+		if (ascending && v >= r->cal[i-1].v && v <= r->cal[i].v)
+		{
+			cal_min = &r->cal[i-1];
+			cal_max = &r->cal[i];
+		}
+		else if (!ascending && v <= r->cal[i-1].v && v >= r->cal[i].v)
+		{
+			cal_min = &r->cal[i-1];
+			cal_max = &r->cal[i];
+		}
+
+	}
+
+	if (cal_min == NULL || cal_max == NULL)
+		return NAN;
+
+	v_range = cal_max->v - cal_min->v;
 	if (v_range != 0)
-		v_frac = (v - rotor_cal_min(r)->v) / v_range;
+		v_frac = (v - cal_min->v) / v_range;
 	else
 		v_frac = 0;
 
-	return rotor_cal_min(r)->deg + v_frac * (rotor_cal_max(r)->deg - rotor_cal_min(r)->deg);
+	return cal_min->deg + v_frac * (cal_max->deg - cal_min->deg);
 }
 
 void motor_init(struct motor *m)
@@ -490,4 +539,89 @@ void rotor_suspend_all()
 		rotors[i].target = rotor_pos(&rotors[i]);
 		motor_speed(motors[i], 0);
 	}
+}
+
+// Squish all ready calibrations together starting at index 0
+void rotor_cal_squish(struct rotor *r)
+{
+	int i;
+	int found;
+
+	do
+	{
+		found = 0;
+		for (i = 1; i < ROTOR_CAL_NUM; i++)
+		{
+			if (!r->cal[i-1].ready && r->cal[i].ready)
+			{
+				r->cal[i-1] = r->cal[i];
+				memset(&r->cal[i], 0, sizeof(struct rotor_cal));
+
+				found++;
+			}
+		}
+	} while (found);
+}
+
+// Sort calibration structs by degree
+void rotor_cal_sort(struct rotor *r)
+{
+	int i;
+	int found;
+
+	struct rotor_cal swap;
+
+	rotor_cal_squish(r);
+
+	do
+	{
+		found = 0;
+		for (i = 1; i < ROTOR_CAL_NUM; i++)
+		{
+			if (!r->cal[i].ready)
+				break;
+
+			if (r->cal[i-1].deg > r->cal[i].deg)
+			{
+				swap = r->cal[i];
+				r->cal[i] = r->cal[i-1];
+				r->cal[i-1] = swap;
+
+				found++;
+			}
+		}
+	} while (found);
+}
+
+// Add a new calibration at the current IADC position for this rotor
+void rotor_cal_add(struct rotor *r, float deg)
+{
+	if (r->cal_count >= ROTOR_CAL_NUM)
+	{
+		printf("No room for additional calibrations\r\n");
+
+		return;
+	}
+
+	r->cal[r->cal_count].deg = deg;
+	r->cal[r->cal_count].v = iadc_get_result(r->iadc);
+	r->cal[r->cal_count].ready = 1;
+
+	r->cal_count++;
+
+	rotor_cal_sort(r);
+}
+
+// Remove calibration index `idx`
+void rotor_cal_remove(struct rotor *r, int idx)
+{
+	if (idx < r->cal_count && idx >= 0)
+	{
+		r->cal[idx].ready = 0;
+		r->cal_count--;
+	}
+	else
+		printf("Calibration index is out of range. Choose a value between 0 and %d\r\n", r->cal_count);
+
+	rotor_cal_squish(r);
 }

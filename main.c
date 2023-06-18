@@ -541,83 +541,68 @@ void rotor_pid(struct rotor *r, int argc, char **args)
 
 void rotor_cal(struct rotor *r, int argc, char **args)
 {
-	struct rotor_cal cal;
+	int i;
 
-	float deg, v;
-
-	if (argc < 2)
+	if (argc < 4)
 	{
-		print("Usage: cal <deg>\r\n"
-			"Calibration assumes a linear voltage slope between degrees.\r\n"
-			"You must make 2 calibrations, and each calibration is used as\r\n"
-			"the maximum extent for the rotor. Use the `motor` command to\r\n"
-			"move the rotor between calibrations.\r\n");
+		printf( "Usage: rotor %s cal (reset|list|add <deg>|remove <n>)\r\n"
+			"reset                 # Reset all calibrations\r\n"
+			"list                  # List all calibrations\r\n"
+			"add <deg>             # Add a new calibration by degree\r\n"
+			"remove <n>            # Remove an existing calibration by index from `list`\r\n"
+			"\r\n"
+			"Calibration supports up to %d calibration points and assumes a linear voltage\r\n"
+			"slope between the degrees of any two points.  You must make at least two\r\n"
+			"calibrations; the min and max calibrations are used as the maximum extents for\r\n"
+			"the rotor. Use the `motor` command to move the rotor between calibrations when\r\n"
+			"`rotor %s target off` is set.\r\n",
+				args[1],
+				ROTOR_CAL_NUM,
+				args[1]
+				);
 		return;
 	}
 
-	if (match(args[1], "reset"))
+	if (match(args[3], "reset"))
 	{
-		memset(&r->cal[0], 0, sizeof(r->cal[0]));
-		memset(&r->cal[1], 0, sizeof(r->cal[1]));
+		memset(&r->cal, '\0', sizeof(r->cal));
+
+		r->cal_count = 0;
 
 		printf("Calibration reset: %s\r\n", r->motor.name);
+	}
 
-		return;
+	else if (match(args[3], "list"))
+	{
+		printf(" n.      DEG    VOLTS\r\n");
+		for (i = 0; i < ROTOR_CAL_NUM; i++)
+			if (r->cal[i].ready)
+				printf("%2d. %8.3f %8.6f\r\n", i, r->cal[i].deg, r->cal[i].v);
 	}
-	deg = atof(args[1]);
-	v = iadc_get_result(r->iadc);
-	
-	cal.deg = deg;
-	cal.v = v;
-	cal.ready = 1;
 
-	if (!rotor_cal_min(r)->ready && !rotor_cal_max(r)->ready)
+	else if (argc >= 5 && (match(args[3], "remove") || match(args[3], "delete")))
 	{
-		r->cal[0] = cal;
+		int idx = atoi(args[4]);
+
+		rotor_cal_remove(r, idx);
+
+		if (r->cal_count < 2)
+			printf("Please add additional calibrations for interpolation\r\n");
 	}
-	else if (rotor_cal_min(r)->ready && !rotor_cal_max(r)->ready)
+
+	else if (argc >= 5 && match(args[3], "add"))
 	{
-		if (deg > rotor_cal_min(r)->deg)
-		{
-			r->cal[1] = cal;
-		}
-		else
-		{
-			r->cal[1] = r->cal[0];
-			r->cal[0] = cal;
-		}
+		rotor_cal_add(r, atof(args[4]));
+
+		if (r->cal_count == 1)
+			printf("Not done yet, please add a second caliberation for interpolation\r\n");
+		else if (r->cal_count == 2)
+			printf("Now you can add up to %d calibrations for fine-tuning\r\n", ROTOR_CAL_NUM);
 	}
-	else if (!rotor_cal_min(r)->ready && rotor_cal_max(r)->ready)
-	{
-		if (deg > rotor_cal_max(r)->deg)
-		{
-			r->cal[0] = r->cal[1];
-			r->cal[1] = cal;
-		}
-		else
-		{
-			r->cal[0] = cal;
-		}
-	}
+
 	else
 	{
-		if (deg < rotor_cal_max(r)->deg)
-		{	
-			r->cal[0] = cal;
-		}
-		else
-		{
-			r->cal[1] = cal;
-		}
-	}
-
-	if (!rotor_cal_min(r)->ready || !rotor_cal_max(r)->ready)
-	{
-		print("~~~Not done yet! Please enter cal 2.~~~\r\n");
-	}
-	else if (rotor_cal_min(r)->ready && rotor_cal_max(r)->ready)
-	{
-		print("~~~Done calibrating!~~~\r\n");
+		printf("invalid or incomplete sub-command: rotor %s cal %s\r\n", args[1], args[3]);
 	}
 }
 
@@ -627,11 +612,15 @@ void rotor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: rotor <rotor_name> (cal|detail|pid|target|ramptime)\r\n"
-			"Calibration assumes a linear voltage slope between degrees.\r\n"
-			"You must make 2 calibrations, and each calibration is used as\r\n"
-			"the maximum extent for the rotor. Use the `motor` command to\r\n"
-			"move the rotor between calibrations.\r\n");
+		print("Usage: rotor <rotor_name> (cal ...|detail|pid ...|target (on|off)|ramptime <sec>)\r\n"
+			"cal                   # Calibrate degree to ADC mappings\r\n"
+			"detail                # Show detailed rotor info\r\n"
+			"pid                   # PID Controller settings\r\n"
+			"target (on|off)       # Turn on/off target tracking\r\n"
+			"ramptime <sec>        # Set min time to full speed\r\n"
+			"\r\n"
+			"Run a subcommand without arguments for more detail\r\n"
+			);
 		return;
 	}
 
@@ -645,7 +634,7 @@ void rotor(int argc, char **args)
 
 	if (match(args[2], "cal"))
 	{
-		rotor_cal(r, argc-2, &args[2]);
+		rotor_cal(r, argc, args);
 	}
 	else if (match(args[2], "detail"))
 	{
