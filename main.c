@@ -550,6 +550,9 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 			"list                  # List all calibrations\r\n"
 			"add <deg>             # Add a new calibration by degree\r\n"
 			"remove <n>            # Remove an existing calibration by index from `list`\r\n"
+			"trim <deg>            # Re-calculate calibration voltages to adjust by <deg>\r\n"
+			"\r\n"
+			"You must run `flash write` to save changes.\r\n"
 			"\r\n"
 			"Calibration supports up to %d calibration points and assumes a linear voltage\r\n"
 			"slope between the degrees of any two points.  You must make at least two\r\n"
@@ -578,6 +581,12 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 		for (i = 0; i < ROTOR_CAL_NUM; i++)
 			if (r->cal[i].ready)
 				printf("%2d. %8.3f %8.6f\r\n", i, r->cal[i].deg, r->cal[i].v);
+	}
+
+	else if (argc >= 5 && match(args[3], "trim"))
+	{
+		if (!rotor_cal_trim(r, atof(args[4])))
+			printf("Trim failed: Make sure you have at least 2 calibrations with unique degree angles.\r\n");
 	}
 
 	else if (argc >= 5 && (match(args[3], "remove") || match(args[3], "delete")))

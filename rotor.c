@@ -625,3 +625,38 @@ void rotor_cal_remove(struct rotor *r, int idx)
 
 	rotor_cal_squish(r);
 }
+
+// Re-calculate calibration voltages to adjust by trim_deg. Calibrations keep
+// the same degree angle but voltages are adjusted to slide all calibrations by
+// the same amount. Returns 1 on success or 0 on failure.
+int rotor_cal_trim(struct rotor *r, float trim_deg)
+{
+	struct rotor_cal *cal_min = NULL, *cal_max = NULL;
+
+	float vdeg;
+	float trim_v;
+
+	int i;
+
+	if (!rotor_valid(r))
+		return 0;
+
+	cal_min = rotor_cal_min(r);
+	cal_max = rotor_cal_max(r);
+
+	if (cal_min == NULL || cal_max == NULL)
+		return 0;
+
+	// Avoid divide by zero
+	if (cal_max->deg == cal_min->deg)
+		return 0;
+
+	// volts per degree
+	vdeg = (cal_max->v - cal_min->v) / (cal_max->deg - cal_min->deg);
+	trim_v = vdeg * trim_deg;
+
+	for (i = 0; i < r->cal_count; i++)
+		r->cal[i].v = r->cal[i].v + trim_v;
+
+	return 1;
+}

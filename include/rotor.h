@@ -128,6 +128,7 @@ void rotor_cal_load();
 void rotor_cal_save();
 void rotor_cal_add(struct rotor *r, float deg);
 void rotor_cal_remove(struct rotor *r, int idx);
+int rotor_cal_trim(struct rotor *r, float trim_deg);
 
 void rotor_suspend_all();
 
