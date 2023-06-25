@@ -21,6 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
+#include <math.h>
+
 #include "pid.h"
 
 void PIDController_Init(PIDController *pid)
@@ -37,8 +40,17 @@ void PIDController_Init(PIDController *pid)
 
 float PIDController_Update(PIDController *pid, float setpoint, float measurement)
 {
-
 	float error = setpoint - measurement;
+
+	if (isnan(pid->proportional))
+		pid->proportional = 0;
+
+	if (isnan(pid->integrator))
+		pid->integrator = 0;
+
+	if (isnan(pid->differentiator))
+		pid->differentiator = 0;
+
 	pid->proportional = pid->Kp * error;
 
 	pid->integrator =

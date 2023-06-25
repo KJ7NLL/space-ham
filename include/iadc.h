@@ -43,8 +43,8 @@
 
 #define IADC_INPUT_0              iadcPosInputPortDPin2
 #define IADC_INPUT_1              iadcPosInputPortDPin3
-#define IADC_INPUT_2              iadcPosInputPortAPin0
-#define IADC_INPUT_3              iadcPosInputPortAPin4
+#define IADC_INPUT_2              iadcPosInputPortAPin4
+#define IADC_INPUT_3              iadcPosInputPortAPin0
 
 void initIADC(void);
 float iadc_get_result(int i);
