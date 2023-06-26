@@ -329,13 +329,24 @@ void motor_detail(struct motor *m)
 
 void rotor_detail(struct rotor *r)
 {
+	struct rotor_cal *cal_min, *cal_max, dummy = {0,0,0};
+
+	cal_min = rotor_cal_min(r);
+	cal_max = rotor_cal_max(r);
+
+	if (cal_min == NULL)
+		cal_min = &dummy;
+
+	if (cal_max == NULL)
+		cal_max = &dummy;
+
 	printf("%s:\r\n"
-		"  cal1.v:               %f       mV\r\n"
-		"  cal1.deg:             %f       deg\r\n"
-		"  cal1.ready:           %d\r\n"
-		"  cal2.v:               %f       mV\r\n"
-		"  cal2.deg:             %f       deg\r\n"
-		"  cal2.ready:           %d\r\n"
+		"  cal_min.v:            %f       mV\r\n"
+		"  cal_min.deg:          %f       deg\r\n"
+		"  cal_min.ready:        %d\r\n"
+		"  cal_max.v:            %f       mV\r\n"
+		"  cal_max.deg:          %f       deg\r\n"
+		"  cal_max.ready:        %d\r\n"
 		"  iadc:                 %d\r\n"
 		"  position:             %f       deg\r\n"
 		"  target:               %f       deg\r\n"
@@ -357,12 +368,12 @@ void rotor_detail(struct rotor *r)
 		"  pid.differentiator:   %f\r\n"
 		"  pid.out:              %f\r\n",
 			r->motor.name,
-			rotor_cal_min(r)->v * 1000,
-			rotor_cal_min(r)->deg,
-			rotor_cal_min(r)->ready,
-			rotor_cal_max(r)->v * 1000,
-			rotor_cal_max(r)->deg,
-			rotor_cal_max(r)->ready,
+			cal_min->v * 1000,
+			cal_min->deg,
+			cal_min->ready,
+			cal_max->v * 1000,
+			cal_max->deg,
+			cal_max->ready,
 			r->iadc,
 			rotor_pos(r),
 			r->target,
