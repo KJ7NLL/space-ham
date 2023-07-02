@@ -180,7 +180,9 @@ float rotor_pos(struct rotor *r)
 	else
 		v_frac = 0;
 
-	return cal_min->deg + v_frac * (cal_max->deg - cal_min->deg);
+	float pos = cal_min->deg + v_frac * (cal_max->deg - cal_min->deg);
+
+	return pos - r->offset;
 }
 
 void motor_init(struct motor *m)
@@ -349,6 +351,7 @@ void rotor_detail(struct rotor *r)
 		"  cal_max.ready:        %d\r\n"
 		"  iadc:                 %d\r\n"
 		"  position:             %f       deg\r\n"
+		"  offset:               %f       deg\r\n"
 		"  target:               %f       deg\r\n"
 		"  target_enabled:       %d\r\n"
 		"  ramp_time:            %f\r\n"
@@ -376,6 +379,7 @@ void rotor_detail(struct rotor *r)
 			cal_max->ready,
 			r->iadc,
 			rotor_pos(r),
+			r->offset,
 			r->target,
 			r->target_enabled,
 			r->ramp_time,

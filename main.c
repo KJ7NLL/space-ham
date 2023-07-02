@@ -545,12 +545,13 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 
 	if (argc < 4)
 	{
-		printf( "Usage: rotor %s cal (reset|list|add <deg>|remove <n>)\r\n"
+		printf( "Usage: rotor %s cal (reset|list|add <deg>|remove <n>|trim <deg>|offset <deg>)\r\n"
 			"reset                 # Reset all calibrations\r\n"
 			"list                  # List all calibrations\r\n"
 			"add <deg>             # Add a new calibration by degree\r\n"
 			"remove <n>            # Remove an existing calibration by index from `list`\r\n"
 			"trim <deg>            # Re-calculate calibration voltages to adjust by <deg>\r\n"
+			"offset [=+-]<deg>     # Adjust rotor position by <deg> without voltage trim\r\n"
 			"\r\n"
 			"You must run `flash write` to save changes.\r\n"
 			"\r\n"
@@ -607,6 +608,25 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 			printf("Not done yet, please add a second caliberation for interpolation\r\n");
 		else if (r->cal_count == 2)
 			printf("Now you can add up to %d calibrations for fine-tuning\r\n", ROTOR_CAL_NUM);
+	}
+
+	else if (argc >= 5 && match(args[3], "offset"))
+	{
+		switch (args[4][0])
+		{
+			case '+':
+			case '-':
+				r->offset += atof(args[4]);
+				break;
+
+			case '=':
+				r->offset = atof(args[4]+1);
+				break;
+
+			default:
+				r->offset = atof(args[4]);
+		}
+
 	}
 
 	else
