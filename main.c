@@ -545,15 +545,21 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 
 	if (argc < 4)
 	{
-		printf( "Usage: rotor %s cal (reset|list|add <deg>|remove <n>|trim <deg>|offset <deg>)\r\n"
+		printf( "Usage: rotor %s cal (reset|list|add ...|remove <n>|trim <deg>|offset <deg>)\r\n"
 			"reset                 # Reset all calibrations\r\n"
 			"list                  # List all calibrations\r\n"
-			"add <deg>             # Add a new calibration by degree\r\n"
+			"add <deg>             # Add a new calibration as <deg> degrees\r\n"
+			"add offset            # Add a calibration based on offset; see `offset` below\r\n"
 			"remove <n>            # Remove an existing calibration by index from `list`\r\n"
 			"trim <deg>            # Re-calculate calibration voltages to adjust by <deg>\r\n"
 			"offset [=+-]<deg>     # Adjust rotor position by <deg> without voltage trim\r\n"
 			"\r\n"
 			"You must run `flash write` to save changes.\r\n"
+			"\r\n"
+			"`add offset` is useful when tracking an object and you find that your position is\r\n"
+			"slightly off. You can use `rotor R cal offset N` to align your position, and\r\n"
+			"then use `rotor R cal add offset` to create a calibration with voltages\r\n"
+			"adjusted for the offset.\r\n"
 			"\r\n"
 			"Calibration supports up to %d calibration points and assumes a linear voltage\r\n"
 			"slope between the degrees of any two points.  You must make at least two\r\n"
@@ -602,7 +608,14 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 
 	else if (argc >= 5 && match(args[3], "add"))
 	{
-		rotor_cal_add(r, atof(args[4]));
+		if (match(args[4], "offset"))
+		{
+			rotor_cal_add(r, rotor_pos(r));
+
+			r->offset = 0;
+		}
+		else
+			rotor_cal_add(r, atof(args[4]));
 
 		if (r->cal_count == 1)
 			printf("Not done yet, please add a second caliberation for interpolation\r\n");
