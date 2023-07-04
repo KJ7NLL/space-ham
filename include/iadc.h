@@ -20,7 +20,7 @@
 //
 // Set CLK_ADC to 10MHz
 #define CLK_SRC_ADC_FREQ          10000000	// CLK_SRC_ADC
-#define CLK_ADC_FREQ              10000000	// CLK_ADC - 10MHz max in
+#define CLK_ADC_FREQ              1000		// CLK_ADC - 1kHz (really it is slightly more)
 
 // Number of scan channels
 #define IADC_NUM_INPUTS 4
