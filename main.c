@@ -682,6 +682,46 @@ void rotor(int argc, char **args)
 	{
 		rotor_detail(r);
 	}
+	else if (match(args[2], "stat"))
+	{
+		char c;
+		serial_read_async(&c, 1);
+		float min_err = 1e9, max_err = -1e9;
+		float prev_range_err = 0;
+		float avg_range_err = 1;
+		int n = 0;
+		do
+		{
+			float err = rotor_pos(r) - r->target;
+			if (err > max_err)
+				max_err = err;
+			if (err < min_err)
+				min_err = err;
+
+			if (n)
+				avg_range_err += fabs(prev_range_err - err);
+
+			n++;
+
+			printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg: P:%6.1f%% I:%6.1f%% D:%6.1f%% speed:%6.1f%% tgt err: max=%5.3f prev=%5.3f avg=%5.3f\r\n",
+				r->motor.name,
+				rotor_pos(r),
+				r->target,
+				err,
+				r->pid.proportional * 100,
+				r->pid.integrator * 100,
+				r->pid.differentiator * 100,
+				r->motor.speed * 100,
+				fabs(max_err - min_err),
+				fabs(prev_range_err - err),
+				avg_range_err / n
+				);
+
+				rtcc_delay_sec(0.5, main_idle);
+				prev_range_err = err;
+		}
+		while (!serial_read_done());
+	}
 	else if (match(args[2], "pid"))
 	{
 		rotor_pid(r, argc-2, &args[2]);
@@ -778,10 +818,7 @@ void mv(int argc, char **args)
 	}
 
 	if (!r->target_enabled)
-	{
-		printf("Rotor target is disabled. Use `rotor %s target on`\r\n", r->motor.name);
-		return;
-	}
+		printf("Warning: Applied, but rotor target is disabled. Use `rotor %s target on`\r\n", r->motor.name);
 
 	switch (tolower(args[2][0]))
 	{
