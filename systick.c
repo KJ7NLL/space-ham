@@ -80,10 +80,16 @@ void SysTick_Handler(void)
 			}
 		}
 
-		float range = rotor_cal_max(rotor)->deg - rotor_cal_min(rotor)->deg;
-		float target = (rotor->target - rotor_cal_min(rotor)->deg) / range;
-		float pos = (rpos - rotor_cal_min(rotor)->deg) / range;
-		float newspeed = PIDController_Update(&rotor->pid, target, pos);
+		float newspeed = PIDController_Update(&rotor->pid, rtarget, rpos);
+
+		float rdist = fabs(rtarget - rpos);
+
+		if (rdist < 3)
+			newspeed /= 4;
+		else if (rdist < 2)
+			newspeed /= 8;
+		else if (rdist < 1)
+			newspeed /= 16;
 
 		// Limit the speed increse to stay under a maximum ramping time:
 		if (rotor->ramp_time > 0)
