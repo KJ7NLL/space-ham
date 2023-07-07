@@ -536,6 +536,7 @@ void rotor_pid(struct rotor *r, int argc, char **args)
 		return;
 	}
 
+	PIDController_Init(&r->pid);
 	rotor_detail(r);
 }
 
@@ -689,7 +690,7 @@ void rotor(int argc, char **args)
 		serial_read_async(&c, 1);
 		float min_err = 1e9, max_err = -1e9;
 		float prev_range_err = 0;
-		float avg_range_err = 1;
+		float avg_range_err = 0;
 		int n = 0;
 		do
 		{
