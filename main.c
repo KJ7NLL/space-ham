@@ -654,12 +654,13 @@ void rotor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: rotor <rotor_name> (cal ...|detail|pid ...|target (on|off)|ramptime <sec>)\r\n"
+		print("Usage: rotor <rotor_name> (cal ...|detail|pid ...|target (on|off)|ramptime <sec>|stat [n])\r\n"
 			"cal                   # Calibrate degree to ADC mappings\r\n"
 			"detail                # Show detailed rotor info\r\n"
 			"pid                   # PID Controller settings\r\n"
 			"target (on|off)       # Turn on/off target tracking\r\n"
 			"ramptime <sec>        # Set min time to full speed\r\n"
+			"stat [n]              # Show rotor status, optionally n times\r\n"
 			"\r\n"
 			"Run a subcommand without arguments for more detail\r\n"
 			);
@@ -717,10 +718,16 @@ void rotor(int argc, char **args)
 				avg_range_err / n
 				);
 
+				if (argc > 3 && n >= atoi(args[3]))
+					break;
+
 				rtcc_delay_sec(0.5, main_idle);
 				prev_range_err = err;
+
 		}
 		while (!serial_read_done());
+
+		serial_read_async_cancel();
 	}
 	else if (match(args[2], "pid"))
 	{
