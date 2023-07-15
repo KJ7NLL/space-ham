@@ -82,14 +82,19 @@ void SysTick_Handler(void)
 
 		float newspeed = PIDController_Update(&rotor->pid, rtarget, rpos);
 
-		float rdist = fabs(rtarget - rpos);
+		// The sign of `newspeed` must be the same, so save the sign:
+		float sign;
+		if (newspeed < 0)
+			sign = -1;
+		else
+			sign = 1;
 
-		if (rdist < 3)
-			newspeed /= 4;
-		else if (rdist < 2)
-			newspeed /= 8;
-		else if (rdist < 1)
-			newspeed /= 16;
+		if (fabs(rtarget - rpos) < 0.1)
+			newspeed = 0;
+
+		// use fabs here for any math to make sure we don't create a bug.
+		// fabs() will always return positive, and *sign will set it +/-.
+		newspeed = fabs(newspeed * newspeed) * sign;
 
 		// Limit the speed increse to stay under a maximum ramping time:
 		if (rotor->ramp_time > 0)
