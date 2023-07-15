@@ -218,17 +218,28 @@ void sat_status()
 		printf("No satellite is being tracked\r\n");
 	else
 		printf("\r\nTracking %s (%d): %s\r\n"
-			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.2f"
+			"\r\n Azi=%6.1f Ele=%6.1f Range=%8.1f Range Rate=%6.3f km/s"
 			"\r\n Lat=%6.1f Lon=%6.1f  Alt=%8.1f  Vel=%8.3f"
 			"\r\n Stellite Status: %s - Depth: %2.3f"
-			"\r\n Sun Azi=%6.1f Sun Ele=%6.1f\r\n",
+			"\r\n Sun Azi=%6.1f Sun Ele=%6.1f"
+			"\r\n Doppler:"
+			"\r\n    Uplink: %10.6f MHz (%+6.3f kHz) Downlink: %10.6f MHz (%+6.3f kHz)"
+			"\r\n",
 			sat->tle.sat_name, sat->tle.catnr,
 				isFlagSet(DEEP_SPACE_EPHEM_FLAG) ? "SDP4" : "SGP4",
 			sat->sat_az, sat->sat_el, sat->sat_range, sat->sat_range_rate,
 			sat->sat_lat, sat->sat_long, sat->sat_alt, sat->sat_vel,
 			sat->eclipsed ? "eclipsed" : "in sunlight",
 				sat->eclipse_depth,
-			sat->sun_az, sat->sun_el);
+			sat->sun_az, sat->sun_el,
+
+			// Why * 1e-6?  Shouldn't it give me the result in MHz?
+			config.uplink_mhz * (1+sat->sat_range_rate*1000/299792458) * 1e-6,
+			config.uplink_mhz * (sat->sat_range_rate*1000/299792458) * 1e-3,
+
+			config.downlink_mhz * (1+sat->sat_range_rate*1000/299792458) * 1e-6,
+			config.downlink_mhz * (sat->sat_range_rate*1000/299792458) * 1e-3
+			);
 }
 
 // tle: the tle object

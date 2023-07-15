@@ -919,13 +919,14 @@ void watch(int argc, char **args, struct linklist *history)
 
 	serial_read_async(&c, 1);
 
+	print("\x0c");
 	do
 	{
 		dispatch(argc-1, &args[1], history);
 		rtcc_delay_sec(1, main_idle);
 		if (!serial_read_done())
 		{
-			print("\x0c");
+			print("\x1b[H");
 		}
 	}
 	while (!serial_read_done());
@@ -1452,6 +1453,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 				"longitude|long <deg>  # East longitude in degrees (-deg for west)\r\n"
 				"altitude|alt   <km>   # Altitude in kilometers\r\n"
 				"username|user  <user> # Your callsign/name\r\n"
+				"uplink         <mhz>  # Uplink frequency in MHz for doppler\r\n"
+				"downlink       <mhz>  # Downlink frequency in MHz for doppler\r\n"
 			);
 			return;
 		}
@@ -1464,6 +1467,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 			config.observer.alt = atof(args[2]);
 		else if (match(args[1], "user") || match(args[1], "username"))
 			strncpy(config.username, args[2], sizeof(config.username)-1);
+		else if (match(args[1], "uplink"))
+			config.uplink_mhz = atof(args[2]);
+		else if (match(args[1], "downlink"))
+			config.downlink_mhz = atof(args[2]);
 		else
 		{
 			printf("invalid setting: %s\r\n", args[1]);
@@ -1526,7 +1533,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 		else if (argc >= 2 && match(args[1], "set"))
 		{
-			if (argc == 8)
+			char *temp = NULL;
+			if (argc >= 8)
 			{
 				rtc.tm_year = atoi(args[2]) - 1900;
 				rtc.tm_mon = atoi(args[3]) - 1;
@@ -1534,8 +1542,11 @@ void dispatch(int argc, char **args, struct linklist *history)
 				rtc.tm_hour = atoi(args[5]);
 				rtc.tm_min = atoi(args[6]);
 				rtc.tm_sec = atoi(args[7]);
+
+				if (argc >= 9)
+					temp = args[8];
 			}
-			else if (argc == 3)
+			else if (argc == 3 || argc == 4)
 			{
 				time_t t = atoll(args[2]);
 
@@ -1544,18 +1555,28 @@ void dispatch(int argc, char **args, struct linklist *history)
 				if (t < 946684800)
 					t = 946684800;
 				gmtime_r(&t, &rtc);
+
+				if (argc >= 3)
+					temp = args[3];
 			}
 			else
 			{
-				print("date set (unixtime|YYYY MM DD hh mm ss)\r\n"
+				print("date set (unixtime|YYYY MM DD hh mm ss) [temp]\r\n"
 					"  If a single integer is given, then it is seconds since Jan 1, 1970 UTC\r\n"
 					"  If 6 integers are passed, then parse as YYYY MM DD hh mm ss\r\n"
-					"  Note: clock only supports dates after the year 2000.\r\n");
+					"  If you specify temp as the last argument when setting UNIX time then it\r\n"
+					"  will not write to the RTC.\r\n"
+					"  Note: clock only supports dates after the year 2000.\r\n"
+					);
 				return;
 			}
 
 			rtcc_set_sec(mktime(&rtc));
-			ds3231_write_time(&rtc);
+
+			if (temp && match(temp, "temp"))
+				printf("Temporary date: not writing to RTC.\r\n");
+			else
+				ds3231_write_time(&rtc);
 		}
 		else
 		{
