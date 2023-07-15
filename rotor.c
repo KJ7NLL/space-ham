@@ -219,14 +219,11 @@ void motor_speed(struct motor *m, float speed)
 
 
 	aspeed = fabs(speed); // really fast situps!
-	if (aspeed < 0.003)
-	{
+
+	if (aspeed < 0.0001)
 		duty_cycle = 0;
-	}
 	else
-	{
 		duty_cycle = (m->duty_cycle_limit - m->duty_cycle_min) * aspeed + m->duty_cycle_min;
-	}
 
 	// If speed is 0 and the motor is valid, then always fall through so the motor stops.
 	// If is is nonzero and online, then return early if the being set is the same.
