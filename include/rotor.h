@@ -104,6 +104,8 @@ struct rotor
 	struct rotor_cal cal[ROTOR_CAL_NUM];
 
 	int cal_count;
+
+	float speed_exp;
 };
 
 extern struct rotor rotors[NUM_ROTORS];

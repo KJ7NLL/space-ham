@@ -765,6 +765,31 @@ void rotor(int argc, char **args)
 		else
 			print("expected: on/off\r\n");
 	}
+	else if (match(args[2], "exp"))
+	{
+		if (argc < 4)
+		{
+			print("usage: rotor <rotor_name> exp <exponent>\r\n"
+
+				"Internally, speeds are values from 0-1. Thus, if we raise the speed to a power,\r\n"
+				"then smaller values are biased toward even smaller values. The motor speed\r\n"
+				"returned by the pid controller is raised to this exponent before setting the\r\n"
+				"motor speed. This allows the motor to slow down as it approaches it's target,\r\n"
+				"and minimizes near-target jitter. The default value of 1.0 is linear, thus\r\n"
+				"using the pid controller without change. We find a value between 1.1 and 2.0 to\r\n"
+				"be effective.\r\n");
+
+			return;
+		}
+
+		r->speed_exp = atof(args[3]);
+		if (r->speed_exp < 1)
+		{
+			print("Exponent reset to minimum value of 1.\r\n");
+
+			r->speed_exp = 1;
+		}
+	}
 	else if (match(args[2], "ramptime"))
 	{
 		if (argc < 4)

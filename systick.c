@@ -94,7 +94,7 @@ void SysTick_Handler(void)
 
 		// use fabs here for any math to make sure we don't create a bug.
 		// fabs() will always return positive, and *sign will set it +/-.
-		newspeed = fabs(newspeed * newspeed) * sign;
+		newspeed = pow(fabs(newspeed), rotor->speed_exp) * sign;
 
 		// Limit the speed increse to stay under a maximum ramping time:
 		if (rotor->ramp_time > 0)

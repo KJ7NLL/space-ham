@@ -78,6 +78,7 @@ void initRotors()
 		rotors[i].pid.out_min = -1;
 		rotors[i].pid.out_max = +1;
 
+		rotors[i].speed_exp = 1;
 		rotors[i].version = ROTOR_CUR_VERSION;
 
 		motors[i] = &rotors[i].motor;
@@ -352,6 +353,7 @@ void rotor_detail(struct rotor *r)
 		"  target:               %f       deg\r\n"
 		"  target_enabled:       %d\r\n"
 		"  ramp_time:            %f\r\n"
+		"  speed_exp:            %f\r\n"
 		"  pid.Kp:               %f\r\n"
 		"  pid.Ki:               %f\r\n"
 		"  pid.Kd:               %f\r\n"
@@ -380,6 +382,7 @@ void rotor_detail(struct rotor *r)
 			r->target,
 			r->target_enabled,
 			r->ramp_time,
+			r->speed_exp,
 			r->pid.Kp,
 			r->pid.Ki,
 			r->pid.Kd,
@@ -433,6 +436,7 @@ void rotor_cal_load()
 				len = sizeof(struct rotor);
 
 			f_lseek(&in, sizeof(h) + i * h.size);
+			memset(&rotors[i], 0, sizeof(struct rotor));
 			res = f_read(&in, &rotors[i], len, &br);
 			if (res != FR_OK || br != len)
 			{
@@ -464,6 +468,9 @@ void rotor_cal_load()
 
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
+		if (rotors[i].speed_exp < 1)
+			rotors[i].speed_exp = 1;
+
 		// Upgrade rotor structures if they are an old version
 		if (rotors[i].version < 1)
 		{
