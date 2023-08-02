@@ -80,7 +80,7 @@ void SysTick_Handler(void)
 			}
 		}
 
-		float newspeed = PIDController_Update(&rotor->pid, rtarget, rpos);
+		float newspeed = rotor_pid_update(rotor, rtarget, rpos);
 
 		// The sign of `newspeed` must be the same, so save the sign:
 		float sign;
@@ -89,19 +89,22 @@ void SysTick_Handler(void)
 		else
 			sign = 1;
 
-		if (fabs(rtarget - rpos) < 0.1)
-			newspeed = 0;
+		// If we are within 0.1 degrees of the target, stop moving:
+		// This could be an option, but disabled for now.
+		//if (fabs(rtarget - rpos) < 0.1)
+		//	newspeed = 0;
 
 		// use fabs here for any math to make sure we don't create a bug.
 		// fabs() will always return positive, and *sign will set it +/-.
 		newspeed = pow(fabs(newspeed), rotor->speed_exp) * sign;
 
-		// Limit the speed increse to stay under a maximum ramping time:
-		if (rotor->ramp_time > 0)
+		// Limit the speed increse to stay under a maximum ramping time.
+		// Only ramp in the increasing direction, not while slowing down.
+		if (rotor->ramp_time > 0 && fabs(newspeed) > fabs(motor->speed))
 		{
 			float diff_speed = newspeed - motor->speed;
 
-			float max_delta_speed = rotor->pid.T / rotor->ramp_time;
+			float max_delta_speed = 1.0 / (rotor->ramp_time * (float)ticks_per_sec);
 			if (fabs(diff_speed) > max_delta_speed)
 			{
 				if (diff_speed > 0)

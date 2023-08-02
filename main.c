@@ -251,9 +251,9 @@ void status()
 			rotors[i].motor.pin1, 
 			port,
 			rotors[i].motor.pin2,
-			rotors[i].pid.proportional * 100,
-			rotors[i].pid.integrator * 100,
-			rotors[i].pid.differentiator * 100,
+			rotors[i].pid.P * 100,
+			rotors[i].pid.I * 100,
+			rotors[i].pid.D * 100,
 			rotors[i].motor.speed * 100
 			);
 
@@ -500,35 +500,45 @@ void rotor_pid(struct rotor *r, int argc, char **args)
 
 	if (argc >= 2 && match(args[1], "reset"))
 	{
-		PIDController_Init(&r->pid);
+		rotor_pid_reset(r);
 		rotor_detail(r);
 		return;
 	}
 
 	if (argc < 3)
 	{
-		print("Usage: pid (reset|var <value>)\r\n"
-			"Set pid.var to value. See `rotor <name> detail` for available fields\r\n");
+		print("Usage: rotor R pid (reset|var <value>)\r\n"
+			"Set var to value. See `rotor <name> detail` for available fields\r\n"
+			"See https://doi.org/10.1016/j.precisioneng.2022.01.006 for field details:\r\n"
+			"reset                 # Reset PID dynamic state\r\n"
+			"kp   <value>          # Proportional gain\r\n"
+			"ki   <value>          # Integral gain\r\n"
+			"kvfb <value>          # Differential gain\r\n"
+			"kvff <value>          # Velocity feedforward gain\r\n"
+			"kaff <value>          # Acceleration feedforward gain\r\n"
+			"k1   <value>          # SMC stiffness\r\n"
+			"k2   <value>          # SMC damping\r\n"
+			"k3   <value>          # SMC phase tuning\r\n"
+			"k4   <value>          # SMC phase tuning\r\n"
+			"\r\n"
+			"You can tune these values using `optimize-pid.pl`\r\n"
+			"\r\n"
+			);
 		return;
 	}
 
 	f = atof(args[2]);
 
-	if (match(args[1], "Kp")) r->pid.Kp = f;
-	else if (match(args[1], "Ki")) r->pid.Ki = f;
-	else if (match(args[1], "Kd")) r->pid.Kd = f;
+	if (match(args[1], "kp")) r->pid.kp = f;
+	else if (match(args[1], "ki")) r->pid.ki = f;
+	else if (match(args[1], "kvfb")) r->pid.kvfb = f;
+	else if (match(args[1], "kvff")) r->pid.kvff = f;
+	else if (match(args[1], "kaff")) r->pid.kaff = f;
+	else if (match(args[1], "k1")) r->pid.k1 = f;
+	else if (match(args[1], "k2")) r->pid.k2 = f;
+	else if (match(args[1], "k3")) r->pid.k3 = f;
+	else if (match(args[1], "k4")) r->pid.k4 = f;
 
-	else if (match(args[1], "kp")) r->pid.Kp = f;
-	else if (match(args[1], "ki")) r->pid.Ki = f;
-	else if (match(args[1], "kd")) r->pid.Kd = f;
-
-	else if (match(args[1], "tau")) r->pid.tau = f;
-
-	else if (match(args[1], "int_min")) r->pid.int_min = f;
-	else if (match(args[1], "int_max")) r->pid.int_max = f;
-
-	else if (match(args[1], "T")) r->pid.T = f;
-	else if (match(args[1], "t")) r->pid.T = f;
 	else
 	{
 		print("Not configurable\r\n");
@@ -536,7 +546,7 @@ void rotor_pid(struct rotor *r, int argc, char **args)
 		return;
 	}
 
-	PIDController_Init(&r->pid);
+	rotor_pid_reset(r);
 	rotor_detail(r);
 }
 
@@ -705,14 +715,16 @@ void rotor(int argc, char **args)
 
 			n++;
 
-			printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg: P:%6.1f%% I:%6.1f%% D:%6.1f%% speed:%6.1f%% tgt err: max=%5.3f prev=%5.3f avg=%5.3f\r\n",
+			printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg: P:%6.1f%% I:%6.1f%% D:%6.1f%% FF:%6.1f%% S:%6.1f%% speed:%6.1f%% tgt err: max=%5.3f prev=%5.3f avg=%5.3f\r\n",
 				r->motor.name,
 				rotor_pos(r),
 				r->target,
 				err,
-				r->pid.proportional * 100,
-				r->pid.integrator * 100,
-				r->pid.differentiator * 100,
+				r->pid.P * 100,
+				r->pid.I * 100,
+				r->pid.D * 100,
+				r->pid.FF * 100,
+				r->pid.S * 100,
 				r->motor.speed * 100,
 				fabs(max_err - min_err),
 				fabs(prev_range_err - err),
@@ -749,15 +761,7 @@ void rotor(int argc, char **args)
 		{
 			r->target_enabled = 0;
 
-			// Move these to a pid_reset() function?
-			// check `pid reset`
-			r->pid.prevError = 0;
-			r->pid.prevMeasurement = 0;
-
-			r->pid.proportional = 0;
-			r->pid.integrator = 0;
-			r->pid.differentiator = 0;
-
+			rotor_pid_reset(r);
 
 			// Stop the motor or it will drift at any existing speed setting:
 			motor_speed(&r->motor, 0);

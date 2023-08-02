@@ -24,9 +24,10 @@
 // but timers 2 only work on ports a/b and timer 3 works on c/d
 #define NUM_ROTORS 4
 
-// WARNING: Changing this value changes the size of `struct rotors`. This may
+// WARNING: Changing these values changes the size of `struct rotors`. This may
 // break backwards compatibility of cal.bin files.
 #define ROTOR_CAL_NUM 90
+#define PID_HIST_LEN 100
 
 struct motor
 {
@@ -90,7 +91,7 @@ struct rotor
 
 	char target_enabled;
 
-	PIDController pid;
+	PIDController oldpid;
 
 	float ramp_time;
 
@@ -106,6 +107,15 @@ struct rotor
 	int cal_count;
 
 	float speed_exp;
+
+	struct {
+		float kp, ki, kvfb, kvff, kaff, k1, k2, k3, k4;
+		float P, I, D, FF, S, out;
+
+		int k;
+		float pos[PID_HIST_LEN];
+		float target[PID_HIST_LEN];
+	} pid;
 };
 
 extern struct rotor rotors[NUM_ROTORS];
@@ -133,6 +143,9 @@ void rotor_cal_remove(struct rotor *r, int idx);
 int rotor_cal_trim(struct rotor *r, float trim_deg);
 
 void rotor_suspend_all();
+
+void rotor_pid_reset(struct rotor *r);
+float rotor_pid_update(struct rotor *r, float target, float pos);
 
 static inline int motor_valid(struct motor *m)
 {
