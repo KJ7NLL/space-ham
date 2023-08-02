@@ -33,7 +33,7 @@ int match(char *a, char *b)
 
 	for (i = 0; a[i]; i++)
 	{
-		if (a[i] != b[i])
+		if (tolower(a[i]) != tolower(b[i]))
 		{
 			return 0;
 		}
