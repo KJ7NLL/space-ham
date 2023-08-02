@@ -56,7 +56,8 @@ my $position_hi_limit = 80;
 my $iteration_delay = 0.5;
 my $timeout = 15;
 my $req_good_count = 12;
-my $target_accuracy_deg = 0.5;
+my $target_accuracy_deg = 0.2;
+my $reset_accuracy_deg = 0.5;
 
 my %var_init = (
 	########## theta
@@ -100,36 +101,77 @@ my %var_init = (
 
 	# demo phi
 	"rotor $rotor ramptime" => {
-		values =>  0.1,
+		values =>  0.5,
 		round_each => 0.1,
-		minmax => [0.05, 5],
+		minmax => [0.0, 5],
+		enabled => 0,
+		#perturb_scale => 5
+	},
+	"rotor $rotor exp" => {
+		values =>  1,
+		round_each => 0.1,
+		minmax => [1.0, 3],
+		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kp" => {
-		values =>  78.108,
-		round_each => 0.001,
-		minmax => [0, 200],
+		values =>  0.0128,
+		round_each => 1e-4,
+		minmax => [1e-4, 1],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values =>   160.078,
-		round_each => 0.001,
-		minmax => [0, 200],
+		values =>  0.00001,
+		round_each => 1e-5,
+		minmax => [1e-5, 1],
 		#perturb_scale => 5
 	},
-	"rotor $rotor pid kd" => {
-		values => 4.025,
-		round_each => 0.001,
-		minmax => [-200, 200],
+	"rotor $rotor pid kvfb" => {
+		values =>  0.0675,
+		round_each => 1e-4,
+		minmax => [1e-4, 1],
 		#perturb_scale => 5
 	},
-	"rotor $rotor pid tau" => {
-		values => 0.0111,
+	"rotor $rotor pid kvff" => {
+		values =>  1e-4,
+		round_each => 1e-4,
+		minmax => [1e-4, 1],
+		enabled => 0,
+		#perturb_scale => 5
+	},
+	"rotor $rotor pid kaff" => {
+		values => 1e-4,
+		round_each => 1e-4,
+		minmax => [1e-4, 1],
+		enabled => 0,
+		#perturb_scale => 5
+	},
 
-		round_each => 0.00001,
-		minmax => [0.0111, 10],
-		#perturb_scale => 0.5
+	"rotor $rotor pid k1" => {
+		values =>  0.1,
+		round_each => 1e-3,
+		minmax => [1e-3, 3],
+		#perturb_scale => 5
 	},
+	"rotor $rotor pid k2" => {
+		values =>  3,
+		round_each => 1e-3,
+		minmax => [1e-3, 3],
+		#perturb_scale => 5
+	},
+	"rotor $rotor pid k3" => {
+		values =>  0.5,
+		round_each => 1e-3,
+		minmax => [1e-3, 3],
+		#perturb_scale => 5
+	},
+	"rotor $rotor pid k4" => {
+		values =>  0.00001,
+		round_each => 1e-5,
+		minmax => [1e-5, 3],
+		#perturb_scale => 5
+	},
+
 
 	# big theta 
 #	"rotor $rotor pid kp" => {
@@ -195,22 +237,25 @@ my %var_init = (
 my %var_reset = %var_init;
 
 #print cmd("rotor $rotor detail");
-#print Dumper rotor_stat($rotor);
+print Dumper rotor_stat($rotor);
 #exit;
 
-reset_pos($init_deg);
+#reset_pos($init_deg);
 
 my $s = PDL::Opt::Simplex::Simple->new(
 	vars => {
 		%var_init
 	},
 	#ssize => [ 10, 5, 2.5, 1 ],
-	ssize => [1, 0.5 ],
+	#ssize => [1, 0.5 ],
+	ssize => 0.1,
 	max_iter => 200,
-	tolerance => 0.01,
+	tolerance => 0.00001,
 	log => sub {
 			my ($vars, $state) = @_;
 			our $lc++;
+
+			%var_reset = %{ $state->{best_vars} };
 
 			print Dumper($vars, $state);
 			print "^ LOG $lc ^\n";
@@ -300,7 +345,7 @@ sub run_test
 	#my $ret = geometric_mean_adj(@scores);
 	my $ret = max($scores[0], $scores[1]);
 
-	print "RUN $run_count FINISHED: Average score: $ret\n";
+	print "RUN $run_count FINISHED: Worst score: $ret\n";
 
 	return $ret;
 }
@@ -335,11 +380,17 @@ sub run_test_ang
 	my ($ang, $vars) = @_;
 
 #print Dumper $vars;
-	printf "========================== Kp=%.4f Ki=%.4f Kd=%.4f tau=%.5f ramp=%.2f target=%.2f\n",
+	printf "=== Kp=%.7f Ki=%.7f Kvfb=%.7f Kvff=%.7f Kaff=%.7f K1=%.7f K2=%.7f K3=%.7f K4=%.7f exp=%.2f ramp=%.2f target=%.2f\n",
 		$vars->{"rotor $rotor pid kp"},
 		$vars->{"rotor $rotor pid ki"},
-		$vars->{"rotor $rotor pid kd"},
-		$vars->{"rotor $rotor pid tau"},
+		$vars->{"rotor $rotor pid kvfb"},
+		$vars->{"rotor $rotor pid kvff"},
+		$vars->{"rotor $rotor pid kaff"},
+		$vars->{"rotor $rotor pid k1"},
+		$vars->{"rotor $rotor pid k2"},
+		$vars->{"rotor $rotor pid k3"},
+		$vars->{"rotor $rotor pid k3"},
+		$vars->{"rotor $rotor exp"},
 		$vars->{"rotor $rotor ramptime"},
 		$ang;
 
@@ -349,7 +400,7 @@ sub run_test_ang
 	cmd("rotor $rotor target off");
 	cmd("rotor $rotor pid reset");
 	cmd("rotor $rotor pid reset");
-	foreach my $var (keys %$vars) 
+	foreach my $var (sort keys %$vars) 
 	{
 		#$vars->{$var} = 0.1 if $vars->{$var} <= 0;
 		cmd("$var $vars->{$var}");
@@ -438,7 +489,7 @@ sub run_test_ang
 
 
 		$elapsed = (time()-$start);
-		printf "%2d [%3.2f]. dist=%3.2f last_dist=%3.2f good=%2d %+3.2f deg -> %+3.2f: P=%+3.2f I=%+3.2f D=%+3.2f speed=%+3.2f%% overshoot=%.2f\n",
+		printf "%2d [%3.2f]. dist=%3.2f last_dist=%3.2f good=%2d %+3.2f deg -> %+3.2f: P=%+3.2f I=%+3.2f D=%+3.2f FF=%+3.2f S=%+3.2f speed=%+3.2f%% overshoot=%.2f\n",
 			$count,
 			$elapsed,
 			$dist, $last_dist,
@@ -447,7 +498,9 @@ sub run_test_ang
 			$stat->{target},
 			$stat->{proportional}*100,
 			$stat->{integrator}*100,
-			$stat->{differentiator}*100,
+			$stat->{damping}*100,
+			$stat->{'feed-forward'}*100,
+			$stat->{smc}*100,
 			$stat->{speed}*100,
 			$overshoot
 			;
@@ -521,19 +574,19 @@ sub run_test_ang
 	my $range_err = abs($next_deg-$range);
 		
 	my $score = 0
-		+ 10*$dist
+		+ 1000*$dist
 		#+ $range_err**2
-		+ 10 * $elapsed
-		+ 10*$osc_dist_count	+ 100*$osc_dist
+		+ 10000 * $elapsed
+		+ 1000*$osc_dist_count *$osc_dist
 		+ 1000*$osc_speed_count 	+ $osc_speed # prevents Kd from going crazy
-		+ (400*$good_dist_max/($good_count_max || 1))**2
+		#+ (400*$good_dist_max/($good_count_max || 1))**2
 		+ 10 * $max_overshoot
 		+ 10 * $good_resets
 		
 		#- min(100, 10/max(0.01,$last_dist))
 		#- min(100, 10/max(0.01,$last_speed))
 		#- 100*$good_count
-		- 10000*$good_count_max
+		- 100000*$good_count_max
 		- 4000 * $vars->{"rotor $rotor ramptime"}
 		#+ $rms**2
 		;
@@ -567,7 +620,7 @@ sub rotor_stat
 
 	do {
 		my $stat = cmd("rotor $rotor detail"); 
-		while ($stat =~ /(\w+):\s*(\S+)/gs)
+		while ($stat =~ /([0-9a-zA-Z-]+):\s*(\S+)/gs)
 		{
 			$vars{lc $1} = $2;
 		}
@@ -607,7 +660,7 @@ sub reset_pos
 		cmd("rotor $rotor target on");
 
 		$stat = rotor_stat($rotor);
-		$good++ if (abs($stat->{target} - $stat->{position}) < $target_accuracy_deg);
+		$good++ if (abs($stat->{target} - $stat->{position}) < $reset_accuracy_deg);
 
 		print "reset[$good]: $stat->{position} => $stat->{target}\n";
 		sleep 0.5;
