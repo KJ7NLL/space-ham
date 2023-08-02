@@ -115,19 +115,19 @@ my %var_init = (
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kp" => {
-		values =>  0.0128,
+		values =>  0.0121,
 		round_each => 1e-4,
 		minmax => [1e-4, 1],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values =>  0.00001,
+		values =>  0.00534,
 		round_each => 1e-5,
 		minmax => [1e-5, 1],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kvfb" => {
-		values =>  0.0675,
+		values =>  0.0253,
 		round_each => 1e-4,
 		minmax => [1e-4, 1],
 		#perturb_scale => 5
@@ -148,19 +148,19 @@ my %var_init = (
 	},
 
 	"rotor $rotor pid k1" => {
-		values =>  0.1,
+		values =>  0.023,
 		round_each => 1e-3,
 		minmax => [1e-3, 3],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid k2" => {
-		values =>  3,
+		values =>  2.998,
 		round_each => 1e-3,
 		minmax => [1e-3, 3],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid k3" => {
-		values =>  0.5,
+		values =>  0.506,
 		round_each => 1e-3,
 		minmax => [1e-3, 3],
 		#perturb_scale => 5
