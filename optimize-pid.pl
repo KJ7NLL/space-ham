@@ -35,13 +35,21 @@ $port->databits(8);
 $port->stopbits(1);        # POSIX does not support 1.5 stopbits
 
 # phi tests:
-my $rotor = 'phi';
-my $init_deg = 0;
-my $next_deg = 45;
-#
+my $rotor = 'theta';
+my $init_deg = 230;
+my $next_deg = 245.56;
+
+my $track_date = '2023 08 02 04 11 20';
+my $track_date_scale = 20;
+my $track_sat = 'zarya';
+#my $track_init_deg = 39.3; # phi use target at the moment of $track_date
+my $track_init_deg = 245.56; # theta use target at the moment of $track_date
+my $track_test_seconds = 20;
 ## Abort if it gets dangerous:
-my $position_lo_limit = -20;
-my $position_hi_limit = 80;
+#my $position_lo_limit = -20;
+#my $position_hi_limit = 80;
+my $position_lo_limit = 100;
+my $position_hi_limit = 300;
 
 # theta tests:
 #my $rotor = 'theta';
@@ -54,52 +62,14 @@ my $position_hi_limit = 80;
 
 
 my $iteration_delay = 0.5;
-my $timeout = 15;
+my $timeout = 25;
 my $req_good_count = 12;
-my $target_accuracy_deg = 0.2;
+my $target_accuracy_deg = 0.15;
 my $reset_accuracy_deg = 0.5;
 
 my %var_init = (
-	########## theta
-	#kp => 45,
-	#ki => 15,
-	#kd => 5,
-	#tau => 3
 	
 	# demo theta
-#	"rotor $rotor ramptime" => {
-#		values =>  0.2,
-#		round_each => 0.1,
-#		minmax => [0.2, 5],
-#		#perturb_scale => 5
-#	},
-#	"rotor $rotor pid kp" => {
-#		values =>  187.775,
-#		round_each => 0.001,
-#		minmax => [0, 200],
-#		#perturb_scale => 5
-#	},
-#	"rotor $rotor pid ki" => {
-#		values =>   163.098,
-#		round_each => 0.001,
-#		minmax => [0, 200],
-#		#perturb_scale => 5
-#	},
-#	"rotor $rotor pid kd" => {
-#		values => 3.303,
-#		round_each => 0.001,
-#		minmax => [-200, 200],
-#		#perturb_scale => 5
-#	},
-#	"rotor $rotor pid tau" => {
-#		values => 0.02310,
-#
-#		round_each => 0.00001,
-#		minmax => [0.0111, 10],
-#		#perturb_scale => 0.5
-#	},
-
-	# demo phi
 	"rotor $rotor ramptime" => {
 		values =>  0.5,
 		round_each => 0.1,
@@ -108,26 +78,26 @@ my %var_init = (
 		#perturb_scale => 5
 	},
 	"rotor $rotor exp" => {
-		values =>  1,
-		round_each => 0.1,
+		values =>  1.79,
+		round_each => 0.01,
 		minmax => [1.0, 3],
 		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kp" => {
-		values =>  0.0121,
+		values =>  0.0005,
 		round_each => 1e-4,
 		minmax => [1e-4, 1],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values =>  0.00534,
-		round_each => 1e-5,
-		minmax => [1e-5, 1],
+		values =>  0.0012,
+		round_each => 1e-4,
+		minmax => [1e-4, 1],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kvfb" => {
-		values =>  0.0253,
+		values =>  0.0002,
 		round_each => 1e-4,
 		minmax => [1e-4, 1],
 		#perturb_scale => 5
@@ -136,41 +106,114 @@ my %var_init = (
 		values =>  1e-4,
 		round_each => 1e-4,
 		minmax => [1e-4, 1],
-		enabled => 0,
-		#perturb_scale => 5
+		enabled => 1,
+		#perturb_scale => 4
 	},
 	"rotor $rotor pid kaff" => {
-		values => 1e-4,
+		values => 2e-3,
 		round_each => 1e-4,
 		minmax => [1e-4, 1],
-		enabled => 0,
-		#perturb_scale => 5
+		enabled => 1,
+		#perturb_scale => 4
 	},
 
 	"rotor $rotor pid k1" => {
-		values =>  0.023,
+		values =>  0.059,
 		round_each => 1e-3,
-		minmax => [1e-3, 3],
+		minmax => [1e-4, 3],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid k2" => {
-		values =>  2.998,
-		round_each => 1e-3,
-		minmax => [1e-3, 3],
+		values =>  3,
+		round_each => 1e-1,
+		minmax => [1e-1, 3],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid k3" => {
-		values =>  0.506,
-		round_each => 1e-3,
-		minmax => [1e-3, 3],
-		#perturb_scale => 5
+		values =>  0.4498,
+		round_each => 1e-4,
+		minmax => [1e-4, 3],
+		#perturb_scale => 1
 	},
 	"rotor $rotor pid k4" => {
-		values =>  0.00001,
-		round_each => 1e-5,
-		minmax => [1e-5, 3],
-		#perturb_scale => 5
+		values =>  0.0001,
+		round_each => 1e-4,
+		minmax => [1e-4, 3],
+		#perturb_scale => 4
 	},
+
+	# demo phi
+#	"rotor $rotor ramptime" => {
+#		values =>  0.5,
+#		round_each => 0.1,
+#		minmax => [0.0, 5],
+#		enabled => 0,
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor exp" => {
+#		values =>  1.79,
+#		round_each => 0.01,
+#		minmax => [1.0, 3],
+#		enabled => 1,
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid kp" => {
+#		values =>  0.0001,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 1],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid ki" => {
+#		values =>  0.0012,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 1],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid kvfb" => {
+#		values =>  0.0002,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 1],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid kvff" => {
+#		values =>  1e-4,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 1],
+#		enabled => 1,
+#		#perturb_scale => 4
+#	},
+#	"rotor $rotor pid kaff" => {
+#		values => 2e-3,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 1],
+#		enabled => 1,
+#		#perturb_scale => 4
+#	},
+#
+#	"rotor $rotor pid k1" => {
+#		values =>  0.039,
+#		round_each => 1e-3,
+#		minmax => [1e-4, 3],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid k2" => {
+#		values =>  3,
+#		round_each => 1e-1,
+#		minmax => [1e-1, 3],
+#		#perturb_scale => 5
+#	},
+#	"rotor $rotor pid k3" => {
+#		values =>  0.4498,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 3],
+#		#perturb_scale => 1
+#	},
+#	"rotor $rotor pid k4" => {
+#		values =>  0.0001,
+#		round_each => 1e-4,
+#		minmax => [1e-4, 3],
+#		#perturb_scale => 4
+#	},
 
 
 	# big theta 
@@ -248,15 +291,17 @@ my $s = PDL::Opt::Simplex::Simple->new(
 	},
 	#ssize => [ 10, 5, 2.5, 1 ],
 	#ssize => [1, 0.5 ],
-	ssize => 0.1,
+	ssize => [ 0.1, 0.05, 0.01 ],
 	max_iter => 200,
 	tolerance => 0.00001,
 	log => sub {
 			my ($vars, $state) = @_;
 			our $lc++;
 
-			%var_reset = %{ $state->{best_vars} };
+			#%var_reset = %{ $state->{best_vars} };
 
+
+			print "========================================= LOG ===================================\n";
 			print Dumper($vars, $state);
 			print "^ LOG $lc ^\n";
 
@@ -327,52 +372,129 @@ sub run_test
 	$run_count++;
 
 	my @scores;
+	my $ret = 0;
 
 	reset_pos($init_deg);
 	push @scores, run_test_ang($next_deg, $vars);
 
-	reset_pos($next_deg);
+	#reset_pos($next_deg);
+	#push @scores, run_test_ang($init_deg, $vars);
+
+	#$ret = harmonic_mean(@scores);
+	#$ret = geometric_mean_adj(@scores);
+
+
+	# Skip tracking tests if the score is really bad to 
+	# revent uncontrolled oscillation:
+	$track_date_scale = 1;
+	$ret += 100 * run_test_track($vars) if ($ret < 1e9);
+
+	$track_date_scale = 10;
+	$ret += run_test_track($vars) if ($ret < 1e9);
+
+	reset_pos(152.76);
 	push @scores, run_test_ang($init_deg, $vars);
 
-	#reset_pos($init_deg/4);
-	#push @scores, run_test_ang($next_deg/4, $vars);
+	$ret = max($scores[0] // 0, $scores[1] // -1e9);
 
-	#reset_pos($next_deg/4);
-	#push @scores, run_test_ang($init_deg/4, $vars);
-
-
-	#my $ret = harmonic_mean(@scores);
-	#my $ret = geometric_mean_adj(@scores);
-	my $ret = max($scores[0], $scores[1]);
-
-	print "RUN $run_count FINISHED: Worst score: $ret\n";
+	print "RUN $run_count FINISHED: Score: $ret\n";
 
 	return $ret;
 }
 
-my $rms_pid;
-sub rms_start
+sub run_test_track
 {
-	$rms_pid = fork();
+	my ($vars) = @_;
 
-	if (!$rms_pid)
+	our $run_count;
+	$run_count++;
+
+	reset_pos($track_init_deg);
+	cmd("rotor $rotor target off");
+	cmd("sat track $track_sat");
+	cmd("sat track $track_sat");
+	foreach my $var (sort keys %$vars) 
 	{
-		exec("parecord -r -d alsa_input.usb-046d_HD_Pro_Webcam_C920_FE6841EF-02.analog-stereo simplex.wav");
+		my $val = $vars->{$var};
+		$val = $val->{values} if (ref($val));
+		cmd("$var $val");
 	}
-}
+	cmd("rotor $rotor pid reset\n");
+	cmd("date scale $track_date_scale");
+	cmd("date set $track_date temp");
+	cmd("rotor $rotor target on");
 
-sub rms_end
-{
+	my $count = $track_test_seconds * $track_date_scale;
 
-	print "pid=$rms_pid\n";
-	kill('INT', $rms_pid);
-	waitpid($rms_pid, 0);
+	my %stat_sum;
+	my %stat_sum_abs;
+	my $ret = 0;
 
-	my $rms = `sox simplex.wav -n stat 2>&1 | grep RMS.*amp | cut -f2 -d: | tr -cd 0-9.`;
+	print_var_line($vars);
+	my $line = cmd("rotor $rotor stat $count");
 
-	#print "RMS amplitude: $rms\n";
+	# parse lines, aggregate, store them in stat:
+	my @stats;
+	my @lines = split(/\n/, $line);
+	foreach my $line (@lines)
+	{
+		my %stat;
+		while ($line =~ /(\w+)[:=]\s*([0-9-.]+)/g)
+		{
+			$stat{$1} = $2;
+			$stat_sum{$1} += $2;
+			$stat_sum_abs{$1} += abs($2);
+		}
 
-	return $rms;
+		push @stats, \%stat if (scalar(keys(%stat)) > 0);
+	}
+
+	my $osc_speed = 0;
+	my $osc_speed_count = 0;
+	my $prev_speed = 0;
+
+	foreach my $stat (@stats)
+	{
+		#print Dumper $stat, { ps => $prev_speed };
+		if ($prev_speed < 0 && $stat->{speed} > 0 || $prev_speed > 0 && $stat->{speed} < 0)
+		{
+			$osc_speed += abs($prev_speed - $stat->{speed});
+			$osc_speed_count++;
+		}
+
+		$prev_speed = $stat->{speed};
+	}
+
+	#print Dumper (
+	#	{ 
+	#		sum => \%stat_sum,
+	#		sum_abs => \%stat_sum_abs,
+	#		osc_speed => { count => $osc_speed_count, speed => $osc_speed },
+	#	}
+	#	);
+
+	if (!defined($stat_sum{max}) || !defined($stat_sum{avg}) || !defined($stat_sum_abs{err}))
+	{
+		print "Undefined vars?\n";
+		$ret = 1e9;
+	}
+	else
+	{
+		$ret =
+			#+ 1000 * $stat_sum{max}
+			+ 1000 * $stat_sum{avg}
+			+ 1000 * $stat_sum_abs{err}
+			+ 100 *$osc_speed_count * $osc_speed;
+			;
+	}
+
+	print "max=$stat_sum{max} avg=$stat_sum{avg} err=$stat_sum_abs{err} osc_count=$osc_speed_count osc_speed=$osc_speed\n";
+	cmd("sat reset");
+
+	print "TRACK RUN $run_count FINISHED: Average score: $ret\n";
+
+	return $ret;
+
 }
 
 sub run_test_ang
@@ -380,19 +502,6 @@ sub run_test_ang
 	my ($ang, $vars) = @_;
 
 #print Dumper $vars;
-	printf "=== Kp=%.7f Ki=%.7f Kvfb=%.7f Kvff=%.7f Kaff=%.7f K1=%.7f K2=%.7f K3=%.7f K4=%.7f exp=%.2f ramp=%.2f target=%.2f\n",
-		$vars->{"rotor $rotor pid kp"},
-		$vars->{"rotor $rotor pid ki"},
-		$vars->{"rotor $rotor pid kvfb"},
-		$vars->{"rotor $rotor pid kvff"},
-		$vars->{"rotor $rotor pid kaff"},
-		$vars->{"rotor $rotor pid k1"},
-		$vars->{"rotor $rotor pid k2"},
-		$vars->{"rotor $rotor pid k3"},
-		$vars->{"rotor $rotor pid k3"},
-		$vars->{"rotor $rotor exp"},
-		$vars->{"rotor $rotor ramptime"},
-		$ang;
 
 	cmd("reset");
 	cmd("reset");
@@ -412,6 +521,7 @@ sub run_test_ang
 	cmd("rotor $rotor target on");
 	cmd("rotor $rotor target on");
 
+	print_var_line($vars, $ang);
 	#rms_start();
 
 	my $dist = 0;
@@ -645,14 +755,16 @@ sub reset_pos
 	# Re-run the commands every iteration in case we need to
 	# hardware reset during the run:
 	my $good = 0;
+	foreach my $var (keys %var_init) 
+	{
+		my $val = $var_reset{$var};
+		$val = $val->{values} if (ref($val));
+		cmd("$var $val");
+	}
+
+	my $count = 0;
 	do
 	{
-		foreach my $var (keys %var_init) 
-		{
-			my $val = $var_reset{$var};
-			$val = $val->{values} if (ref($val));
-			cmd("$var $val");
-		}
 
 		my $stat;
 
@@ -662,8 +774,15 @@ sub reset_pos
 		$stat = rotor_stat($rotor);
 		$good++ if (abs($stat->{target} - $stat->{position}) < $reset_accuracy_deg);
 
-		print "reset[$good]: $stat->{position} => $stat->{target}\n";
+		print "== reset[$good]: $stat->{position} => $stat->{target}\n";
 		sleep 0.5;
+
+		$count++;
+		if (!($count % 30))
+		{
+			system("cd build; make r");
+		}
+
 	}
 	while ($good < 3);
 }
@@ -690,8 +809,8 @@ sub _cmd
 	my $success = 1;
 
 	print ">> $cmd\n" if $cmd !~ /rotor.*detail/;
-	sleep(0.01);
 	$port->write("$cmd\n");
+	sleep(0.1);
 	my $ret = '';
 	my $in = '';
 	while (1)
@@ -704,13 +823,13 @@ sub _cmd
 			$line .= $1;
 			$ret .= $line;
 
-			if ($line =~ /Unknown|usage/i)
+			if ($line =~ /Unknown|usage|expected/i)
 			{
 				print "\nInvalid line:\n  $cmd\n  $line\n";
 				$success = 0;
 			}
 
-			#print "<< $line" if $cmd !~ /rotor.*detail/;;
+			print "<< $line" if $cmd !~ /rotor.*detail|rotor.*pid|reset/;
 
 		}
 
@@ -724,5 +843,49 @@ sub _cmd
 	return $ret;
 }
 
+sub print_var_line
+{
+	my ($vars, $ang) = @_;
+
+	$ang //= -1;
+	printf "\n\n=== Kp=%.7f Ki=%.7f Kvfb=%.7f Kvff=%.7f Kaff=%.7f K1=%.7f K2=%.7f K3=%.7f K4=%.7f exp=%.2f ramp=%.2f target=%.2f\n",
+		$vars->{"rotor $rotor pid kp"},
+		$vars->{"rotor $rotor pid ki"},
+		$vars->{"rotor $rotor pid kvfb"},
+		$vars->{"rotor $rotor pid kvff"},
+		$vars->{"rotor $rotor pid kaff"},
+		$vars->{"rotor $rotor pid k1"},
+		$vars->{"rotor $rotor pid k2"},
+		$vars->{"rotor $rotor pid k3"},
+		$vars->{"rotor $rotor pid k3"},
+		$vars->{"rotor $rotor exp"},
+		$vars->{"rotor $rotor ramptime"},
+		$ang;
+}
 sub max ($$) { $_[$_[0] < $_[1]] }
 sub min ($$) { $_[$_[0] > $_[1]] }
+
+my $rms_pid;
+sub rms_start
+{
+	$rms_pid = fork();
+
+	if (!$rms_pid)
+	{
+		exec("parecord -r -d alsa_input.usb-046d_HD_Pro_Webcam_C920_FE6841EF-02.analog-stereo simplex.wav");
+	}
+}
+
+sub rms_end
+{
+
+	print "pid=$rms_pid\n";
+	kill('INT', $rms_pid);
+	waitpid($rms_pid, 0);
+
+	my $rms = `sox simplex.wav -n stat 2>&1 | grep RMS.*amp | cut -f2 -d: | tr -cd 0-9.`;
+
+	#print "RMS amplitude: $rms\n";
+
+	return $rms;
+}
