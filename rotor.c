@@ -718,22 +718,22 @@ static inline float AP(struct rotor *r, int k)
 
 static inline float CV(struct rotor *r, int k)
 {
-	return CP(r, k) - CP(r, k-1);
+	return CP(r, k) - CP(r, k-PID_HIST_TARGET_LOOKBACK);
 }
 
 static inline float CA(struct rotor *r, int k)
 {
-	return CV(r, k) - CV(r, k-1);
+	return CV(r, k) - CV(r, k-PID_HIST_TARGET_LOOKBACK);
 }
 
 static inline float AV(struct rotor *r, int k)
 {
-	return AP(r, k) - AP(r, k-1);
+	return AP(r, k) - AP(r, k-PID_HIST_POSITION_LOOKBACK);
 }
 
 static inline float err(struct rotor *r, int k)
 {
-	return CP(r, k) - AP(r, k-1);
+	return CP(r, k) - AP(r, k-PID_HIST_POSITION_LOOKBACK);
 }
 
 static inline float err_sum(struct rotor *r)
@@ -750,7 +750,7 @@ static inline float err_sum(struct rotor *r)
 
 static inline float SMC_S(struct rotor *r, int k)
 {
-	return r->pid.k1 * err(r, k) + r->pid.k2 * (err(r, k) - err(r, k-1));
+	return r->pid.k1 * err(r, k) + r->pid.k2 * (err(r, k) - err(r, k-PID_HIST_POSITION_LOOKBACK));
 }
 
 float rotor_pid_update(struct rotor *r, float target, float pos)

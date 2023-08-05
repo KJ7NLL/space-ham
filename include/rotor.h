@@ -29,6 +29,17 @@
 #define ROTOR_CAL_NUM 90
 #define PID_HIST_LEN 100
 
+// Look back
+#define PID_HIST_POSITION_LOOKBACK 1
+#define PID_HIST_TARGET_LOOKBACK 20
+
+#if PID_HIST_POSITION_LOOKBACK >= PID_HIST_LEN
+  #error PID_HIST_LEN must be greater than PID_HIST_POSITION_LOOKBACK
+#endif
+
+#if PID_HIST_TARGET_LOOKBACK >= PID_HIST_LEN
+  #error PID_HIST_LEN must be greater than PID_HIST_TARGET_LOOKBACK
+#endif
 struct motor
 {
 	union {
