@@ -765,7 +765,8 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 	r->pid.pos[k] = pos;
 	r->pid.target[k] = target;
 
-	r->pid.P = r->pid.kp * (err(r, k) + r->pid.ki * err_sum(r))
+	r->pid.P = r->pid.kp * err(r, k)
+		+ r->pid.ki * err_sum(r)
 		+ (r->pid.kvff * CV(r, k) + r->pid.kaff * CA(r, k))
 		- (r->pid.kvfb * AV(r, k));
 
