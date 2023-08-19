@@ -55,6 +55,17 @@ struct rotor rotors[NUM_ROTORS];
 // These motors will reference the motor in each rotor.
 struct motor *motors[NUM_ROTORS];
 
+static inline int kwrap(int k);
+static inline int kprev_target(struct rotor *r, int k);
+static inline float CP(struct rotor *r, int k);
+static inline float AP(struct rotor *r, int k);
+static inline float CV(struct rotor *r, int k);
+static inline float CA(struct rotor *r, int k);
+static inline float AV(struct rotor *r, int k);
+static inline float err(struct rotor *r, int k);
+static inline float err_sum(struct rotor *r);
+static inline float SMC_S(struct rotor *r, int k);
+
 void initRotors()
 {
 	int i;
@@ -393,6 +404,25 @@ void rotor_detail(struct rotor *r)
 			r->pid.FF,
 			r->pid.S,
 			r->pid.out);
+
+	//int i;
+	//for (i = 0; i < PID_HIST_LEN; i++)
+	//	printf("%3d. pos: %3.3f target: %3.3f\r\n", i, r->pid.pos[i], r->pid.target[i]);
+
+	printf("r->pid.k:         %d\r\n", r->pid.k);
+	printf("kwrap(k):         %d\r\n",  kwrap(           r->pid.k));
+	printf("kprev_target(k):  %d\r\n",  kprev_target(r,  r->pid.k));
+	printf("AP(k):            %f\r\n",  AP(r,            r->pid.k));
+	printf("AV(k):            %f\r\n",  AV(r,            r->pid.k));
+	printf("CP(k):            %f\r\n",  CP(r,            r->pid.k));
+	printf("CP(kprev_target)  %f\r\n",  CP(r, kprev_target(r, r->pid.k)));
+	printf("CV(k):            %f\r\n",  CV(r,            r->pid.k));
+	printf("CV(kprev_target)  %f\r\n",  CV(r, kprev_target(r, r->pid.k)));
+	printf("CA(k):            %f\r\n",  CA(r,            r->pid.k));
+	printf("err(k):           %f\r\n",  err(r,           r->pid.k));
+	printf("err_sum(k):       %f\r\n",  err_sum(r));
+	printf("SMC_S(k):         %f\r\n",  SMC_S(r,         r->pid.k));
+
 }
 
 void rotor_cal_load()
@@ -698,12 +728,23 @@ void rotor_pid_reset(struct rotor *r)
 
 static inline int kwrap(int k)
 {
-	if (k < 0)
+	k = k % PID_HIST_LEN;
+	while (k < 0)
 		k += PID_HIST_LEN;
-	else if (k >= PID_HIST_LEN)
-		k -= PID_HIST_LEN;
 
 	return k;
+}
+
+static inline int kprev_target(struct rotor *r, int k)
+{
+	float val = r->pid.target[kwrap(k)];
+
+	int i;
+
+	for (i = 0; i < PID_HIST_LEN && val == r->pid.target[kwrap(k)]; i++)
+		k--;
+
+	return kwrap(k);
 }
 
 static inline float CP(struct rotor *r, int k)
@@ -718,12 +759,12 @@ static inline float AP(struct rotor *r, int k)
 
 static inline float CV(struct rotor *r, int k)
 {
-	return CP(r, k) - CP(r, k-PID_HIST_TARGET_LOOKBACK);
+	return CP(r, k) - CP(r, kprev_target(r, k));
 }
 
 static inline float CA(struct rotor *r, int k)
 {
-	return CV(r, k) - CV(r, k-PID_HIST_TARGET_LOOKBACK);
+	return CV(r, k) - CV(r, kprev_target(r, k));
 }
 
 static inline float AV(struct rotor *r, int k)
@@ -763,7 +804,8 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 	float S_sum = 0;
 
 	r->pid.pos[k] = pos;
-	r->pid.target[k] = target;
+	if (target != r->pid.target[k])
+		r->pid.target[k] = target;
 
 	r->pid.P = r->pid.kp * err(r, k)
 		+ r->pid.ki * err_sum(r)
