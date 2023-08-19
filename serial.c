@@ -82,8 +82,8 @@ void initUsart0(void)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
 
 	// Switch to 8E2
-	//init.parity = usartEvenParity;
-	//init.stopbits = usartStopbits2;
+	init.parity = usartEvenParity;
+	init.stopbits = usartStopbits2;
 	init.baudrate = 57600;
 
 	CMU_ClockEnable(cmuClock_USART0, true);
