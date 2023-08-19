@@ -113,7 +113,7 @@ my %var_init = (
 		values =>  0.2,
 		#values => 0,
 		#round_each => 1e-1,
-		minmax => [0, 0.5],
+		minmax => [-0.5, 0.5],
 		enabled => 1,
 		#perturb_scale => 4
 	},
@@ -121,7 +121,7 @@ my %var_init = (
 		values => 0.05,
 		#values => 0,
 		#round_each => 1e-1,
-		minmax => [0, 0.5],
+		minmax => [-0.5, 0.5],
 		enabled => 1,
 		#perturb_scale => 4
 	},
@@ -567,23 +567,23 @@ sub run_test_track
 			+ 1000 * $stat_sum_abs{err}
 			+ (10*abs($stat_avg_abs{speed} - $stat_min_abs{speed}))**2
 			+ (10*abs($stat_avg_abs{speed} - $stat_max_abs{speed}))**2
-			+ (10*abs($stat_avg_abs{P} - $stat_min_abs{P}))**2
-			+ (10*abs($stat_avg_abs{P} - $stat_max_abs{P}))**2
-			+ (10*abs($stat_avg_abs{I} - $stat_min_abs{I}))**2
-			+ (10*abs($stat_avg_abs{I} - $stat_max_abs{I}))**2
-			+ (10*abs($stat_avg_abs{D} - $stat_min_abs{D}))**2
-			+ (10*abs($stat_avg_abs{D} - $stat_max_abs{D}))**2
-			+ (10*abs($stat_avg_abs{FF} - $stat_min_abs{FF}))**2
-			+ (10*abs($stat_avg_abs{FF} - $stat_max_abs{FF}))**2
-			+ (10*abs($stat_avg_abs{S} - $stat_min_abs{S}))**2
-			+ (10*abs($stat_avg_abs{S} - $stat_max_abs{S}))**2
+			#+ (10*abs($stat_avg_abs{P} - $stat_min_abs{P}))**2
+			#+ (10*abs($stat_avg_abs{P} - $stat_max_abs{P}))**2
+			#+ (10*abs($stat_avg_abs{I} - $stat_min_abs{I}))**2
+			#+ (10*abs($stat_avg_abs{I} - $stat_max_abs{I}))**2
+			#+ (10*abs($stat_avg_abs{D} - $stat_min_abs{D}))**2
+			#+ (10*abs($stat_avg_abs{D} - $stat_max_abs{D}))**2
+			#+ (10*abs($stat_avg_abs{FF} - $stat_min_abs{FF}))**2
+			#+ (10*abs($stat_avg_abs{FF} - $stat_max_abs{FF}))**2
+			#+ (10*abs($stat_avg_abs{S} - $stat_min_abs{S}))**2
+			#+ (10*abs($stat_avg_abs{S} - $stat_max_abs{S}))**2
 			+ 100 *$osc_speed_count * $osc_speed;
 	}
 
 	print "max=$stat_sum{max} avg=$stat_sum{avg} err=$stat_sum_abs{err} osc_count=$osc_speed_count osc_speed=$osc_speed\n";
 	cmd("sat reset");
 
-	print "TRACK RUN $run_count FINISHED: Average score: $ret\n";
+	print "TRACK RUN $run_count score: $ret\n";
 
 	return $ret;
 
