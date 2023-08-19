@@ -22,6 +22,7 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 
 use PDL::Opt::Simplex::Simple;
+use PDL::Opt::ParticleSwarm::Simple;
 use Time::HiRes qw/time sleep/;
 
 use Device::SerialPort;
@@ -29,14 +30,14 @@ use Device::SerialPort;
 my ($port);
 
 $port = Device::SerialPort->new($ARGV[0]) or die "$ARGV[0]: $!";
-$port->baudrate(115200);
-$port->parity("none");
+$port->baudrate(57600);
+$port->parity("even");
 $port->databits(8);
-$port->stopbits(1);        # POSIX does not support 1.5 stopbits
+$port->stopbits(2);        # POSIX does not support 1.5 stopbits
 
 # phi tests:
 my $rotor = 'theta';
-my $init_deg = 230;
+my $init_deg = 215;
 my $next_deg = 245.56;
 
 my $track_date = '2023 08 02 04 11 20';
@@ -44,7 +45,7 @@ my $track_date_scale = 20;
 my $track_sat = 'zarya';
 #my $track_init_deg = 39.3; # phi use target at the moment of $track_date
 my $track_init_deg = 245.56; # theta use target at the moment of $track_date
-my $track_test_seconds = 20;
+my $track_test_seconds = 30;
 ## Abort if it gets dangerous:
 #my $position_lo_limit = -20;
 #my $position_hi_limit = 80;
@@ -61,85 +62,101 @@ my $position_hi_limit = 300;
 #my $position_hi_limit = 450;
 
 
-my $iteration_delay = 0.5;
+my $iteration_delay = 0.25;
 my $timeout = 25;
 my $req_good_count = 12;
-my $target_accuracy_deg = 0.15;
-my $reset_accuracy_deg = 0.5;
+my $target_accuracy_deg = 0.50;
+my $reset_accuracy_deg = 0.75;
 
 my %var_init = (
 	
 	# demo theta
 	"rotor $rotor ramptime" => {
 		values =>  0.5,
-		round_each => 0.1,
+		#round_each => 0.1,
 		minmax => [0.0, 5],
 		enabled => 0,
 		#perturb_scale => 5
 	},
 	"rotor $rotor exp" => {
-		values =>  1.79,
-		round_each => 0.01,
+		values =>  1.77084952703761,
+		#round_each => 0.1,
 		minmax => [1.0, 3],
+		enabled => 1,
+		#perturb_scale => 1.5
+	},
+	"rotor $rotor pid kp" => {
+		values =>  0.0905729426357478,
+		#values => 0,
+		#round_each => 1e-3,
+		minmax => [0, 0.5],
 		enabled => 1,
 		#perturb_scale => 5
 	},
-	"rotor $rotor pid kp" => {
-		values =>  0.0005,
-		round_each => 1e-4,
-		minmax => [1e-4, 1],
-		#perturb_scale => 5
-	},
 	"rotor $rotor pid ki" => {
-		values =>  0.0012,
-		round_each => 1e-4,
-		minmax => [1e-4, 1],
+		values =>  0.000186221550666237,
+		#values => 0,
+		#round_each => 1e-3,
+		minmax => [0, 0.5],
+		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kvfb" => {
-		values =>  0.0002,
-		round_each => 1e-4,
-		minmax => [1e-4, 1],
+		values => 2.06275068805723,
+		#values => 0,
+		#round_each => 0.1,
+		minmax => [0, 200],
+		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kvff" => {
-		values =>  1e-4,
-		round_each => 1e-4,
-		minmax => [1e-4, 1],
+		values =>  0.2,
+		#values => 0,
+		#round_each => 1e-1,
+		minmax => [0, 0.5],
 		enabled => 1,
 		#perturb_scale => 4
 	},
 	"rotor $rotor pid kaff" => {
-		values => 2e-3,
-		round_each => 1e-4,
-		minmax => [1e-4, 1],
+		values => 0.05,
+		#values => 0,
+		#round_each => 1e-1,
+		minmax => [0, 0.5],
 		enabled => 1,
 		#perturb_scale => 4
 	},
 
 	"rotor $rotor pid k1" => {
-		values =>  0.059,
-		round_each => 1e-3,
-		minmax => [1e-4, 3],
+		values => 0.89226376161859,
+		#values => 0,
+		enabled => 1,
+		#round_each => 1e-1,
+		minmax => [1e-1, 2],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid k2" => {
-		values =>  3,
-		round_each => 1e-1,
-		minmax => [1e-1, 3],
-		#perturb_scale => 5
+		values => 64.5458667584508,
+		#values => 0,
+		enabled => 1,
+		#round_each => 1e-1,
+		minmax => [1, 100],
+		#perturb_scale => 10
 	},
 	"rotor $rotor pid k3" => {
-		values =>  0.4498,
-		round_each => 1e-4,
-		minmax => [1e-4, 3],
+		values => 0.122299429021425,
+		#values => 0,
+		enabled => 1,
+		#round_each => 1e-2,
+		minmax => [1e-2, 1],
 		#perturb_scale => 1
 	},
 	"rotor $rotor pid k4" => {
-		values =>  0.0001,
-		round_each => 1e-4,
-		minmax => [1e-4, 3],
-		#perturb_scale => 4
+		values => 0.000572252133731535,
+		#values => 0,
+		enabled => 1,
+		#round_each => 1e-6,
+		minmax => [-0.001, 0.001],
+		#perturb_scale => 0.1
 	},
 
 	# demo phi
@@ -277,7 +294,19 @@ my %var_init = (
 #	},
 	);
 
-my %var_reset = %var_init;
+my %var_reset = (
+		'rotor theta exp'      => 1.81,
+		'rotor theta ramptime' => '0.5',
+		'rotor theta pid ki'   => 0.005,
+		'rotor theta pid kp'   => 0.3,
+		'rotor theta pid kvfb' => 50,
+		'rotor theta pid kaff' => 0,
+		'rotor theta pid kvff' => 0,
+		'rotor theta pid k1'   => 0.08,
+		'rotor theta pid k2'   => 3.0,
+		'rotor theta pid k3'   => 0.34,
+		'rotor theta pid k4'   => 0,
+		);
 
 #print cmd("rotor $rotor detail");
 print Dumper rotor_stat($rotor);
@@ -285,15 +314,35 @@ print Dumper rotor_stat($rotor);
 
 #reset_pos($init_deg);
 
-my $s = PDL::Opt::Simplex::Simple->new(
+#my $s = PDL::Opt::Simplex::Simple->new(
+my $s = PDL::Opt::ParticleSwarm::Simple->new(
 	vars => {
 		%var_init
 	},
-	#ssize => [ 10, 5, 2.5, 1 ],
-	#ssize => [1, 0.5 ],
-	ssize => [ 0.1, 0.05, 0.01 ],
-	max_iter => 200,
-	tolerance => 0.00001,
+
+	max_iter => 100,
+
+	opts => {
+		# Simplex opts:
+		#ssize => [ 0.01, 0.005, 0.001 ],
+		#reduce_search => 1,
+		#tolerance => 0.00001,
+
+		# Particle Swarm opts:
+		-numParticles => 10,
+		-numNeighbors => 2,
+		-iterations => 100,
+		#-inertia => 0.5,
+		-searchSize => 0.18,
+		-stallSpeed => 1e-4,
+		-stallSearchScale => 1.2,
+		##-randStartVelocity => 1,
+		-meWeight => 0.5,
+		-themWeight => 0.5,
+		-verbose => -1,
+
+	},
+
 	log => sub {
 			my ($vars, $state) = @_;
 			our $lc++;
@@ -373,9 +422,12 @@ sub run_test
 
 	my @scores;
 	my $ret = 0;
+	my $run = 0;
 
 	reset_pos($init_deg);
-	push @scores, run_test_ang($next_deg, $vars);
+	$run = 10*run_test_ang($next_deg, $vars);
+	$ret += $run;
+	print "RUN $run_count: run_test_ang score: $run\n";
 
 	#reset_pos($next_deg);
 	#push @scores, run_test_ang($init_deg, $vars);
@@ -387,17 +439,21 @@ sub run_test
 	# Skip tracking tests if the score is really bad to 
 	# revent uncontrolled oscillation:
 	$track_date_scale = 1;
-	$ret += 100 * run_test_track($vars) if ($ret < 1e9);
+	$track_test_seconds = 30;
+	$run = 100*run_test_track($vars) if ($ret < 1e9);
+	$ret += $run;
+	print "RUN $run_count: run_test_track x1 score: $run\n";
 
-	$track_date_scale = 10;
-	$ret += run_test_track($vars) if ($ret < 1e9);
+	$track_date_scale = 3;
+	$track_test_seconds = 15;
+	$run = 10*run_test_track($vars) if ($ret < 1e9);
+	$ret += $run;
+	print "RUN $run_count: run_test_track x3 score: $run\n";
 
-	reset_pos(152.76);
-	push @scores, run_test_ang($init_deg, $vars);
+	#reset_pos(152.76);
+	#$ret += run_test_ang($init_deg, $vars);
 
-	$ret = max($scores[0] // 0, $scores[1] // -1e9);
-
-	print "RUN $run_count FINISHED: Score: $ret\n";
+	print "RUN $run_count: FINISHED: Score: $ret\n";
 
 	return $ret;
 }
@@ -418,16 +474,21 @@ sub run_test_track
 		my $val = $vars->{$var};
 		$val = $val->{values} if (ref($val));
 		cmd("$var $val");
+		cmd("$var $val");
 	}
 	cmd("rotor $rotor pid reset\n");
 	cmd("date scale $track_date_scale");
 	cmd("date set $track_date temp");
 	cmd("rotor $rotor target on");
+	sleep 2;
 
 	my $count = $track_test_seconds * $track_date_scale;
 
 	my %stat_sum;
 	my %stat_sum_abs;
+	my %stat_min_abs;
+	my %stat_max_abs;
+	my %stat_avg_abs;
 	my $ret = 0;
 
 	print_var_line($vars);
@@ -441,12 +502,24 @@ sub run_test_track
 		my %stat;
 		while ($line =~ /(\w+)[:=]\s*([0-9-.]+)/g)
 		{
-			$stat{$1} = $2;
-			$stat_sum{$1} += $2;
-			$stat_sum_abs{$1} += abs($2);
+			my $var = $1;
+			my $val = $2;
+			$stat{$var} = $val;
+
+			# Date scale increases the number of entries, so scale them down:
+			$stat_sum{$var} += $val / $track_date_scale;
+			$stat_sum_abs{$var} += abs($val) / $track_date_scale;
+
+			$stat_min_abs{$var} = $val if (!defined($stat_min_abs{$var}) || $val < $stat_min_abs{$var});
+			$stat_max_abs{$var} = $val if (!defined($stat_max_abs{$var}) || $val > $stat_max_abs{$var});
 		}
 
 		push @stats, \%stat if (scalar(keys(%stat)) > 0);
+	}
+
+	foreach my $k (keys(%stat_min_abs))
+	{
+		$stat_avg_abs{$k} = $stat_sum_abs{$k} / scalar(@lines);
 	}
 
 	my $osc_speed = 0;
@@ -473,6 +546,11 @@ sub run_test_track
 	#	}
 	#	);
 
+	#print Dumper(\%stat_sum,
+	#	\%stat_sum_abs,
+	#	\%stat_min_abs,
+	#	\%stat_max_abs,
+	#	\%stat_avg_abs) . "\n";
 	if (!defined($stat_sum{max}) || !defined($stat_sum{avg}) || !defined($stat_sum_abs{err}))
 	{
 		print "Undefined vars?\n";
@@ -482,10 +560,24 @@ sub run_test_track
 	{
 		$ret =
 			#+ 1000 * $stat_sum{max}
-			+ 1000 * $stat_sum{avg}
+			+ 100 * $stat_sum{avg}
+			+ 100 * $stat_sum{prev}
+			+ 100 * $stat_sum{max}
+			+ (10 * $stat_max_abs{err}) ** 2
 			+ 1000 * $stat_sum_abs{err}
+			+ (10*abs($stat_avg_abs{speed} - $stat_min_abs{speed}))**2
+			+ (10*abs($stat_avg_abs{speed} - $stat_max_abs{speed}))**2
+			+ (10*abs($stat_avg_abs{P} - $stat_min_abs{P}))**2
+			+ (10*abs($stat_avg_abs{P} - $stat_max_abs{P}))**2
+			+ (10*abs($stat_avg_abs{I} - $stat_min_abs{I}))**2
+			+ (10*abs($stat_avg_abs{I} - $stat_max_abs{I}))**2
+			+ (10*abs($stat_avg_abs{D} - $stat_min_abs{D}))**2
+			+ (10*abs($stat_avg_abs{D} - $stat_max_abs{D}))**2
+			+ (10*abs($stat_avg_abs{FF} - $stat_min_abs{FF}))**2
+			+ (10*abs($stat_avg_abs{FF} - $stat_max_abs{FF}))**2
+			+ (10*abs($stat_avg_abs{S} - $stat_min_abs{S}))**2
+			+ (10*abs($stat_avg_abs{S} - $stat_max_abs{S}))**2
 			+ 100 *$osc_speed_count * $osc_speed;
-			;
 	}
 
 	print "max=$stat_sum{max} avg=$stat_sum{avg} err=$stat_sum_abs{err} osc_count=$osc_speed_count osc_speed=$osc_speed\n";
@@ -534,6 +626,7 @@ sub run_test_ang
 	my $elapsed = 0;
 	my $max_overshoot = 0;
 	my @hist;
+	my $abort = 0;
 	while ($elapsed < $timeout && $good_count < $req_good_count)
 	{
 		$count++;
@@ -549,10 +642,13 @@ sub run_test_ang
 		if ($stat->{position} > $position_hi_limit ||
 			$stat->{position} < $position_lo_limit)
 		{
-			print "**** ABORT: out of range: pos=$stat->{position}\n";
-			print Dumper($stat);
-			$dist += 1e9;
-			last;
+			if (++$abort > 3)
+			{
+				print "**** ABORT: out of range: pos=$stat->{position}\n";
+				print Dumper($stat);
+				$dist += 1e9;
+				last;
+			}
 		}
 
 		if (@hist > 50)
@@ -755,6 +851,7 @@ sub reset_pos
 	# Re-run the commands every iteration in case we need to
 	# hardware reset during the run:
 	my $good = 0;
+	cmd("rotor $rotor target off");
 	foreach my $var (keys %var_init) 
 	{
 		my $val = $var_reset{$var};
@@ -857,7 +954,7 @@ sub print_var_line
 		$vars->{"rotor $rotor pid k1"},
 		$vars->{"rotor $rotor pid k2"},
 		$vars->{"rotor $rotor pid k3"},
-		$vars->{"rotor $rotor pid k3"},
+		$vars->{"rotor $rotor pid k4"},
 		$vars->{"rotor $rotor exp"},
 		$vars->{"rotor $rotor ramptime"},
 		$ang;
