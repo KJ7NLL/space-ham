@@ -56,7 +56,6 @@ struct rotor rotors[NUM_ROTORS];
 struct motor *motors[NUM_ROTORS];
 
 static inline int kwrap(int k);
-static inline int kprev_target(struct rotor *r, int k);
 static inline float CP(struct rotor *r, int k);
 static inline float AP(struct rotor *r, int k);
 static inline float CV(struct rotor *r, int k);
@@ -227,7 +226,8 @@ void motor_speed(struct motor *m, float speed)
 
 	aspeed = fabs(speed); // really fast situps!
 
-	if (aspeed < 1e-5)
+	// turn off if less than 0.003% speed:
+	if (aspeed < 0.00003)
 		duty_cycle = 0;
 	else
 		duty_cycle = (m->duty_cycle_limit - m->duty_cycle_min) * aspeed + m->duty_cycle_min;
@@ -347,34 +347,39 @@ void rotor_detail(struct rotor *r)
 		cal_max = &dummy;
 
 	printf("%s:\r\n"
-		"  cal_min.v:            %f       mV\r\n"
-		"  cal_min.deg:          %f       deg\r\n"
-		"  cal_min.ready:        %d\r\n"
-		"  cal_max.v:            %f       mV\r\n"
-		"  cal_max.deg:          %f       deg\r\n"
-		"  cal_max.ready:        %d\r\n"
-		"  iadc:                 %d\r\n"
-		"  position:             %f       deg\r\n"
-		"  offset:               %f       deg\r\n"
-		"  target:               %f       deg\r\n"
-		"  target_enabled:       %d\r\n"
-		"  ramp_time:            %f\r\n"
-		"  speed_exp:            %f\r\n"
-		"  pid.Kp:               %f\r\n"
-		"  pid.Ki:               %f\r\n"
-		"  pid.Kvfb:             %f\r\n"
-		"  pid.Kvff:             %f\r\n"
-		"  pid.Kaff:             %f\r\n"
-		"  pid.K1:               %f\r\n"
-		"  pid.K2:               %f\r\n"
-		"  pid.K3:               %f\r\n"
-		"  pid.K4:               %f\r\n"
-		"  pid.proportional:     %f\r\n"
-		"  pid.integrator:       %f\r\n"
-		"  pid.damping:          %f\r\n"
-		"  pid.feed-forward:     %f\r\n"
-		"  pid.SMC:              %f\r\n"
-		"  pid.out:              %f\r\n",
+		"  cal_min.v:             %f       mV\r\n"
+		"  cal_min.deg:           %f       deg\r\n"
+		"  cal_min.ready:         %d\r\n"
+		"  cal_max.v:             %f       mV\r\n"
+		"  cal_max.deg:           %f       deg\r\n"
+		"  cal_max.ready:         %d\r\n"
+		"  iadc:                  %d\r\n"
+		"  position:              %f       deg\r\n"
+		"  offset:                %f       deg\r\n"
+		"  target:                %f       deg\r\n"
+		"  target_enabled:        %d\r\n"
+		"  ramp_time:             %f\r\n"
+		"  speed_exp:             %f\r\n"
+		"  pid.target_cur:        %f\r\n"
+		"  pid.target_prev:       %f\r\n"
+		"  pid.target_cur_count:  %d\r\n"
+		"  pid.target_prev_count: %d\r\n"
+		"  pid.target_slope       %f\r\n"
+		"  pid.Kp:                %f\r\n"
+		"  pid.Ki:                %f\r\n"
+		"  pid.Kvfb:              %f\r\n"
+		"  pid.Kvff:              %f\r\n"
+		"  pid.Kaff:              %f\r\n"
+		"  pid.K1:                %f\r\n"
+		"  pid.K2:                %f\r\n"
+		"  pid.K3:                %f\r\n"
+		"  pid.K4:                %f\r\n"
+		"  pid.proportional:      %f\r\n"
+		"  pid.integrator:        %f\r\n"
+		"  pid.damping:           %f\r\n"
+		"  pid.feed-forward:      %f\r\n"
+		"  pid.SMC:               %f\r\n"
+		"  pid.out:               %f\r\n",
 			r->motor.name,
 			cal_min->v * 1000,
 			cal_min->deg,
@@ -389,6 +394,11 @@ void rotor_detail(struct rotor *r)
 			r->target_enabled,
 			r->ramp_time,
 			r->speed_exp,
+			r->pid.target_cur,
+			r->pid.target_prev,
+			r->pid.target_cur_count,
+			r->pid.target_prev_count,
+			r->pid.target_slope,
 			r->pid.kp,
 			r->pid.ki,
 			r->pid.kvfb,
@@ -405,24 +415,61 @@ void rotor_detail(struct rotor *r)
 			r->pid.S,
 			r->pid.out);
 
-	//int i;
-	//for (i = 0; i < PID_HIST_LEN; i++)
-	//	printf("%3d. pos: %3.3f target: %3.3f\r\n", i, r->pid.pos[i], r->pid.target[i]);
 
-	printf("r->pid.k:         %d\r\n", r->pid.k);
-	printf("kwrap(k):         %d\r\n",  kwrap(           r->pid.k));
-	printf("kprev_target(k):  %d\r\n",  kprev_target(r,  r->pid.k));
-	printf("AP(k):            %f\r\n",  AP(r,            r->pid.k));
-	printf("AV(k):            %f\r\n",  AV(r,            r->pid.k));
-	printf("CP(k):            %f\r\n",  CP(r,            r->pid.k));
-	printf("CP(kprev_target)  %f\r\n",  CP(r, kprev_target(r, r->pid.k)));
-	printf("CV(k):            %f\r\n",  CV(r,            r->pid.k));
-	printf("CV(kprev_target)  %f\r\n",  CV(r, kprev_target(r, r->pid.k)));
-	printf("CA(k):            %f\r\n",  CA(r,            r->pid.k));
-	printf("err(k):           %f\r\n",  err(r,           r->pid.k));
-	printf("err_sum(k):       %f\r\n",  err_sum(r));
-	printf("SMC_S(k):         %f\r\n",  SMC_S(r,         r->pid.k));
+	int k = r->pid.k;
 
+	printf("  rotor online:     %d\r\n", rotor_online(r));
+	printf("  k:                %d\r\n", k);
+	printf("  kwrap(k):         %d\r\n", kwrap(k));
+	printf("  AP(k):            %+16.9f\r\n",  AP(r, k));
+	printf("  AV(k):            %+16.9f\r\n",  AV(r, k));
+	printf("  CP(k):            %+16.9f\r\n",  CP(r, k));
+	printf("  CV(k):            %+16.9f\r\n",  CV(r, k));
+	printf("  CA(k):            %+16.9f\r\n",  CA(r, k));
+	printf("  err(k):           %+16.9f\r\n",  err(r, k));
+	printf("  err_sum(k):       %+16.9f\r\n",  err_sum(r));
+	printf("  SMC_S(k):         %+16.9f\r\n",  SMC_S(r, k));
+
+	// Debug code for troubleshooting PID controller behavior
+	/*
+	int k, i;
+	float cp, cp_prev;
+	float cv, cv_prev;
+	float ca, prev_target = 0;
+	for (i = 0; i < PID_HIST_LEN; i++)
+	{
+		k = r->pid.k;
+
+		cp = CP(r, k);
+
+		cp_prev = CP(r, k-1);
+
+		cv = CV(r, k);
+		cv_prev = CV(r, k-1);
+
+		ca = CA(r, k);
+
+		rotor_pid_update(r, r->pid.target[k], r->pid.pos[k]);
+
+		float target = r->pid.target_prev +
+			(r->pid.target_cur_count + r->pid.target_prev_count) * r->pid.target_slope;
+				;
+		printf("%3d. pos: %13.9f target: %13.9f / %13.9f cur: %+f prev: %+f diff: %+f slope: %+f C: %d P: %d cv: %+f cv_prev: %+f ca: %+f\r\n",
+			i, r->pid.pos[k], r->pid.target[k], target,
+			r->pid.target_cur,
+			r->pid.target_prev,
+			prev_target - target,
+			r->pid.target_slope,
+			r->pid.target_cur_count,
+			r->pid.target_prev_count,
+			cv,
+			cv_prev,
+			ca
+			);
+
+		prev_target = target;
+	}
+	*/
 }
 
 void rotor_cal_load()
@@ -498,6 +545,12 @@ void rotor_cal_load()
 
 		if (rotors[i].pid.k < 0 || rotors[i].pid.k >= PID_HIST_LEN)
 			rotors[i].pid.k = 0;
+
+		rotors[i].pid.target_cur = 0;
+		rotors[i].pid.target_prev = 0;
+		rotors[i].pid.target_cur_count = 0;
+		rotors[i].pid.target_prev_count = 0;
+		rotors[i].pid.target_slope = 0;
 
 		// Upgrade rotor structures if they are an old version
 		if (rotors[i].version < 1)
@@ -710,6 +763,9 @@ int rotor_cal_trim(struct rotor *r, float trim_deg)
 
 void rotor_pid_reset(struct rotor *r)
 {
+	int en = r->target_enabled;
+	r->target_enabled = 0;
+
 	r->pid.P = 0;
 	r->pid.I = 0;
 	r->pid.D = 0;
@@ -717,10 +773,18 @@ void rotor_pid_reset(struct rotor *r)
 	r->pid.S = 0;
 	r->pid.out = 0;
 
+	r->pid.target_cur = 0;
+	r->pid.target_prev = 0;
+	r->pid.target_cur_count = 0;
+	r->pid.target_prev_count = 0;
+	r->pid.target_slope = 0;
+
+	r->pid.k = 0;
+
 	memset(r->pid.pos, 0, sizeof(r->pid.pos));
 	memset(r->pid.target, 0, sizeof(r->pid.target));
 
-	r->pid.k = 0;
+	r->target_enabled = en;
 }
 
 // Investigation of control algorithm for long-stroke fast tool servo system
@@ -735,18 +799,6 @@ static inline int kwrap(int k)
 	return k;
 }
 
-static inline int kprev_target(struct rotor *r, int k)
-{
-	float val = r->pid.target[kwrap(k)];
-
-	int i;
-
-	for (i = 0; i < PID_HIST_LEN && val == r->pid.target[kwrap(k)]; i++)
-		k--;
-
-	return kwrap(k);
-}
-
 static inline float CP(struct rotor *r, int k)
 {
 	return r->pid.target[kwrap(k)];
@@ -759,22 +811,22 @@ static inline float AP(struct rotor *r, int k)
 
 static inline float CV(struct rotor *r, int k)
 {
-	return CP(r, k) - CP(r, kprev_target(r, k));
+	return CP(r, k) - CP(r, k-1);
 }
 
 static inline float CA(struct rotor *r, int k)
 {
-	return CV(r, k) - CV(r, kprev_target(r, k));
+	return CV(r, k) - CV(r, k-1);
 }
 
 static inline float AV(struct rotor *r, int k)
 {
-	return AP(r, k) - AP(r, k-PID_HIST_POSITION_LOOKBACK);
+	return AP(r, k) - AP(r, k-1);
 }
 
 static inline float err(struct rotor *r, int k)
 {
-	return CP(r, k) - AP(r, k-PID_HIST_POSITION_LOOKBACK);
+	return CP(r, k) - AP(r, k-1);
 }
 
 static inline float err_sum(struct rotor *r)
@@ -791,7 +843,7 @@ static inline float err_sum(struct rotor *r)
 
 static inline float SMC_S(struct rotor *r, int k)
 {
-	return r->pid.k1 * err(r, k) + r->pid.k2 * (err(r, k) - err(r, k-PID_HIST_POSITION_LOOKBACK));
+	return r->pid.k1 * err(r, k) + r->pid.k2 * (err(r, k) - err(r, k-1));
 }
 
 float rotor_pid_update(struct rotor *r, float target, float pos)
@@ -804,8 +856,44 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 	float S_sum = 0;
 
 	r->pid.pos[k] = pos;
-	if (target != r->pid.target[k])
-		r->pid.target[k] = target;
+
+	// position calculations like those for tracking satellites and
+	// celestial bodies may not keep up with the PID updat tick rate of
+	// ~100 ticks/sec, so extrapolate the target based on the target
+	// position the last time it changed:
+	if (r->pid.target_cur_count >= PID_HIST_LEN || fabs(target - r->pid.target_cur) > 10)
+	{
+		// Safety: if target_cur_count is wrapping or the target
+		// change is large, then do not do a slope calculation:
+		r->pid.target_cur = target;
+		r->pid.target_prev = target;
+		r->pid.target_cur_count = 0;
+		r->pid.target_prev_count = 0;
+		r->pid.target_slope = 0;
+	}
+	else if (fabs(target - r->pid.target_cur) > 1e-9)
+	{
+		// If we get here, then the target changed by a small amount,
+		// so calculate the slope for extraploation:
+		r->pid.target_prev = r->pid.target_cur;
+		r->pid.target_cur = target;
+
+		r->pid.target_prev_count = r->pid.target_cur_count + 1;
+		r->pid.target_cur_count = 0;
+
+		r->pid.target_slope =
+				(r->pid.target_cur - r->pid.target_prev)
+					/   // over
+				(r->pid.target_prev_count);
+	}
+	else
+		r->pid.target_cur_count++;
+
+
+	// Extrapolate the adjusted target value based on slope. 
+	// If slope is 0, then there will be no extrapolation:
+	r->pid.target[k] = r->pid.target_prev +
+		(r->pid.target_cur_count + r->pid.target_prev_count) * r->pid.target_slope;
 
 	r->pid.P = r->pid.kp * err(r, k)
 		+ r->pid.ki * err_sum(r)
@@ -814,7 +902,7 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 
 	r->pid.P = r->pid.kp * err(r, k);
 
-	r->pid.I = r->pid.kp * r->pid.ki * err_sum(r);
+	r->pid.I = r->pid.ki * err_sum(r) / (float)PID_HIST_LEN;
 
 	// FF scales based on target (control) velocity and acceleration.
 	// This is good for tracking:

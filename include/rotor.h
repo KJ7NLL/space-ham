@@ -29,8 +29,6 @@
 #define ROTOR_CAL_NUM 90
 #define PID_HIST_LEN 100
 
-// Look back
-#define PID_HIST_POSITION_LOOKBACK 1
 
 #if PID_HIST_POSITION_LOOKBACK >= PID_HIST_LEN
   #error PID_HIST_LEN must be greater than PID_HIST_POSITION_LOOKBACK
@@ -125,6 +123,9 @@ struct rotor
 		int k;
 		float pos[PID_HIST_LEN];
 		float target[PID_HIST_LEN];
+		float target_prev, target_cur, target_slope;
+
+		int target_prev_count, target_cur_count;
 	} pid;
 };
 
