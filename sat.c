@@ -121,6 +121,7 @@ void sat_init(tle_t *tle)
 const sat_t *sat_update()
 {
 	struct tm utc;
+	struct timeval tv;
 	double
 		tsince,            // Time since epoch (in minutes)g
 		jul_epoch,         // Julian date of epochg
@@ -138,17 +139,12 @@ const sat_t *sat_update()
 	// Satellite Az, El, Range, Range rateg
 	vector_t obs_set;
 
-	// Solar ECI position vectorg
-	vector_t solar_vector = zero_vector;
-	// Solar observed azi and ele vectorg
-	vector_t solar_set;
-
 	if (! sat->ready)
 		return NULL;
 
 	// Get UTC calendar and convert to Juliang
-	UTC_Calendar_Now(&utc);
-	jul_utc = Julian_Date(&utc);
+	UTC_Calendar_Now(&utc, &tv);
+	jul_utc = Julian_Date(&utc, &tv);
 
 	// Convert satellite's epoch time to Juliang
 	// and calculate time since epoch in minutesg
@@ -167,22 +163,44 @@ const sat_t *sat_update()
 		sat->deep_space = 0;
 	}
 
-	// Scale position and velocity vectors to km and km/secg
+	// Scale position and velocity vectors to km and km/sec
 	Convert_Sat_State( &pos, &vel );
 
 	// Calculate velocity of satellite
 	Magnitude( &vel );
 	sat->sat_vel = vel.w;
 
-	//* All angles in rads. Distance in km. Velocity in km/s *g
+	// All angles in rads. Distance in km. Velocity in km/s
 	// Calculate satellite Azi, Ele, Range and Range-rateg
 	Calculate_Obs(jul_utc, &pos, &vel, &config.observer, &obs_set);
+
+	// Convert and print satellite and solar datag
+	sat->sat_az = Degrees(obs_set.x);
+	sat->sat_el = Degrees(obs_set.y);
+
+	// Range rates for doppler:
+	sat->sat_range = obs_set.z;
+	sat->sat_range_rate = obs_set.w;
 
 	// Calculate satellite Lat North, Lon East and Alt.g
 	Calculate_LatLonAlt(jul_utc, &pos, &sat_geodetic);
 
+	sat->sat_lat = Degrees(sat_geodetic.lat);
+	sat->sat_long = Degrees(sat_geodetic.lon);
+	sat->sat_alt = sat_geodetic.alt;
+
+
+	// Disable solar calculations to speed up iteration:
+
+	/*
 	// Calculate solar position and satellite eclipse depthg
 	// Also set or clear the satellite eclipsed flag accordingly
+	//
+	// Solar ECI position vectorg
+	vector_t solar_vector = zero_vector;
+	// Solar observed azi and ele vectorg
+	vector_t solar_set;
+
 	Calculate_Solar_Position(jul_utc, &solar_vector);
 	Calculate_Obs(jul_utc, &solar_vector, &zero_vector, &config.observer, &solar_set);
 
@@ -197,17 +215,9 @@ const sat_t *sat_update()
 		sat->eclipsed = 0;
 	}
 
-	// Convert and print satellite and solar datag
-	sat->sat_az = Degrees(obs_set.x);
-	sat->sat_el = Degrees(obs_set.y);
-	sat->sat_range = obs_set.z;
-	sat->sat_range_rate = obs_set.w;
-	sat->sat_lat = Degrees(sat_geodetic.lat);
-	sat->sat_long = Degrees(sat_geodetic.lon);
-	sat->sat_alt = sat_geodetic.alt;
-
 	sat->sun_az = Degrees(solar_set.x);
 	sat->sun_el = Degrees(solar_set.y);
+	*/
 
 	return sat;
 }
