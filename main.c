@@ -69,6 +69,7 @@ char *astro_tracked_name = NULL;
 astro_body_t astro_tracked_body = BODY_INVALID;
 
 void dispatch(int argc, char **args, struct linklist *history);
+int idle_counts = 0;
 void main_idle();
 
 FATFS fatfs;           /* Filesystem object */
@@ -198,9 +199,12 @@ void status()
 	print_tm(&rtc);
 	printf("Uptime: %0.2f hours - ", (float)(now-boot_time)/3600.0);
 
-	printf("Your lat/long: %f N %f E; altitude: %f\r\n",
+	printf("Your lat/long: %f N %f E; altitude: %f - ",
 		Degrees(config.observer.lat), Degrees(config.observer.lon),
 		config.observer.alt);
+
+	printf("%d calcs/sec\r\n", idle_counts);
+	idle_counts = 0;
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
 	{
@@ -705,6 +709,8 @@ void rotor(int argc, char **args)
 		do
 		{
 			float err = rotor_pos(r) - r->target;
+			if (err > 180)
+				err -= 360;
 			if (err > max_err)
 				max_err = err;
 			if (err < min_err)
@@ -715,7 +721,7 @@ void rotor(int argc, char **args)
 
 			n++;
 
-			printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg: P:%6.1f%% I:%6.1f%% D:%6.1f%% FF:%6.1f%% S:%6.1f%% speed:%6.1f%% tgt err: max=%5.3f prev=%5.3f avg=%5.3f\r\n",
+			printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg: P:%6.2f%% I:%6.2f%% D:%6.2f%% FF:%6.2f%% S:%6.2f%% out=%6.2f%% speed:%6.4f%% tgt err: max=%5.3f prev=%5.3f avg=%5.3f\r\n",
 				r->motor.name,
 				rotor_pos(r),
 				r->target,
@@ -725,6 +731,7 @@ void rotor(int argc, char **args)
 				r->pid.D * 100,
 				r->pid.FF * 100,
 				r->pid.S * 100,
+				r->pid.out * 100,
 				r->motor.speed * 100,
 				fabs(max_err - min_err),
 				fabs(prev_range_err - err),
@@ -1590,7 +1597,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 			}
 			else
 			{
-				print("date set (unixtime|YYYY MM DD hh mm ss) [temp]\r\n"
+				print("usage: date set (unixtime|YYYY MM DD hh mm ss) [temp]\r\n"
 					"  If a single integer is given, then it is seconds since Jan 1, 1970 UTC\r\n"
 					"  If 6 integers are passed, then parse as YYYY MM DD hh mm ss\r\n"
 					"  If you specify temp as the last argument when setting UNIX time then it\r\n"
@@ -1639,6 +1646,7 @@ void main_idle()
 	static int el_rotor_idx = 1;
 	const sat_t *sat = NULL;
 
+	idle_counts++;
 	sat = sat_update();
 
 	// Set the rotor target for az/el if a satellite is being tracked.
