@@ -65,96 +65,96 @@ my $position_hi_limit = 300;
 my $iteration_delay = 0.25;
 my $timeout = 25;
 my $req_good_count = 12;
-my $target_accuracy_deg = 0.50;
-my $reset_accuracy_deg = 0.75;
+my $target_accuracy_deg = 0.30;
+my $reset_accuracy_deg = 0.6;
 
 my %var_init = (
 	
 	# demo theta
 	"rotor $rotor ramptime" => {
 		values =>  0.5,
-		#round_each => 0.1,
+		round_each => 0.1,
 		minmax => [0.0, 5],
 		enabled => 0,
 		#perturb_scale => 5
 	},
 	"rotor $rotor exp" => {
-		values =>  1.77084952703761,
-		#round_each => 0.1,
-		minmax => [1.0, 3],
+		values =>  3,
+		round_each => 0.01,
+		minmax => [1.0, 4],
 		enabled => 1,
 		#perturb_scale => 1.5
 	},
 	"rotor $rotor pid kp" => {
-		values =>  0.0905729426357478,
+		values =>  0.1569,
+		round_each => 0.0001,
 		#values => 0,
-		#round_each => 1e-3,
 		minmax => [0, 0.5],
 		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid ki" => {
-		values =>  0.000186221550666237,
+		values =>  0.0017,
+		round_each => 0.00001,
 		#values => 0,
-		#round_each => 1e-3,
-		minmax => [0, 0.5],
+		minmax => [0, 0.05],
 		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kvfb" => {
-		values => 2.06275068805723,
+		values => 1.38,
+		round_each => 0.01,
 		#values => 0,
-		#round_each => 0.1,
-		minmax => [0, 200],
+		minmax => [0, 5],
 		enabled => 1,
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid kvff" => {
-		values =>  0.2,
+		values =>  0.214,
+		round_each => 0.001,
 		#values => 0,
-		#round_each => 1e-1,
 		minmax => [-0.5, 0.5],
 		enabled => 1,
 		#perturb_scale => 4
 	},
 	"rotor $rotor pid kaff" => {
-		values => 0.05,
+		values => -0.107,
+		round_each => 0.001,
 		#values => 0,
-		#round_each => 1e-1,
 		minmax => [-0.5, 0.5],
 		enabled => 1,
 		#perturb_scale => 4
 	},
 
 	"rotor $rotor pid k1" => {
-		values => 0.89226376161859,
+		values => 0.496,
+		round_each => 0.001,
 		#values => 0,
 		enabled => 1,
-		#round_each => 1e-1,
 		minmax => [1e-1, 2],
 		#perturb_scale => 5
 	},
 	"rotor $rotor pid k2" => {
-		values => 64.5458667584508,
+		values => 8.34,
+		round_each => 0.1,
 		#values => 0,
 		enabled => 1,
-		#round_each => 1e-1,
-		minmax => [1, 100],
+		minmax => [1, 30],
 		#perturb_scale => 10
 	},
 	"rotor $rotor pid k3" => {
-		values => 0.122299429021425,
+		values => 0.119,
+		round_each => 0.001,
 		#values => 0,
 		enabled => 1,
-		#round_each => 1e-2,
-		minmax => [1e-2, 1],
+		minmax => [1e-2, 0.5],
 		#perturb_scale => 1
 	},
 	"rotor $rotor pid k4" => {
-		values => 0.000572252133731535,
+		values => -0.000926,
+		round_each => 1e-6,
 		#values => 0,
 		enabled => 1,
-		#round_each => 1e-6,
 		minmax => [-0.001, 0.001],
 		#perturb_scale => 0.1
 	},
@@ -297,7 +297,7 @@ my %var_init = (
 my %var_reset = (
 		'rotor theta exp'      => 1.81,
 		'rotor theta ramptime' => '0.5',
-		'rotor theta pid ki'   => 0.005,
+		'rotor theta pid ki'   => 0.05,
 		'rotor theta pid kp'   => 0.3,
 		'rotor theta pid kvfb' => 50,
 		'rotor theta pid kaff' => 0,
@@ -307,6 +307,7 @@ my %var_reset = (
 		'rotor theta pid k3'   => 0.34,
 		'rotor theta pid k4'   => 0,
 		);
+%var_reset = %var_init;
 
 #print cmd("rotor $rotor detail");
 print Dumper rotor_stat($rotor);
@@ -330,11 +331,11 @@ my $s = PDL::Opt::ParticleSwarm::Simple->new(
 
 		# Particle Swarm opts:
 		-numParticles => 10,
-		-numNeighbors => 2,
+		-numNeighbors => 3,
 		-iterations => 100,
 		#-inertia => 0.5,
-		-searchSize => 0.18,
-		-stallSpeed => 1e-4,
+		-searchSize => 0.1,
+		-stallSpeed => 1e-5,
 		-stallSearchScale => 1.2,
 		##-randStartVelocity => 1,
 		-meWeight => 0.5,
@@ -367,7 +368,6 @@ my $result = $s->optimize;
 # Apply best result:
 foreach my $var (keys %$result) 
 {
-	cmd("$var $result->{$var}->{values}");
 	cmd("$var $result->{$var}->{values}");
 }
 
@@ -425,7 +425,7 @@ sub run_test
 	my $run = 0;
 
 	reset_pos($init_deg);
-	$run = 10*run_test_ang($next_deg, $vars);
+	$run = 20*run_test_ang($next_deg, $vars);
 	$ret += $run;
 	print "RUN $run_count: run_test_ang score: $run\n";
 
@@ -440,13 +440,13 @@ sub run_test
 	# revent uncontrolled oscillation:
 	$track_date_scale = 1;
 	$track_test_seconds = 30;
-	$run = 100*run_test_track($vars) if ($ret < 1e9);
+	$run = 10*run_test_track($vars) if ($ret < 1e9);
 	$ret += $run;
 	print "RUN $run_count: run_test_track x1 score: $run\n";
 
 	$track_date_scale = 3;
 	$track_test_seconds = 15;
-	$run = 10*run_test_track($vars) if ($ret < 1e9);
+	$run = 0.1*run_test_track($vars) if ($ret < 1e9);
 	$ret += $run;
 	print "RUN $run_count: run_test_track x3 score: $run\n";
 
@@ -474,11 +474,11 @@ sub run_test_track
 		my $val = $vars->{$var};
 		$val = $val->{values} if (ref($val));
 		cmd("$var $val");
-		cmd("$var $val");
 	}
 	cmd("rotor $rotor pid reset\n");
 	cmd("date scale $track_date_scale");
 	cmd("date set $track_date temp");
+	cmd("rotor $rotor pid reset");
 	cmd("rotor $rotor target on");
 	sleep 2;
 
@@ -497,6 +497,10 @@ sub run_test_track
 	# parse lines, aggregate, store them in stat:
 	my @stats;
 	my @lines = split(/\n/, $line);
+
+	# ignore the first two lines:
+	shift @lines;
+	shift @lines;
 	foreach my $line (@lines)
 	{
 		my %stat;
@@ -559,14 +563,15 @@ sub run_test_track
 	else
 	{
 		$ret =
-			#+ 1000 * $stat_sum{max}
-			+ 100 * $stat_sum{avg}
-			+ 100 * $stat_sum{prev}
-			+ 100 * $stat_sum{max}
-			+ (10 * $stat_max_abs{err}) ** 2
-			+ 1000 * $stat_sum_abs{err}
-			+ (10*abs($stat_avg_abs{speed} - $stat_min_abs{speed}))**2
-			+ (10*abs($stat_avg_abs{speed} - $stat_max_abs{speed}))**2
+			#+ 100 * $stat_sum{avg}
+			#+ 100 * $stat_sum{prev}
+			+ 100*(100 * $stat_avg_abs{err}) ** 2
+			+ 100 * $stat_sum_abs{err}
+			+ 100 * $stat_max_abs{err}
+			+ 100*(10*abs($stat_avg_abs{speed} - $stat_min_abs{speed}))**2
+			+ 100*(10*abs($stat_avg_abs{speed} - $stat_max_abs{speed}))**2
+			+ 100*(10*abs($stat_avg_abs{out} - $stat_min_abs{out}))**2
+			+ 100*(10*abs($stat_avg_abs{out} - $stat_max_abs{out}))**2
 			#+ (10*abs($stat_avg_abs{P} - $stat_min_abs{P}))**2
 			#+ (10*abs($stat_avg_abs{P} - $stat_max_abs{P}))**2
 			#+ (10*abs($stat_avg_abs{I} - $stat_min_abs{I}))**2
@@ -604,7 +609,6 @@ sub run_test_ang
 	foreach my $var (sort keys %$vars) 
 	{
 		#$vars->{$var} = 0.1 if $vars->{$var} <= 0;
-		cmd("$var $vars->{$var}");
 		cmd("$var $vars->{$var}");
 	}
 
@@ -865,7 +869,7 @@ sub reset_pos
 
 		my $stat;
 
-		cmd("mv $rotor $ang") if defined $ang;
+		cmd("mv $rotor =$ang") if defined $ang;
 		cmd("rotor $rotor target on");
 
 		$stat = rotor_stat($rotor);
