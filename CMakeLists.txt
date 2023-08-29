@@ -36,6 +36,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 # for clock_gettime():
+set(MY_C_FLAGS "${MY_C_FLAGS} -D__unix__")
 set(MY_C_FLAGS "${MY_C_FLAGS} -D_POSIX_TIMERS")
 
 set(MY_C_FLAGS "${MY_C_FLAGS} -fdiagnostics-color")
