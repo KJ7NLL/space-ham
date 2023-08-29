@@ -80,7 +80,7 @@ void SysTick_Handler(void)
 			}
 		}
 
-		float newspeed = rotor_pid_update(rotor, rtarget, rpos);
+		float newspeed = rotor_pid_update(rotor, rotor->target, rpos);
 
 		// The sign of `newspeed` must be the same, so save the sign:
 		float sign;
