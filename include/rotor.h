@@ -126,6 +126,15 @@ struct rotor
 		float target_prev, target_cur, target_slope;
 
 		int target_prev_count, target_cur_count;
+
+		// the rotor will not move if the err is less than `stationary`
+		float stationary;
+
+		// Will only allow the rotor to move in the same direction as
+		// the satellite/celestial object while the err is less than
+		// `one_dir_motion`.
+		float one_dir_motion;
+
 	} pid;
 };
 

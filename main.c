@@ -675,6 +675,8 @@ void rotor(int argc, char **args)
 			"pid                   # PID Controller settings\r\n"
 			"target (on|off)       # Turn on/off target tracking\r\n"
 			"ramptime <sec>        # Set min time to full speed\r\n"
+			"static   <deg>        # static dwell: stop rotor within <deg> degrees of target\r\n"
+			"dynamic  <deg>        # dynamic dwell: do not backtrack within <deg> while tracking\r\n"
 			"stat [n]              # Show rotor status, optionally n times\r\n"
 			"\r\n"
 			"Run a subcommand without arguments for more detail\r\n"
@@ -819,6 +821,34 @@ void rotor(int argc, char **args)
 
 			r->ramp_time = 0;
 		}
+	}
+	else if (match(args[2], "static"))
+	{
+		if (argc < 4)
+		{
+			printf("usage: rotor <rotor_name> static <deg>\r\n"
+				"Set the err in degrees before the rotor will move to correct it's position\r\n");
+
+			return;
+		}
+
+		r->pid.stationary = atof(args[3]);
+	}
+	else if (match(args[2], "dynamic"))
+	{
+		if (argc < 4)
+		{
+			printf("usage: rotor <rotor_name> dynamic <deg>\r\n"
+				"Set to allow the rotor to move only in\r\n"
+				"the same direction as the satellite/celestial\r\n"
+				"object while err is within <deg>\r\n"
+				"\r\n"
+				"Set to 0 disable\r\n");
+
+			return;
+		}
+
+		r->pid.one_dir_motion = atof(args[3]);
 	}
 
 	else

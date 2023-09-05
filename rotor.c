@@ -347,39 +347,41 @@ void rotor_detail(struct rotor *r)
 		cal_max = &dummy;
 
 	printf("%s:\r\n"
-		"  cal_min.v:             %f       mV\r\n"
-		"  cal_min.deg:           %f       deg\r\n"
-		"  cal_min.ready:         %d\r\n"
-		"  cal_max.v:             %f       mV\r\n"
-		"  cal_max.deg:           %f       deg\r\n"
-		"  cal_max.ready:         %d\r\n"
-		"  iadc:                  %d\r\n"
-		"  position:              %f       deg\r\n"
-		"  offset:                %f       deg\r\n"
-		"  target:                %f       deg\r\n"
-		"  target_enabled:        %d\r\n"
-		"  ramp_time:             %f\r\n"
-		"  speed_exp:             %f\r\n"
-		"  pid.target_cur:        %f\r\n"
-		"  pid.target_prev:       %f\r\n"
-		"  pid.target_cur_count:  %d\r\n"
-		"  pid.target_prev_count: %d\r\n"
-		"  pid.target_slope       %f\r\n"
-		"  pid.Kp:                %f\r\n"
-		"  pid.Ki:                %f\r\n"
-		"  pid.Kvfb:              %f\r\n"
-		"  pid.Kvff:              %f\r\n"
-		"  pid.Kaff:              %f\r\n"
-		"  pid.K1:                %f\r\n"
-		"  pid.K2:                %f\r\n"
-		"  pid.K3:                %f\r\n"
-		"  pid.K4:                %f\r\n"
-		"  pid.proportional:      %f\r\n"
-		"  pid.integrator:        %f\r\n"
-		"  pid.damping:           %f\r\n"
-		"  pid.feed-forward:      %f\r\n"
-		"  pid.SMC:               %f\r\n"
-		"  pid.out:               %f\r\n",
+		"  cal_min.v:             %13.9f       mV\r\n"
+		"  cal_min.deg:           %13.9f       deg\r\n"
+		"  cal_min.ready:         %3d\r\n"
+		"  cal_max.v:             %13.9f       mV\r\n"
+		"  cal_max.deg:           %13.9f       deg\r\n"
+		"  cal_max.ready:         %3d\r\n"
+		"  iadc:                  %3d\r\n"
+		"  position:              %13.9f       deg\r\n"
+		"  offset:                %13.9f       deg\r\n"
+		"  target:                %13.9f       deg\r\n"
+		"  target_enabled:        %3d\r\n"
+		"  ramp_time:             %13.9f\r\n"
+		"  speed_exp:             %13.9f\r\n"
+		"  pid.target_cur:        %13.9f\r\n"
+		"  pid.target_prev:       %13.9f\r\n"
+		"  pid.target_cur_count:  %3d\r\n"
+		"  pid.target_prev_count: %3d\r\n"
+		"  pid.target_slope       %13.9f\r\n"
+		"  pid.stationary         %13.9f\r\n"
+		"  pid.one_dir_motion     %13.9f\r\n"
+		"  pid.Kp:                %13.9f\r\n"
+		"  pid.Ki:                %13.9f\r\n"
+		"  pid.Kvfb:              %13.9f\r\n"
+		"  pid.Kvff:              %13.9f\r\n"
+		"  pid.Kaff:              %13.9f\r\n"
+		"  pid.K1:                %13.9f\r\n"
+		"  pid.K2:                %13.9f\r\n"
+		"  pid.K3:                %13.9f\r\n"
+		"  pid.K4:                %13.9f\r\n"
+		"  pid.proportional:      %13.9f\r\n"
+		"  pid.integrator:        %13.9f\r\n"
+		"  pid.damping:           %13.9f\r\n"
+		"  pid.feed-forward:      %13.9f\r\n"
+		"  pid.SMC:               %13.9f\r\n"
+		"  pid.out:               %13.9f\r\n",
 			r->motor.name,
 			cal_min->v * 1000,
 			cal_min->deg,
@@ -399,6 +401,8 @@ void rotor_detail(struct rotor *r)
 			r->pid.target_cur_count,
 			r->pid.target_prev_count,
 			r->pid.target_slope,
+			r->pid.stationary,
+			r->pid.one_dir_motion,
 			r->pid.kp,
 			r->pid.ki,
 			r->pid.kvfb,
@@ -861,7 +865,7 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 	// celestial bodies may not keep up with the PID updat tick rate of
 	// ~100 ticks/sec, so extrapolate the target based on the target
 	// position the last time it changed:
-	if (r->pid.target_cur_count >= PID_HIST_LEN || fabs(target - r->pid.target_cur) > 10)
+	if (r->pid.target_cur_count >= PID_HIST_LEN*2 || fabs(target - r->pid.target_cur) > 10)
 	{
 		// Safety: if target_cur_count is wrapping or the target
 		// change is large, then do not do a slope calculation:
@@ -895,12 +899,9 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 	r->pid.target[k] = r->pid.target_prev +
 		(r->pid.target_cur_count + r->pid.target_prev_count) * r->pid.target_slope;
 
-	r->pid.P = r->pid.kp * err(r, k)
-		+ r->pid.ki * err_sum(r)
-		+ (r->pid.kvff * CV(r, k) + r->pid.kaff * CA(r, k))
-		- (r->pid.kvfb * AV(r, k));
+	float e = err(r, k);
 
-	r->pid.P = r->pid.kp * err(r, k);
+	r->pid.P = r->pid.kp * e;
 
 	r->pid.I = r->pid.ki * err_sum(r) / (float)PID_HIST_LEN;
 
@@ -926,6 +927,16 @@ float rotor_pid_update(struct rotor *r, float target, float pos)
 	r->pid.S = r->pid.k3 * SMC_S(r, k) + S_sum;
 
 	r->pid.out = r->pid.P + r->pid.I + r->pid.D + r->pid.FF + r->pid.S;
+
+	if (fabs(e) < r->pid.stationary)
+		r->pid.out = 0;
+	else if (fabs(e) < r->pid.one_dir_motion)
+	{
+		if (r->pid.target_slope < 0 && r->pid.out > 0)
+			r->pid.out = 0;
+		else if (r->pid.target_slope > 0 && r->pid.out < 0)
+			r->pid.out = 0;
+	}
 
 	// increment the history index
 	r->pid.k = kwrap(k + 1);
