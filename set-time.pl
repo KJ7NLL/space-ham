@@ -9,9 +9,9 @@ my ($port);
 
 $port = Device::SerialPort->new($ARGV[0]) or die "$ARGV[0]: $!";
 $port->baudrate(57600);
-$port->parity("none");
+$port->parity("even");
 $port->databits(8);
-$port->stopbits(1);        # POSIX does not support 1.5 stopbits
+$port->stopbits(2);        # POSIX does not support 1.5 stopbits
 
 my $now = time();
 while ($now == time()) {}
