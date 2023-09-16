@@ -61,7 +61,7 @@
 #define LED0_PIN 0
 #define LED1_PIN 1
 
-#define MAX_ARGS 10
+#define MAX_ARGS 67
 
 time_t boot_time;
 
@@ -1548,30 +1548,66 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 	else if  (match(args[0], "i2c"))
 	{
-		if (argc < 3)
+		if (match(args[1], "read") && argc >= 5)
 		{
-			print("usage: i2c <hex_addr> <num_bytes>\r\n"
-				"Address is in hex, num_bytes is decimal\r\n");
-			return;
+			int addr = strtol(args[2], NULL, 16);
+			int target = strtol(args[3], NULL, 16);
+			int n_bytes = atoi(args[4]);
+			unsigned char *buf = malloc(n_bytes);
+			memset(buf, 0, n_bytes);
+
+			if (!buf)
+			{
+				print("buf is null, out of memory?\r\n");
+				return;
+			}
+
+			buf[0] = 0;
+			i2c_master_read(addr << 1, target, buf, n_bytes);
+			for (i = 0; i < n_bytes; i++)
+				printf("%d. %02X\r\n", i, buf[i]);
+
+			free(buf);
 		}
-
-		int addr = strtol(args[1], NULL, 16);
-		int n_bytes = atoi(args[2]);
-		unsigned char *buf = malloc(n_bytes);
-
-		if (!buf)
+		else if (match(args[1], "write") && argc >= 5)
 		{
-			print("buf is null, out of memory?\r\n");
-			return;
+			int addr = strtol(args[2], NULL, 16);
+			int target = strtol(args[3], NULL, 16);
+			int n_bytes = (unsigned)argc - 4;
+			unsigned char *buf = malloc(n_bytes);
+			memset(buf, 0, n_bytes);
+
+			printf("Sending %d bytes to 0x%02X\r\n", n_bytes, addr);
+
+			if (!buf)
+			{
+				print("buf is null, out of memory?\r\n");
+				return;
+			}
+
+			for (i = 0; i < n_bytes; i++)
+			{
+				buf[i] = strtol(args[i+4], NULL, 16);
+				printf("%d. %02X\r\n", i, buf[i]);
+			}
+
+			i2c_master_write(addr << 1, target, buf, n_bytes);
+
+			free(buf);
 		}
-
-		buf[0] = 0;
-		i2c_master_read(addr << 1, 0, buf, n_bytes);
-		for (i = 0; i < n_bytes; i++)
-			printf("%d. %02X\r\n", i, buf[i]);
-
-		free(buf);
+		else
+			printf("usage: i2c read <hex_addr> <target_addr> <num_bytes>\r\n"
+				"usage: i2c write <hex_addr> <target_addr> [<byte> <byte> <byte>...]\r\n"
+				"Read              # Reads from the i2c device\r\n"
+				"  <num_bytes>     # Selects number of bytes to read using a decimal\r\n"
+				"Write             # Writes to the i2c device\r\n"
+				"  <byte>          # The value in hex to write to the i2c device\r\n"
+				"  <byte>          # You may write as many bytes as your device requires\r\n"
+				"\r\n"
+				"hex_address selects the address of the device to write/read from.\r\n"
+				"target_addr selects the register to write/read from.\r\n");
 	}
+
 	else if (match(args[0], "date"))
 	{
 		struct tm rtc;
