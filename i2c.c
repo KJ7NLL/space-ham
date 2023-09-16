@@ -32,6 +32,15 @@
 #include "i2c.h"
 #include "serial.h"
 
+volatile I2C_TransferReturn_TypeDef result;
+volatile int count = 0;
+
+void I2C0_IRQHandler()
+{
+	result = I2C_Transfer(I2C0);
+	count++;
+}
+
 void initI2C()
 {
 	CMU_ClockEnable(cmuClock_I2C0, true);
@@ -56,6 +65,18 @@ void initI2C()
 	I2C0->CTRL = I2C_CTRL_AUTOSN;
 
 	I2C_Enable(I2C0, true);
+
+	I2C_IntClear(I2C0, _I2C_IF_MASK);
+	I2C_IntEnable(I2C0,
+		I2C_IEN_RXDATAV |
+		I2C_IEN_ACK |
+		I2C_IEN_NACK |
+		I2C_IEN_SSTOP |
+		I2C_IEN_TXC |
+		I2C_IEN_BITO |
+		I2C_IEN_CLTO
+	);
+	NVIC_EnableIRQ(I2C0_IRQn);
 }
 
 I2C_TransferReturn_TypeDef
@@ -64,7 +85,6 @@ i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 {
 	// Transfer structure
 	I2C_TransferSeq_TypeDef i2cTransfer;
-	I2C_TransferReturn_TypeDef result;
 
 	// Initializing I2C transfer
 	i2cTransfer.addr = slaveAddress;
@@ -81,8 +101,9 @@ i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 	// Sending data
 	while (result == i2cTransferInProgress)
 	{
-		result = I2C_Transfer(I2C0);
+		EMU_EnterEM1();
 	}
+	printf("read result: %d (count=%d)\r\n", result, count);
 
 	return result;
 }
@@ -93,7 +114,6 @@ void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
 {
 	// Transfer structure
 	I2C_TransferSeq_TypeDef i2cTransfer;
-	I2C_TransferReturn_TypeDef result;
 	uint8_t txBuffer[I2C_TXBUFFER_SIZE + 1];
 
 	if (numBytes > I2C_TXBUFFER_SIZE)
@@ -122,6 +142,7 @@ void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
 	// Sending data
 	while (result == i2cTransferInProgress)
 	{
-		result = I2C_Transfer(I2C0);
+		EMU_EnterEM1();
 	}
+	printf("write result: %d (count=%d)\r\n", result, count);
 }
