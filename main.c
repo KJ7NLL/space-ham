@@ -1658,7 +1658,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 					t = 946684800;
 				gmtime_r(&t, &rtc);
 
-				if (argc >= 3)
+				if (argc >= 4)
 					temp = args[3];
 			}
 			else
@@ -1863,6 +1863,7 @@ int main()
 		input(buf, sizeof(buf)-1, &history, main_idle);
 		print("\r\n");
 		
+		memset(args, 0, sizeof(args));
 		argc = parse_args(buf, args, MAX_ARGS);
 		dispatch(argc, args, history);
 	}
