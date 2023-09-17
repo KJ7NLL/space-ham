@@ -21,6 +21,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 
 #include "em_device.h"
 #include "em_chip.h"
@@ -32,12 +33,54 @@
 #include "i2c.h"
 #include "serial.h"
 
-volatile I2C_TransferReturn_TypeDef result;
 volatile int count = 0;
+volatile i2c_req_t *sync_req = NULL;
+
+I2C_TransferSeq_TypeDef i2cTransfer;
 
 void I2C0_IRQHandler()
 {
-	result = I2C_Transfer(I2C0);
+	i2c_req_t *req = sync_req;
+
+	if (req != NULL)
+	{
+		// This may seem strange, but a status value of i2cTransferDone
+		// indicates that a new I2C request should be started. This
+		// allows us to reuse a complete request as a new request
+		// without setting it back up.
+		if (req->status == i2cTransferDone)
+		{
+			req->status = i2cTransferInProgress;
+
+			// Initializing I2C transfer
+			i2cTransfer.addr = req->addr;
+			if (i2cTransfer.addr & 0x01)
+				i2cTransfer.flags = I2C_FLAG_WRITE_READ;
+			else
+				i2cTransfer.flags = I2C_FLAG_WRITE_WRITE;
+
+			i2cTransfer.buf[0].data = (void*)&req->target;
+			i2cTransfer.buf[0].len = 1;
+			i2cTransfer.buf[1].data = req->data;
+			i2cTransfer.buf[1].len = req->n_bytes;
+
+			req->status = I2C_TransferInit(I2C0, &i2cTransfer);
+		}
+		else if (req->status == i2cTransferInProgress)
+			req->status = I2C_Transfer(I2C0);
+
+		// We completed successfully:
+		if (req->status == i2cTransferDone)
+		{
+			if (req->result != NULL && req->result != req->data)
+				memcpy(req->result, req->data, req->n_bytes);
+		}
+
+		// An error occurred:
+		else if (req->status != i2cTransferInProgress)
+			req = NULL;
+	}
+
 	count++;
 }
 
@@ -83,66 +126,58 @@ I2C_TransferReturn_TypeDef
 i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 		uint8_t * rxBuff, uint8_t numBytes)
 {
-	// Transfer structure
-	I2C_TransferSeq_TypeDef i2cTransfer;
+	i2c_req_t req;
 
-	// Initializing I2C transfer
-	i2cTransfer.addr = slaveAddress;
-	i2cTransfer.flags = I2C_FLAG_WRITE_READ;
-	// i2cTransfer.flags = I2C_FLAG_READ;
+	req.name = NULL;
+	req.addr = slaveAddress | 1;
+	req.target = targetAddress;
+	req.n_bytes = numBytes;
+	req.data = rxBuff;
+	req.result = NULL;
+	req.status = i2cTransferDone;
 
-	i2cTransfer.buf[0].data = &targetAddress;
-	i2cTransfer.buf[0].len = 1;
-	i2cTransfer.buf[1].data = rxBuff;
-	i2cTransfer.buf[1].len = numBytes;
+	sync_req = &req;
 
-	result = I2C_TransferInit(I2C0, &i2cTransfer);
+	// It might be strange to call the IRQ handler directly, but it is
+	// responsible for setting up the transfer via I2C_TransferInit(), and
+	// I2C_TransferInit() is safe to run inside _or_ outside of an
+	// interrupt handler.  We cannot setup the new request here because an
+	// existing transfer may be in progress so we cannot trigger
+	// I2C_TransferInit().
+	I2C0_IRQHandler();
 
 	// Sending data
-	while (result == i2cTransferInProgress)
+	while (req.status == i2cTransferInProgress)
 	{
 		EMU_EnterEM1();
 	}
-	printf("read result: %d (count=%d)\r\n", result, count);
+	printf("read result: %d (count=%d)\r\n", req.status, count);
 
-	return result;
+	return req.status;
 }
-
 
 void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
 		     uint8_t * txBuff, uint8_t numBytes)
 {
-	// Transfer structure
-	I2C_TransferSeq_TypeDef i2cTransfer;
-	uint8_t txBuffer[I2C_TXBUFFER_SIZE + 1];
+	i2c_req_t req;
 
-	if (numBytes > I2C_TXBUFFER_SIZE)
-	{
-		printf("Warning: I2C tx: numbytes exceeds buffer size, truncating: %d > %d\r\n",
-			numBytes, I2C_TXBUFFER_SIZE);
-		numBytes = I2C_TXBUFFER_SIZE;
-	}
+	req.name = NULL;
+	req.addr = slaveAddress & 0xFFFE;
+	req.target = targetAddress;
+	req.n_bytes = numBytes;
+	req.data = txBuff;
+	req.result = NULL;
+	req.status = i2cTransferDone;
 
-	txBuffer[0] = targetAddress;
-	for (int i = 0; i < numBytes; i++)
-	{
-		txBuffer[i + 1] = txBuff[i];
-	}
+	sync_req = &req;
 
-	// Initializing I2C transfer
-	i2cTransfer.addr = slaveAddress;
-	i2cTransfer.flags = I2C_FLAG_WRITE;
-	i2cTransfer.buf[0].data = txBuffer;
-	i2cTransfer.buf[0].len = numBytes + 1;
-	i2cTransfer.buf[1].data = NULL;
-	i2cTransfer.buf[1].len = 0;
-
-	result = I2C_TransferInit(I2C0, &i2cTransfer);
+	// See the comment in i2c_master_read:
+	I2C0_IRQHandler();
 
 	// Sending data
-	while (result == i2cTransferInProgress)
+	while (req.status == i2cTransferInProgress)
 	{
 		EMU_EnterEM1();
 	}
-	printf("write result: %d (count=%d)\r\n", result, count);
+	printf("write result: %d (count=%d)\r\n", req.status, count);
 }

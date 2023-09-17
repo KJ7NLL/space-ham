@@ -26,9 +26,41 @@
 #define I2C_SDA 5
 #define I2C_TXBUFFER_SIZE 32
 
+typedef volatile struct
+{
+	// The name of the request, in case it is useful.
+	char *name;
+
+	// Target i2c address in bus-address format.  
+	// ie: AAAAAAAR where R is the read bit.
+	uint16_t addr;
+
+	// The register to read/write
+	uint8_t target;
+
+	// Number of bytes to transfer:
+	uint8_t n_bytes;
+
+	// Incremental buffer to read into:
+	uint8_t *data;
+
+	// Result buffer to copy into after the transfer completes.
+	// If the i2c_req_t structure is reused, then the result
+	// pointer always points to a valid previous measurement.
+	//  - The result member can be NULL or it can point at data.
+	//  - If result is NULL, then it is unused.
+	//  - If result points at data, then `memcpy` is not invoked and result
+	//    may contain partial data until the transfer succeeds.
+	//    successfully.
+	uint8_t *result;
+
+	// The status of the current request.  Set this to 0
+	// when starting a new request:
+	I2C_TransferReturn_TypeDef status;
+} i2c_req_t;
+
 void initI2C();
 
 I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 	uint8_t * rxBuff, uint8_t numBytes);
 void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress, uint8_t * txBuff, uint8_t numBytes);
-
