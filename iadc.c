@@ -33,6 +33,7 @@
 
 static volatile uint16_t scan_results[IADC_NUM_INPUTS][IADC_NUM_AVG];	// Raw value from ADC, 0-4095
 static volatile uint16_t sample_position[IADC_NUM_INPUTS];
+static volatile uint32_t scan_total[IADC_NUM_INPUTS];
 
 void initIADC(void)
 {
@@ -47,6 +48,7 @@ void initIADC(void)
 
 	memset((void *)scan_results, 0, sizeof(scan_results));
 	memset((void *)sample_position, 0, sizeof(sample_position));
+	memset((void *)scan_total, 0, sizeof(scan_total));
 
 	// Enable IADC0 and GPIO clock branches
 	CMU_ClockEnable(cmuClock_IADC0, true);
@@ -94,12 +96,12 @@ void initIADC(void)
 	initScanTable.entries[1].includeInScan = true;
 	initScanTable.entries[1].negInput = iadcNegInputGnd;
 
-	// Telescope
+	// UNUSED
 	initScanTable.entries[2].posInput = IADC_INPUT_2;
 	initScanTable.entries[2].includeInScan = true;
 	initScanTable.entries[2].negInput = iadcNegInputGnd;
 
-	// UNUSED
+	// Telescope
 	initScanTable.entries[3].posInput = IADC_INPUT_3;
 	initScanTable.entries[3].includeInScan = true;
 	initScanTable.entries[3].negInput = iadcNegInputGnd;
@@ -146,16 +148,12 @@ void IADC_IRQHandler(void)
 		// Really we should use result.id instead of i, but for some reason, result.id is always 0.
 		// Hopefully the scan results are always in order (they seem to be).
 
-		// Take the geometric mean of the previous value:
 		int j = sample_position[i] & IADC_NUM_AVG_MASK;
 		int v = result.data & 0xFFF;
-		if (scan_results[i][j] == 0)
-			scan_results[i][j] = v;
-		else
-		{
-			scan_results[i][j];
-			scan_results[i][j] = (int)sqrt(scan_results[i][j] * v);
-		}
+
+		scan_total[i] -= scan_results[i][j];
+		scan_total[i] += v;
+		scan_results[i][j] = v;
 		sample_position[i]++;
 		i++;
 	}
@@ -168,31 +166,12 @@ void IADC_IRQHandler(void)
 
 float iadc_get_result(int i)
 {
-	int j, total = 0;
-
-	int min = 4096, max = 0;
-
 	// Disable the interrupt to prevent the results from changing while we operate
 	NVIC_DisableIRQ(IADC_IRQn);
 
 	// Sum the results to get an average
-	for (j = 0; j < IADC_NUM_AVG; j++)
-	{
-		int v = scan_results[i][j];
-
-		if (v > max)
-			max = v;
-		if (v < min)
-			min = v;
-
-		total += v;
-	}
-
+	int result = scan_total[i] >> IADC_NUM_AVG_BITS;
 	NVIC_EnableIRQ(IADC_IRQn);
-
-	// Throw away the min and max:
-	total -= (min+max);
-	double result = (double)total / (IADC_NUM_AVG - 2);
 	
 	return (float)((double) 3.3 * result / 4095.0);
 }
