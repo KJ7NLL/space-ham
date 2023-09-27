@@ -143,18 +143,24 @@ void IADC_IRQHandler(void)
 		// Read data from the scan FIFO
 		result = IADC_pullScanFifoResult(IADC0);
 
+		if (i < NUM_ROTORS &&
+			(!rotor_online(&rotors[i]) ||
+				rotors[i].adc_type != ADC_TYPE_INTERNAL))
+			continue;
+
 		// Calculate input voltage: For single-ended the result range is 0 to +Vref, i.e.,
 		// for Vref = AVDD = 3.30V, 12 bits represents 3.30V full scale IADC range.
 		// Really we should use result.id instead of i, but for some reason, result.id is always 0.
 		// Hopefully the scan results are always in order (they seem to be).
 
-		int j = sample_position[i] & IADC_NUM_AVG_MASK;
+		int j = sample_position[i];
 		int v = result.data & 0xFFF;
 
 		scan_total[i] -= scan_results[i][j];
 		scan_total[i] += v;
 		scan_results[i][j] = v;
 		sample_position[i]++;
+		sample_position[i] &= IADC_NUM_AVG_MASK;
 		i++;
 	}
 
