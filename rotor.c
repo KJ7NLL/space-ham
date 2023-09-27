@@ -36,7 +36,7 @@
 #include "iadc.h"
 
 #define ROTOR_CAL_MAGIC   0x458FD1E9
-#define ROTOR_CUR_VERSION 1
+#define ROTOR_CUR_VERSION 2
 
 // Rotor calibration file header (cal.bin)
 struct rotor_cal_header
@@ -72,7 +72,7 @@ void initRotors()
 	memset(rotors, 0, sizeof(rotors));
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
-		rotors[i].iadc = i;
+		rotors[i].adc_channel = i;
 
 		sprintf(rotors[i].motor.name, "rotor%d", i);
 		rotors[i].motor.timer = TIMERS[i];
@@ -139,7 +139,15 @@ float rotor_pos(struct rotor *r)
 	else
 		ascending = 0;
 
-	v = iadc_get_result(r->iadc);
+	if (r->adc_type == ADC_TYPE_INTERNAL)
+	{
+		v = iadc_get_result(r->adc_channel);
+	}
+	else
+	{
+		return NAN;
+	}
+
 
 	if (ascending && v < rotor_cal_min(r)->v)
 	{
@@ -353,7 +361,10 @@ void rotor_detail(struct rotor *r)
 		"  cal_max.v:             %13.9f       mV\r\n"
 		"  cal_max.deg:           %13.9f       deg\r\n"
 		"  cal_max.ready:         %3d\r\n"
-		"  iadc:                  %3d\r\n"
+		"  adc_addr:              %3u\r\n"
+		"  adc_channel:           %3u\r\n"
+		"  adc_type:              %3u\r\n"
+		"  adc_bus:               %3u\r\n"
 		"  position:              %13.9f       deg\r\n"
 		"  offset:                %13.9f       deg\r\n"
 		"  target:                %13.9f       deg\r\n"
@@ -389,7 +400,10 @@ void rotor_detail(struct rotor *r)
 			cal_max->v * 1000,
 			cal_max->deg,
 			cal_max->ready,
-			r->iadc,
+			r->adc_addr,
+			r->adc_channel,
+			r->adc_type,
+			r->adc_bus,
 			rotor_pos(r),
 			r->offset,
 			r->target,
@@ -571,6 +585,17 @@ void rotor_cal_load()
 
 			rotors[i].version = 1;
 		}
+
+		if (rotors[i].version < 2)
+		{
+			rotors[i].adc_type = ADC_TYPE_INTERNAL;
+			rotors[i].adc_bus = 0;
+			rotors[i].adc_addr = 0;
+			rotors[i].adc_channel = i;
+
+			rotors[i].version = 2;
+
+		}
 	}
 
 	f_close(&in);
@@ -707,8 +732,19 @@ void rotor_cal_add(struct rotor *r, float deg)
 		return;
 	}
 
+	r->cal[r->cal_count].ready = 0;
 	r->cal[r->cal_count].deg = deg;
-	r->cal[r->cal_count].v = iadc_get_result(r->iadc);
+
+	if (r->adc_type == ADC_TYPE_INTERNAL)
+	{
+		r->cal[r->cal_count].v = iadc_get_result(r->adc_channel);
+	}
+	else
+	{
+		printf("Unsuported ADC type: %d\r\n", r->adc_type);
+		return;
+	}
+
 	r->cal[r->cal_count].ready = 1;
 
 	r->cal_count++;

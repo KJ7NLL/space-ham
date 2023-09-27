@@ -29,14 +29,11 @@
 #define ROTOR_CAL_NUM 90
 #define PID_HIST_LEN 100
 
+enum {
+	ADC_TYPE_INTERNAL,
+	ADC_TYPE_I2C,
+};
 
-#if PID_HIST_POSITION_LOOKBACK >= PID_HIST_LEN
-  #error PID_HIST_LEN must be greater than PID_HIST_POSITION_LOOKBACK
-#endif
-
-#if PID_HIST_TARGET_LOOKBACK >= PID_HIST_LEN
-  #error PID_HIST_LEN must be greater than PID_HIST_TARGET_LOOKBACK
-#endif
 struct motor
 {
 	union {
@@ -93,7 +90,15 @@ struct rotor
 	// load and upgrade old calibration files:
 	struct rotor_cal old_cal1, old_cal2;
 
-	int iadc;
+	// This is a packed anonymous structure because it takes the place of
+	// where an int used to be.
+	struct
+	{
+		uint8_t adc_type:4;
+		uint8_t adc_bus:4;
+		uint16_t adc_addr;
+		uint8_t adc_channel;
+	} __attribute__((packed));
 
 	float target;
 
