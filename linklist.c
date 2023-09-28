@@ -23,33 +23,77 @@
 
 #include "linklist.h"
 
-struct linklist *add_node(struct linklist *l, char *s)
+struct llnode *add_head_node_str(struct linklist *l, char *s)
 {
-	struct linklist *node = NULL;
+	struct llnode *node = NULL;
 
-	node = malloc(sizeof(struct linklist));
+	node = add_head_node(l);
+
 	if (node == NULL)
-	{
 		return NULL;
-	}
 
 	node->s = malloc(strlen(s)+1);
 	if (node->s == NULL)
 	{
+		l->head->prev = NULL;
 		free(node);
 		return NULL;
 	}
 
 	strcpy(node->s, s);
-	node->next = l;
+
+	return node;
+}
+
+struct llnode *add_head_node(struct linklist *l)
+{
+	struct llnode *node = NULL;
+
+	node = malloc(sizeof(struct llnode));
+	if (node == NULL)
+	{
+		return NULL;
+	}
+
+	node->next = l->head;
 	node->prev = NULL;
+	node->data = NULL;
 
 	if (node->next != NULL)
 	{
 		node->next->prev = node;
 	}
 
+	l->head = node;
+	if (l->tail == NULL)
+		l->tail = node;
+
 	return node;
 }
 
+struct llnode *add_tail_node(struct linklist *l)
+{
+	struct llnode *node = NULL;
+
+	node = malloc(sizeof(struct llnode));
+	if (node == NULL)
+	{
+		return NULL;
+	}
+
+	node->next = NULL;
+	node->prev = l->tail;
+	node->data = NULL;
+
+	if (node->prev != NULL)
+	{
+		node->prev->next = node;
+	}
+
+	l->tail = node;
+	if (l->head == NULL)
+		l->head = node;
+
+	return node;
+}
 

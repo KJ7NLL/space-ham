@@ -416,9 +416,9 @@ int esc_key(char **keys, void (*idle)())
 	return 0;
 }
 
-int input(char *buf, int len, struct linklist **history, void (*idle)())
+int input(char *buf, int len, struct linklist *history, void (*idle)())
 {
-	struct linklist *hist = *history;
+	struct llnode *hist = history->head;
 
 	char c;
 
@@ -584,14 +584,10 @@ int input(char *buf, int len, struct linklist **history, void (*idle)())
 
 	buf[end] = 0;
 	
-	if (end > 0 && (*history == NULL || !match(buf, (*history)->s)))
+	if (end > 0 && (history->head == NULL || !match(buf, history->head->s)))
 	{
-		hist = add_node(*history, buf);
-		if (hist != NULL)
-		{
-			*history = hist;
-		}
-		else
+		hist = add_head_node_str(history, buf);
+		if (hist == NULL)
 		{
 			print("unable to allocate history node: ");
 			print(buf);

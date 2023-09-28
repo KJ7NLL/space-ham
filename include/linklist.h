@@ -21,13 +21,24 @@
 #ifndef LINKLIST_H
 #define LINKLIST_H
 
-struct linklist
+struct llnode
 {
-	char *s;
-	struct linklist *next;
-	struct linklist *prev;
+	union
+	{
+		char *s;
+		void *data;
+	};
+
+	struct llnode *next;
+	struct llnode *prev;
 };
 
-struct linklist *add_node(struct linklist *l, char *s);
+struct linklist
+{
+	struct llnode *head, *tail;
+};
+
+struct llnode *add_head_node_str(struct linklist *l, char *s);
+struct llnode *add_head_node(struct linklist *l);
 
 #endif

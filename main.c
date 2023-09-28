@@ -180,11 +180,12 @@ void help()
 
 void dump_history(struct linklist *history)
 {
-	while (history != NULL)
+	struct llnode *temp = history->tail;
+	while (temp != NULL)
 	{
-		print(history->s);
+		print(temp->s);
 		print("\r\n");
-		history = history->next;
+		temp = temp->prev;
 	}
 }
 
@@ -1764,7 +1765,7 @@ int main()
 	FRESULT res;
 
 	struct rotor *theta = &rotors[0], *phi = &rotors[1], *focus = &rotors[3]; // not a typo
-	struct linklist *history = NULL;
+	struct linklist history = {.head = NULL, .tail = NULL};
 	char buf[128], *args[MAX_ARGS];
 	
 	int i, argc;
@@ -1865,6 +1866,6 @@ int main()
 		
 		memset(args, 0, sizeof(args));
 		argc = parse_args(buf, args, MAX_ARGS);
-		dispatch(argc, args, history);
+		dispatch(argc, args, &history);
 	}
 }
