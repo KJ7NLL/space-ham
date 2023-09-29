@@ -40,5 +40,6 @@ struct linklist
 
 struct llnode *add_head_node_str(struct linklist *l, char *s);
 struct llnode *add_head_node(struct linklist *l);
+void *delete_node(struct linklist *l, struct llnode *node);
 
 #endif

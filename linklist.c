@@ -97,3 +97,33 @@ struct llnode *add_tail_node(struct linklist *l)
 	return node;
 }
 
+void *delete_node(struct linklist *l, struct llnode *node)
+{
+	void *tmp;
+
+	if (node == NULL)
+		return NULL;
+
+	tmp = node->data;
+
+	if (node->prev != NULL)
+		node->prev->next = node->next;
+
+	if (node->next != NULL)
+		node->next->prev = node->prev;
+
+	if (node == l->head)
+		l->head = node->next;
+
+	if (node == l->tail)
+		l->tail = node->prev;
+
+	node->prev = NULL;
+	node->next = NULL;
+
+	free(node);
+
+	node = NULL;
+
+	return tmp;
+}
