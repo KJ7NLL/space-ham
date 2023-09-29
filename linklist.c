@@ -27,25 +27,27 @@ struct llnode *add_head_node_str(struct linklist *l, char *s)
 {
 	struct llnode *node = NULL;
 
-	node = add_head_node(l);
+	char *s2;
 
-	if (node == NULL)
+	s2 = malloc(strlen(s)+1);
+	if (s2 == NULL)
 		return NULL;
 
-	node->s = malloc(strlen(s)+1);
-	if (node->s == NULL)
+	strcpy(s2, s);
+
+	node = add_head_node(l, s2);
+
+	if (node == NULL)
 	{
-		l->head->prev = NULL;
-		free(node);
+		free(s2);
 		return NULL;
 	}
 
-	strcpy(node->s, s);
 
 	return node;
 }
 
-struct llnode *add_head_node(struct linklist *l)
+struct llnode *add_head_node(struct linklist *l, void *data)
 {
 	struct llnode *node = NULL;
 
@@ -57,7 +59,7 @@ struct llnode *add_head_node(struct linklist *l)
 
 	node->next = l->head;
 	node->prev = NULL;
-	node->data = NULL;
+	node->data = data;
 
 	if (node->next != NULL)
 	{
@@ -71,7 +73,7 @@ struct llnode *add_head_node(struct linklist *l)
 	return node;
 }
 
-struct llnode *add_tail_node(struct linklist *l)
+struct llnode *add_tail_node(struct linklist *l, void *data)
 {
 	struct llnode *node = NULL;
 
@@ -83,7 +85,7 @@ struct llnode *add_tail_node(struct linklist *l)
 
 	node->next = NULL;
 	node->prev = l->tail;
-	node->data = NULL;
+	node->data = data;
 
 	if (node->prev != NULL)
 	{

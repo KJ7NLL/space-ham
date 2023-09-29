@@ -39,7 +39,8 @@ struct linklist
 };
 
 struct llnode *add_head_node_str(struct linklist *l, char *s);
-struct llnode *add_head_node(struct linklist *l);
+struct llnode *add_head_node(struct linklist *l, void *data);
+struct llnode *add_tail_node(struct linklist *l, void *data);
 void *delete_node(struct linklist *l, struct llnode *node);
 
 #endif
