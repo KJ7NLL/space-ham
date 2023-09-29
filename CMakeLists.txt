@@ -47,6 +47,7 @@ set(MY_C_FLAGS "${MY_C_FLAGS} -Wall")
 set(MY_C_FLAGS "${MY_C_FLAGS} -Werror")
 set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=cpp")
 set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=array-bounds")
+set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=discarded-qualifiers")
 set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=missing-field-initializers")
 
 # ${DEVICE} sets the target specific model name

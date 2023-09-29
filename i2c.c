@@ -32,53 +32,97 @@
 
 #include "i2c.h"
 #include "serial.h"
+#include "linklist.h"
 
 volatile int count = 0;
-volatile i2c_req_t *sync_req = NULL;
+volatile i2c_req_t *req_active = NULL;
+volatile struct linklist i2c_req_once = { .head = NULL, .tail = NULL };
+volatile struct linklist i2c_req_cont = { .head = NULL, .tail = NULL };
+volatile struct llnode *i2c_req_cont_pos = NULL;
 
-I2C_TransferSeq_TypeDef i2cTransfer;
+I2C_TransferSeq_TypeDef i2c0_transfer;
+
+// This only works with I2C0. Refactor if you need I2C1
+i2c_req_t *i2c_handle_req(i2c_req_t *req)
+{
+	// This may seem strange, but a status value of i2cTransferDone
+	// indicates that a new I2C request should be started. This
+	// allows us to reuse a complete request as a new request
+	// without setting it back up.
+	if (req->status == i2cTransferDone)
+	{
+		req->status = i2cTransferInProgress;
+
+		// Initializing I2C transfer
+		i2c0_transfer.addr = req->addr;
+		if (i2c0_transfer.addr & 0x01)
+			i2c0_transfer.flags = I2C_FLAG_WRITE_READ;
+		else
+			i2c0_transfer.flags = I2C_FLAG_WRITE_WRITE;
+
+		i2c0_transfer.buf[0].data = (void*)&req->target;
+		i2c0_transfer.buf[0].len = 1;
+		i2c0_transfer.buf[1].data = req->data;
+		i2c0_transfer.buf[1].len = req->n_bytes;
+
+		req->status = I2C_TransferInit(I2C0, &i2c0_transfer);
+	}
+	else if (req->status == i2cTransferInProgress)
+		req->status = I2C_Transfer(I2C0);
+
+	// We completed successfully:
+	if (req->status == i2cTransferDone)
+	{
+		if (req->result != NULL && req->result != req->data)
+			memcpy(req->result, req->data, req->n_bytes);
+	}
+
+	return req;
+}
 
 void I2C0_IRQHandler()
 {
-	i2c_req_t *req = sync_req;
-
-	if (req != NULL)
+	if (req_active != NULL)
 	{
-		// This may seem strange, but a status value of i2cTransferDone
-		// indicates that a new I2C request should be started. This
-		// allows us to reuse a complete request as a new request
-		// without setting it back up.
-		if (req->status == i2cTransferDone)
-		{
-			req->status = i2cTransferInProgress;
+		i2c_handle_req(req_active);
 
-			// Initializing I2C transfer
-			i2cTransfer.addr = req->addr;
-			if (i2cTransfer.addr & 0x01)
-				i2cTransfer.flags = I2C_FLAG_WRITE_READ;
-			else
-				i2cTransfer.flags = I2C_FLAG_WRITE_WRITE;
-
-			i2cTransfer.buf[0].data = (void*)&req->target;
-			i2cTransfer.buf[0].len = 1;
-			i2cTransfer.buf[1].data = req->data;
-			i2cTransfer.buf[1].len = req->n_bytes;
-
-			req->status = I2C_TransferInit(I2C0, &i2cTransfer);
-		}
-		else if (req->status == i2cTransferInProgress)
-			req->status = I2C_Transfer(I2C0);
-
-		// We completed successfully:
-		if (req->status == i2cTransferDone)
-		{
-			if (req->result != NULL && req->result != req->data)
-				memcpy(req->result, req->data, req->n_bytes);
-		}
+		if (req_active->status == i2cTransferDone)
+			req_active = NULL;
 
 		// An error occurred:
-		else if (req->status != i2cTransferInProgress)
-			req = NULL;
+		else if (req_active->status != i2cTransferInProgress)
+			req_active = NULL;
+	}
+
+	// See if there is a new "once" request pending
+	if (req_active == NULL)
+	{
+		req_active = delete_node(&i2c_req_once, i2c_req_once.head);
+
+		if (req_active != NULL)
+		{
+			req_active->status = 0;
+			i2c_handle_req(req_active);
+		}
+	}
+
+	// See if there is a continuous request pending
+	if (req_active == NULL)
+	{
+		if (i2c_req_cont_pos == NULL)
+			i2c_req_cont_pos = i2c_req_cont.head;
+
+		if (i2c_req_cont_pos != NULL)
+		{
+			req_active = i2c_req_cont_pos->data;
+			i2c_req_cont_pos = i2c_req_cont_pos->next;
+		}
+
+		if (req_active != NULL)
+		{
+			req_active->status = 0;
+			i2c_handle_req(req_active);
+		}
 	}
 
 	count++;
@@ -136,7 +180,7 @@ i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 	req.result = NULL;
 	req.status = i2cTransferDone;
 
-	sync_req = &req;
+	add_tail_node(&i2c_req_once, &req);
 
 	// It might be strange to call the IRQ handler directly, but it is
 	// responsible for setting up the transfer via I2C_TransferInit(), and
@@ -169,7 +213,7 @@ void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
 	req.result = NULL;
 	req.status = i2cTransferDone;
 
-	sync_req = &req;
+	add_tail_node(&i2c_req_once, &req);
 
 	// See the comment in i2c_master_read:
 	I2C0_IRQHandler();
