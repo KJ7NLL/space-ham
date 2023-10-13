@@ -51,6 +51,7 @@
 
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
+#include "i2c/ads111x.h"
 
 #include "sat.h"
 #include "stars.h"
@@ -1798,6 +1799,20 @@ int main()
 	boot_time = mktime(&rtc);
 
 	rtcc_set_sec(boot_time);
+
+	ads111x_t adc;
+
+	ads111x_init(&adc);
+
+	adc.os = ADS111X_OS_START_SINGLE;
+	adc.mux = ADS111X_MUX_A0_GND;
+	adc.pga = ADS111X_PGA_4096MV;
+	adc.mode = ADS111X_MODE_CONT;
+
+	ads111x_config(&adc, 0x48);
+	ads111x_config(&adc, 0x49);
+	ads111x_config(&adc, 0x4A);
+	ads111x_config(&adc, 0x4B);
 
 	// Mount fatfs
 	res = f_mount(&fatfs, "", 0);
