@@ -115,6 +115,7 @@ add_executable(${PROJECT_NAME}
 	stars.c
 
 	i2c/rtc-ds3231.c
+	i2c/ads111x.c
 
 	sgp4sdp4/sgp4sdp4.c
 	sgp4sdp4/sgp_in.c
