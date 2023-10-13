@@ -34,5 +34,42 @@ typedef struct ads111x
 	uint16_t comp_que:2;
 } ads111x_t;
 
+enum {
+	// Operational status or single-shot conversion start
+	ADS111X_OS_NOOP = 0,
+	ADS111X_OS_START_SINGLE,
+
+	ADS111X_MUX_A0_A1 = 0,
+	ADS111X_MUX_A0_A3,
+	ADS111X_MUX_A1_A3,
+	ADS111X_MUX_A2_A3,
+	ADS111X_MUX_A0_GND,
+	ADS111X_MUX_A1_GND,
+	ADS111X_MUX_A2_GND,
+	ADS111X_MUX_A3_GND,
+
+	// Programmable gain amplifier
+	ADS111X_PGA_6144MV = 0,
+	ADS111X_PGA_4096MV,
+	ADS111X_PGA_2048MV,
+	ADS111X_PGA_1024MV,
+	ADS111X_PGA_0512MV,
+	ADS111X_PGA_0256MV,
+
+	// Sample mode
+	ADS111X_MODE_CONT = 0,
+	ADS111X_MODE_SINGLE,
+
+	// Data rate
+	ADS111X_DR_8_SPS = 0,
+	ADS111X_DR_16_SPS,
+	ADS111X_DR_32_SPS,
+	ADS111X_DR_64_SPS,
+	ADS111X_DR_128_SPS,
+	ADS111X_DR_250_SPS,
+	ADS111X_DR_475_SPS,
+	ADS111X_DR_860_SPS,
+};
+
 void ads111x_init(ads111x_t *adc);
 void ads111x_config(ads111x_t *adc, uint16_t addr);

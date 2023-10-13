@@ -25,11 +25,11 @@
 
 void ads111x_init(ads111x_t *adc)
 {
-	adc->os         =  0x01;
-	adc->mux        =  0x00;
-	adc->pga        =  0x02;
-	adc->mode       =  0x01;
-	adc->dr         =  0x04;
+	adc->os         =  ADS111X_OS_START_SINGLE;
+	adc->mux        =  ADS111X_MUX_A0_A1;
+	adc->pga        =  ADS111X_PGA_2048MV;
+	adc->mode       =  ADS111X_MODE_SINGLE;
+	adc->dr         =  ADS111X_DR_128_SPS;
 	adc->comp_mode  =  0x00;
 	adc->comp_pol   =  0x00;
 	adc->comp_lat   =  0x00;
@@ -53,6 +53,6 @@ void ads111x_config(ads111x_t *adc, uint16_t addr)
 		(adc->comp_lat << 2) |
 		(adc->comp_que << 0);
 
-	printf("%x: %x %x\r\n", addr, data[0], data[1]);
+	printf("ads111x config: %x: %x %x\r\n", addr, data[0], data[1]);
 	i2c_master_write(addr << 1, 1, data, 2);
 }
