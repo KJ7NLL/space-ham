@@ -18,6 +18,7 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 #include <stdio.h>
+#include <math.h>
 
 #include "i2c.h"
 #include "i2c/ads111x.h"
@@ -55,4 +56,37 @@ void ads111x_config(ads111x_t *adc, uint16_t addr)
 
 	printf("ads111x config: %x: %x %x\r\n", addr, data[0], data[1]);
 	i2c_master_write(addr << 1, 1, data, 2);
+}
+
+float ads111x_measure(ads111x_t *adc, uint16_t addr)
+{
+	uint8_t data[2];
+	int ivalue;
+	float value;
+
+	i2c_master_read(addr << 1, 0, data, 2);
+
+	ivalue = (data[0] << 8) + data[1];
+
+	value = (float)ivalue/32767.0;
+
+	printf("value: %3.12f (%5d)\r\n", value, ivalue);
+
+	switch (adc->pga)
+	{
+		case ADS111X_PGA_6144MV:
+			return 6.144 * value;
+		case ADS111X_PGA_4096MV:
+			return 4.096 * value;
+		case ADS111X_PGA_2048MV:
+			return 2.048 * value;
+		case ADS111X_PGA_1024MV:
+			return 1.024 * value;
+		case ADS111X_PGA_0512MV:
+			return 0.512 * value;
+		case ADS111X_PGA_0256MV:
+			return 0.256 * value;
+	}
+
+	return NAN;
 }

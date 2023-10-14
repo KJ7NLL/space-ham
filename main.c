@@ -89,6 +89,9 @@ config_t config = {
 	.username = "user"
 };
 
+ads111x_t adc_config;
+
+
 void initGpio(void)
 {
 	CMU_ClockEnable(cmuClock_GPIO, true);
@@ -1597,6 +1600,15 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 			free(buf);
 		}
+		else if (match(args[1], "adc") && argc >= 3)
+		{
+			float value;
+			int addr = strtol(args[2], NULL, 16);
+
+			value = ads111x_measure(&adc_config, addr);
+
+			printf("voltage: %.12f\r\n", value);
+		}
 		else
 			printf("usage: i2c read <hex_addr> <target_addr> <num_bytes>\r\n"
 				"usage: i2c write <hex_addr> <target_addr> [<byte> <byte> <byte>...]\r\n"
@@ -1800,19 +1812,17 @@ int main()
 
 	rtcc_set_sec(boot_time);
 
-	ads111x_t adc;
+	ads111x_init(&adc_config);
 
-	ads111x_init(&adc);
+	adc_config.os = ADS111X_OS_START_SINGLE;
+	adc_config.mux = ADS111X_MUX_A0_GND;
+	adc_config.pga = ADS111X_PGA_2048MV;
+	adc_config.mode = ADS111X_MODE_CONT;
 
-	adc.os = ADS111X_OS_START_SINGLE;
-	adc.mux = ADS111X_MUX_A0_GND;
-	adc.pga = ADS111X_PGA_4096MV;
-	adc.mode = ADS111X_MODE_CONT;
-
-	ads111x_config(&adc, 0x48);
-	ads111x_config(&adc, 0x49);
-	ads111x_config(&adc, 0x4A);
-	ads111x_config(&adc, 0x4B);
+	ads111x_config(&adc_config, 0x48);
+	ads111x_config(&adc_config, 0x49);
+	ads111x_config(&adc_config, 0x4A);
+	ads111x_config(&adc_config, 0x4B);
 
 	// Mount fatfs
 	res = f_mount(&fatfs, "", 0);
