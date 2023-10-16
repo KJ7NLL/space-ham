@@ -1612,6 +1612,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 		else
 			printf("usage: i2c read <hex_addr> <target_addr> <num_bytes>\r\n"
 				"usage: i2c write <hex_addr> <target_addr> [<byte> <byte> <byte>...]\r\n"
+				"usage: i2c adc <hex_addr>\r\n"
+				"\r\n"
 				"Read              # Reads from the i2c device\r\n"
 				"  <num_bytes>     # Selects number of bytes to read using a decimal\r\n"
 				"Write             # Writes to the i2c device\r\n"
