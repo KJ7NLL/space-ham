@@ -74,3 +74,4 @@ enum {
 void ads111x_init(ads111x_t *adc);
 void ads111x_config(ads111x_t *adc, uint16_t addr);
 float ads111x_measure(ads111x_t *adc, uint16_t addr);
+float ads111x_measure_req(ads111x_t *adc, i2c_req_t *req);

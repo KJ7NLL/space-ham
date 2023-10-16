@@ -61,10 +61,28 @@ void ads111x_config(ads111x_t *adc, uint16_t addr)
 float ads111x_measure(ads111x_t *adc, uint16_t addr)
 {
 	uint8_t data[2];
+	i2c_req_t req;
+
+	req.addr = (addr << 1) | 1;
+	req.target = 0;
+	req.n_bytes = 2;
+	req.data = data;
+	req.result = data;
+
+	i2c_req_submit_sync(&req);
+
+	return ads111x_measure_req(adc, &req);
+}
+
+float ads111x_measure_req(ads111x_t *adc, i2c_req_t *req)
+{
+	uint8_t *data = req->result;
+
 	int ivalue;
 	float value;
 
-	i2c_master_read(addr << 1, 0, data, 2);
+	if (data == NULL)
+		return NAN;
 
 	ivalue = (data[0] << 8) + data[1];
 
