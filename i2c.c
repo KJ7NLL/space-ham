@@ -70,6 +70,10 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	else if (req->status == i2cTransferInProgress)
 		req->status = I2C_Transfer(I2C0);
 
+	// Mark the request as complete whether or not it is sucessful
+	if (req->status == i2cTransferDone || req->status != i2cTransferInProgress)
+		req->complete = 1;
+
 	// We completed successfully:
 	if (req->status == i2cTransferDone)
 	{
@@ -86,11 +90,7 @@ void I2C0_IRQHandler()
 	{
 		i2c_handle_req(req_active);
 
-		if (req_active->status == i2cTransferDone)
-			req_active = NULL;
-
-		// An error occurred:
-		else if (req_active->status != i2cTransferInProgress)
+		if (req_active->complete)
 			req_active = NULL;
 	}
 
@@ -102,6 +102,7 @@ void I2C0_IRQHandler()
 		if (req_active != NULL)
 		{
 			req_active->status = 0;
+			req_active->complete = 0;
 			i2c_handle_req(req_active);
 		}
 	}
@@ -121,6 +122,7 @@ void I2C0_IRQHandler()
 		if (req_active != NULL)
 		{
 			req_active->status = 0;
+			req_active->complete = 0;
 			i2c_handle_req(req_active);
 		}
 	}
@@ -166,8 +168,31 @@ void initI2C()
 	NVIC_EnableIRQ(I2C0_IRQn);
 }
 
-I2C_TransferReturn_TypeDef
-i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
+void i2c_req_submit_async(i2c_req_t *req)
+{
+	req->status = 0;
+	req->complete = 0;
+	add_tail_node(&i2c_req_once, req);
+
+	// It might be strange to call the IRQ handler directly, but it is
+	// responsible for setting up the transfer via I2C_TransferInit(), and
+	// I2C_TransferInit() is safe to run inside _or_ outside of an
+	// interrupt handler.  We cannot setup the new request here because an
+	// existing transfer may be in progress so we cannot trigger
+	// I2C_TransferInit().
+	I2C0_IRQHandler();
+}
+
+I2C_TransferReturn_TypeDef i2c_req_submit_sync(i2c_req_t *req)
+{
+	i2c_req_submit_async(req);
+	while (!req->complete)
+		EMU_EnterEM1();
+
+	return req->status;
+}
+
+I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 		uint8_t * rxBuff, uint8_t numBytes)
 {
 	i2c_req_t req;
@@ -178,29 +203,15 @@ i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 	req.n_bytes = numBytes;
 	req.data = rxBuff;
 	req.result = NULL;
-	req.status = i2cTransferDone;
-
-	add_tail_node(&i2c_req_once, &req);
-
-	// It might be strange to call the IRQ handler directly, but it is
-	// responsible for setting up the transfer via I2C_TransferInit(), and
-	// I2C_TransferInit() is safe to run inside _or_ outside of an
-	// interrupt handler.  We cannot setup the new request here because an
-	// existing transfer may be in progress so we cannot trigger
-	// I2C_TransferInit().
-	I2C0_IRQHandler();
 
 	// Sending data
-	while (req.status == i2cTransferInProgress)
-	{
-		EMU_EnterEM1();
-	}
+	i2c_req_submit_sync(&req);
 	printf("read result: %d (count=%d)\r\n", req.status, count);
 
 	return req.status;
 }
 
-void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
+I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
 		     uint8_t * txBuff, uint8_t numBytes)
 {
 	i2c_req_t req;
@@ -211,17 +222,9 @@ void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress,
 	req.n_bytes = numBytes;
 	req.data = txBuff;
 	req.result = NULL;
-	req.status = i2cTransferDone;
 
-	add_tail_node(&i2c_req_once, &req);
-
-	// See the comment in i2c_master_read:
-	I2C0_IRQHandler();
-
-	// Sending data
-	while (req.status == i2cTransferInProgress)
-	{
-		EMU_EnterEM1();
-	}
+	i2c_req_submit_sync(&req);
 	printf("write result: %d (count=%d)\r\n", req.status, count);
+
+	return req.status;
 }

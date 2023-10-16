@@ -56,11 +56,19 @@ typedef volatile struct
 
 	// The status of the current request.  Set this to 0
 	// when starting a new request:
-	I2C_TransferReturn_TypeDef status;
+	volatile I2C_TransferReturn_TypeDef status;
+
+	// This is true if the request has been completed.
+	// It must be cleared before submitting a request
+	volatile uint8_t complete:1;
 } i2c_req_t;
 
 void initI2C();
 
 I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
 	uint8_t * rxBuff, uint8_t numBytes);
-void i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress, uint8_t * txBuff, uint8_t numBytes);
+
+I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targetAddress, uint8_t * txBuff, uint8_t numBytes);
+
+I2C_TransferReturn_TypeDef i2c_req_submit_sync(i2c_req_t *req);
+void i2c_req_submit_async(i2c_req_t *req);
