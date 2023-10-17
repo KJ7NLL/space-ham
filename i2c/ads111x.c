@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "i2c.h"
@@ -37,7 +39,7 @@ void ads111x_init(ads111x_t *adc)
 	adc->comp_que   =  0x03;
 }
 
-void ads111x_config(ads111x_t *adc, uint16_t addr)
+void ads111x_config(ads111x_t *adc, uint16_t devaddr)
 {
 	uint8_t data[2];
 
@@ -54,17 +56,17 @@ void ads111x_config(ads111x_t *adc, uint16_t addr)
 		(adc->comp_lat << 2) |
 		(adc->comp_que << 0);
 
-	printf("ads111x config: %x: %x %x\r\n", addr, data[0], data[1]);
-	i2c_master_write(addr << 1, 1, data, 2);
+	printf("ads111x config: %x: %x %x\r\n", devaddr, data[0], data[1]);
+	i2c_master_write(devaddr << 1, ADS111X_REG_CONFIG, data, 2);
 }
 
-float ads111x_measure(ads111x_t *adc, uint16_t addr)
+float ads111x_measure(ads111x_t *adc, uint16_t devaddr)
 {
 	uint8_t data[2];
 	i2c_req_t req;
 
-	req.addr = (addr << 1) | 1;
-	req.target = 0;
+	req.addr = (devaddr << 1) | 1;
+	req.target = ADS111X_REG_CONV;
 	req.n_bytes = 2;
 	req.data = data;
 	req.result = data;
@@ -107,4 +109,48 @@ float ads111x_measure_req(ads111x_t *adc, i2c_req_t *req)
 	}
 
 	return NAN;
+}
+
+i2c_req_t *ads111x_measure_req_alloc(int devaddr)
+{
+	i2c_req_t *req;
+
+	req = malloc(sizeof(i2c_req_t));
+
+	if (req == NULL)
+		return NULL;
+
+	req->addr = (devaddr << 1) | 1;
+	req->target = ADS111X_REG_CONV;
+	req->n_bytes = 2;
+
+	req->data = malloc(req->n_bytes);
+	if (req->data == NULL)
+		goto out_req;
+
+	req->result = malloc(req->n_bytes);
+	if (req->result == NULL)
+		goto out_data;
+
+	req->name = "ads111x";
+
+	memset(req->data, 0, req->n_bytes);
+	memset(req->result, 0, req->n_bytes);
+
+	return req;
+
+out_data:
+	free(req->data);
+
+out_req:
+	free(req);
+
+	return NULL;
+}
+
+void ads111x_measure_req_free(i2c_req_t *req)
+{
+	free(req->data);
+	free(req->result);
+	free(req);
 }

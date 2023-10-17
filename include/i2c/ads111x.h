@@ -35,6 +35,12 @@ typedef struct ads111x
 } ads111x_t;
 
 enum {
+	// Address pointer register fields
+	ADS111X_REG_CONV = 0,
+	ADS111X_REG_CONFIG,
+	ADS111X_REG_LO_THRESH,
+	ADS111X_REG_HI_THRESH,
+
 	// Operational status or single-shot conversion start
 	ADS111X_OS_NOOP = 0,
 	ADS111X_OS_START_SINGLE,
