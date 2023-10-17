@@ -62,18 +62,18 @@ void ads111x_config(ads111x_t *adc, uint16_t devaddr)
 
 float ads111x_measure(ads111x_t *adc, uint16_t devaddr)
 {
-	uint8_t data[2];
-	i2c_req_t req;
+	i2c_req_t *req;
+	float voltage;
 
-	req.addr = (devaddr << 1) | 1;
-	req.target = ADS111X_REG_CONV;
-	req.n_bytes = 2;
-	req.data = data;
-	req.result = data;
+	req = ads111x_measure_req_alloc(devaddr);
 
-	i2c_req_submit_sync(&req);
+	i2c_req_submit_sync(req);
 
-	return ads111x_measure_req(adc, &req);
+	voltage = ads111x_measure_req(adc, req);
+
+	ads111x_measure_req_free(req);
+
+	return voltage;
 }
 
 float ads111x_measure_req(ads111x_t *adc, i2c_req_t *req)
