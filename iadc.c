@@ -146,7 +146,10 @@ void IADC_IRQHandler(void)
 		if (i < NUM_ROTORS &&
 			(!rotor_online(&rotors[i]) ||
 				rotors[i].adc_type != ADC_TYPE_INTERNAL))
+		{
+			i++;
 			continue;
+		}
 
 		// Calculate input voltage: For single-ended the result range is 0 to +Vref, i.e.,
 		// for Vref = AVDD = 3.30V, 12 bits represents 3.30V full scale IADC range.
