@@ -675,14 +675,15 @@ void rotor(int argc, char **args)
 	if (argc < 3)
 	{
 		print("Usage: rotor <rotor_name> (cal ...|detail|pid ...|target (on|off)|ramptime <sec>|stat [n])\r\n"
-			"cal                   # Calibrate degree to ADC mappings\r\n"
-			"detail                # Show detailed rotor info\r\n"
-			"pid                   # PID Controller settings\r\n"
-			"target (on|off)       # Turn on/off target tracking\r\n"
-			"ramptime <sec>        # Set min time to full speed\r\n"
-			"static   <deg>        # static dwell: stop rotor within <deg> degrees of target\r\n"
-			"dynamic  <deg>        # dynamic dwell: do not backtrack within <deg> while tracking\r\n"
-			"stat [n]              # Show rotor status, optionally n times\r\n"
+			"cal                     # Calibrate degree to ADC mappings\r\n"
+			"detail                  # Show detailed rotor info\r\n"
+			"adc (type|addr|channel) # ADC settings\r\n"
+			"pid                     # PID Controller settings\r\n"
+			"target (on|off)         # Turn on/off target tracking\r\n"
+			"ramptime <sec>          # Set min time to full speed\r\n"
+			"static   <deg>          # static dwell: stop rotor within <deg> degrees of target\r\n"
+			"dynamic  <deg>          # dynamic dwell: do not backtrack within <deg> while tracking\r\n"
+			"stat [n]                # Show rotor status, optionally n times\r\n"
 			"\r\n"
 			"Run a subcommand without arguments for more detail\r\n"
 			);
@@ -782,6 +783,52 @@ void rotor(int argc, char **args)
 		}
 		else
 			print("expected: on/off\r\n");
+	}
+	else if (match(args[2], "adc"))
+	{
+		if (argc < 5)
+		{
+			print("usage: rotor <rotor_name> adc type (0|1)\r\n"
+				"rotor <rotor_name> adc addr <hex_addr>\r\n"
+				"rotor <rotor_name> adc vref <pga_value>\r\n"
+				"rotor <rotor_name> adc channel <channel>\r\n"
+				"\r\n"
+				"pga_value is the programable gain value\r\n"
+				"defined in the ads111x datasheet. These are the\r\n"
+				"values:\r\n"
+				"0. ADS111X_PGA_6144MV\r\n"
+				"1. ADS111X_PGA_4096MV\r\n"
+				"2. ADS111X_PGA_2048MV\r\n"
+				"3. ADS111X_PGA_1024MV\r\n"
+				"4. ADS111X_PGA_0512MV\r\n"
+				"5. ADS111X_PGA_0256MV\r\n"
+				"\r\n"
+				"Use the number next to the desired voltage\r\n"
+				);
+
+			return;
+		}
+
+		if (match(args[3], "type"))
+		{
+			r->adc_type = atoi(args[4]);
+		}
+		else if (match(args[3], "addr"))
+		{
+			int addr = strtol(args[4], NULL, 16);
+
+			r->adc_addr = addr;
+		}
+		else if (match(args[3], "channel"))
+		{
+			r->adc_channel = atoi(args[4]);
+		}
+		else if (match(args[3], "vref"))
+		{
+			r->adc_vref = atoi(args[4]);
+		}
+		else
+			printf("Unkown sub-command: %s\r\n", args[3]);
 	}
 	else if (match(args[2], "exp"))
 	{
@@ -1825,6 +1872,11 @@ int main()
 	ads111x_config(&adc_config, 0x49);
 	ads111x_config(&adc_config, 0x4A);
 	ads111x_config(&adc_config, 0x4B);
+
+	i2c_req_add_cont(ads111x_measure_req_alloc(0x48));
+	i2c_req_add_cont(ads111x_measure_req_alloc(0x49));
+	i2c_req_add_cont(ads111x_measure_req_alloc(0x4A));
+	i2c_req_add_cont(ads111x_measure_req_alloc(0x4B));
 
 	// Mount fatfs
 	res = f_mount(&fatfs, "", 0);

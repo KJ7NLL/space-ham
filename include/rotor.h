@@ -31,7 +31,7 @@
 
 enum {
 	ADC_TYPE_INTERNAL,
-	ADC_TYPE_I2C,
+	ADC_TYPE_I2C_ADS111X,
 };
 
 struct motor
@@ -97,7 +97,8 @@ struct rotor
 		uint8_t adc_type:4;
 		uint8_t adc_bus:4;
 		uint16_t adc_addr;
-		uint8_t adc_channel;
+		uint8_t adc_channel:4;
+		uint8_t adc_vref:4;
 	} __attribute__((packed));
 
 	float target;
@@ -139,7 +140,6 @@ struct rotor
 		// the satellite/celestial object while the err is less than
 		// `one_dir_motion`.
 		float one_dir_motion;
-
 	} pid;
 };
 

@@ -34,6 +34,8 @@
 #include "rotor.h"
 #include "strutil.h"
 #include "iadc.h"
+#include "i2c.h"
+#include "i2c/ads111x.h"
 
 #define ROTOR_CAL_MAGIC   0x458FD1E9
 #define ROTOR_CUR_VERSION 2
@@ -143,6 +145,16 @@ float rotor_pos(struct rotor *r)
 	{
 		v = iadc_get_result(r->adc_channel);
 	}
+	else if (r->adc_type == ADC_TYPE_I2C_ADS111X)
+	{
+		ads111x_t adc;
+		ads111x_init(&adc);
+
+		adc.pga = r->adc_vref;
+
+		v = ads111x_measure_req(&adc, i2c_req_get_cont(r->adc_addr));
+	}
+
 	else
 	{
 		return NAN;
@@ -361,10 +373,11 @@ void rotor_detail(struct rotor *r)
 		"  cal_max.v:             %13.9f       mV\r\n"
 		"  cal_max.deg:           %13.9f       deg\r\n"
 		"  cal_max.ready:         %3d\r\n"
-		"  adc_addr:              %3u\r\n"
+		"  adc_addr:            0x%02x\r\n"
 		"  adc_channel:           %3u\r\n"
 		"  adc_type:              %3u\r\n"
 		"  adc_bus:               %3u\r\n"
+		"  adc_vref:              %3u\r\n"
 		"  position:              %13.9f       deg\r\n"
 		"  offset:                %13.9f       deg\r\n"
 		"  target:                %13.9f       deg\r\n"
@@ -404,6 +417,7 @@ void rotor_detail(struct rotor *r)
 			r->adc_channel,
 			r->adc_type,
 			r->adc_bus,
+			r->adc_vref,
 			rotor_pos(r),
 			r->offset,
 			r->target,
@@ -592,6 +606,7 @@ void rotor_cal_load()
 			rotors[i].adc_bus = 0;
 			rotors[i].adc_addr = 0;
 			rotors[i].adc_channel = i;
+			rotors[i].adc_vref = 0;
 
 			rotors[i].version = 2;
 
