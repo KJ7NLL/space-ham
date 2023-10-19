@@ -90,8 +90,6 @@ float ads111x_measure_req(ads111x_t *adc, i2c_req_t *req)
 
 	value = (float)ivalue/32767.0;
 
-	printf("value: %3.12f (%5d)\r\n", value, ivalue);
-
 	switch (adc->pga)
 	{
 		case ADS111X_PGA_6144MV:
