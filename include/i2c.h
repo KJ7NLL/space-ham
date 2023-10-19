@@ -72,3 +72,5 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 
 I2C_TransferReturn_TypeDef i2c_req_submit_sync(i2c_req_t *req);
 void i2c_req_submit_async(i2c_req_t *req);
+void i2c_req_add_cont(i2c_req_t *req);
+i2c_req_t *i2c_req_get_cont(uint16_t devaddr);

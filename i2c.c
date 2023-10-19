@@ -34,11 +34,14 @@
 #include "serial.h"
 #include "linklist.h"
 
+#define I2C_REQ_CONT_ARRAY_SIZE 128
+
 volatile int count = 0;
 volatile i2c_req_t *req_active = NULL;
 volatile struct linklist i2c_req_once = { .head = NULL, .tail = NULL };
 volatile struct linklist i2c_req_cont = { .head = NULL, .tail = NULL };
 volatile struct llnode *i2c_req_cont_pos = NULL;
+volatile i2c_req_t *i2c_req_cont_array[I2C_REQ_CONT_ARRAY_SIZE] = {NULL};
 
 I2C_TransferSeq_TypeDef i2c0_transfer;
 
@@ -166,6 +169,38 @@ void initI2C()
 		I2C_IEN_CLTO
 	);
 	NVIC_EnableIRQ(I2C0_IRQn);
+}
+
+i2c_req_t *i2c_req_get_cont(uint16_t devaddr)
+{
+	if (devaddr < I2C_REQ_CONT_ARRAY_SIZE)
+		return i2c_req_cont_array[devaddr];
+	else
+		return NULL;
+}
+
+void i2c_req_add_cont(i2c_req_t *req)
+{
+	uint16_t devaddr = req->addr >> 1;
+
+	req->status = 0;
+	req->complete = 0;
+
+	// Allow reverse lookups by device address
+	if (devaddr < I2C_REQ_CONT_ARRAY_SIZE)
+	{
+		i2c_req_cont_array[devaddr] = req;
+	}
+
+	add_tail_node(&i2c_req_cont, req);
+
+	// It might be strange to call the IRQ handler directly, but it is
+	// responsible for setting up the transfer via I2C_TransferInit(), and
+	// I2C_TransferInit() is safe to run inside _or_ outside of an
+	// interrupt handler.  We cannot setup the new request here because an
+	// existing transfer may be in progress so we cannot trigger
+	// I2C_TransferInit().
+	I2C0_IRQHandler();
 }
 
 void i2c_req_submit_async(i2c_req_t *req)
