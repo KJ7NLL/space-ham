@@ -179,6 +179,12 @@ i2c_req_t *i2c_req_get_cont(uint16_t devaddr)
 		return NULL;
 }
 
+void i2c_req_set_cont(uint16_t devaddr, i2c_req_t *req)
+{
+	if (devaddr < I2C_REQ_CONT_ARRAY_SIZE)
+		i2c_req_cont_array[devaddr] = req;
+}
+
 void i2c_req_add_cont(i2c_req_t *req)
 {
 	uint16_t devaddr = req->addr >> 1;

@@ -147,12 +147,7 @@ float rotor_pos(struct rotor *r)
 	}
 	else if (r->adc_type == ADC_TYPE_I2C_ADS111X)
 	{
-		ads111x_t adc;
-		ads111x_init(&adc);
-
-		adc.pga = r->adc_vref;
-
-		v = ads111x_measure_req(&adc, i2c_req_get_cont(r->adc_addr));
+		v = ads111x_measure_req((ads111x_t *)i2c_req_get_cont(r->adc_addr));
 	}
 
 	else
@@ -504,6 +499,26 @@ void rotor_detail(struct rotor *r)
 	*/
 }
 
+void rotor_adc_init(struct rotor *r)
+{
+	if (r->adc_type == ADC_TYPE_I2C_ADS111X)
+	{
+		ads111x_t *adc_req;
+
+		adc_req = ads111x_measure_req_alloc(r->adc_addr);
+
+		adc_req->os = ADS111X_OS_START_SINGLE;
+		adc_req->mux = r->adc_channel;
+		adc_req->pga = r->adc_vref;
+		adc_req->mode = ADS111X_MODE_CONT;
+
+		ads111x_config_write(adc_req);
+
+		if (i2c_req_get_cont(r->adc_addr) == NULL)
+			i2c_req_add_cont(&adc_req->req);
+	}
+}
+
 void rotor_cal_load()
 {
 	struct rotor_cal_header h;
@@ -611,6 +626,9 @@ void rotor_cal_load()
 			rotors[i].version = 2;
 
 		}
+
+
+		rotor_adc_init(&rotors[i]);
 	}
 
 	f_close(&in);

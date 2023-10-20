@@ -89,9 +89,6 @@ config_t config = {
 	.username = "user"
 };
 
-ads111x_t adc_config;
-
-
 void initGpio(void)
 {
 	CMU_ClockEnable(cmuClock_GPIO, true);
@@ -828,7 +825,13 @@ void rotor(int argc, char **args)
 			r->adc_vref = atoi(args[4]);
 		}
 		else
+		{
 			printf("Unkown sub-command: %s\r\n", args[3]);
+
+			return;
+		}
+
+		rotor_adc_init(r);
 	}
 	else if (match(args[2], "exp"))
 	{
@@ -1649,10 +1652,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 		else if (match(args[1], "adc") && argc >= 3)
 		{
-			float value;
+			float value = 0;
 			int addr = strtol(args[2], NULL, 16);
 
-			value = ads111x_measure(&adc_config, addr);
+			value = ads111x_measure_req((ads111x_t *)i2c_req_get_cont(addr));
 
 			printf("voltage: %.12f\r\n", value);
 		}
@@ -1860,23 +1863,6 @@ int main()
 	boot_time = mktime(&rtc);
 
 	rtcc_set_sec(boot_time);
-
-	ads111x_init(&adc_config);
-
-	adc_config.os = ADS111X_OS_START_SINGLE;
-	adc_config.mux = ADS111X_MUX_A0_GND;
-	adc_config.pga = ADS111X_PGA_2048MV;
-	adc_config.mode = ADS111X_MODE_CONT;
-
-	ads111x_config(&adc_config, 0x48);
-	ads111x_config(&adc_config, 0x49);
-	ads111x_config(&adc_config, 0x4A);
-	ads111x_config(&adc_config, 0x4B);
-
-	i2c_req_add_cont(ads111x_measure_req_alloc(0x48));
-	i2c_req_add_cont(ads111x_measure_req_alloc(0x49));
-	i2c_req_add_cont(ads111x_measure_req_alloc(0x4A));
-	i2c_req_add_cont(ads111x_measure_req_alloc(0x4B));
 
 	// Mount fatfs
 	res = f_mount(&fatfs, "", 0);

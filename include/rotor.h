@@ -171,6 +171,7 @@ void rotor_suspend_all();
 
 void rotor_pid_reset(struct rotor *r);
 float rotor_pid_update(struct rotor *r, float target, float pos);
+void rotor_adc_init(struct rotor *r);
 
 static inline int motor_valid(struct motor *m)
 {

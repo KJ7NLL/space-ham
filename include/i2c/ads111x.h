@@ -18,8 +18,12 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
+// This structure is cast-compatible with i2c_req_t.
 typedef struct ads111x
 {
+	// This must be the first entry in the struct for casting to be possible
+	i2c_req_t req;
+
 	// High byte
 	uint16_t os:1;
 	uint16_t mux:3;
@@ -77,9 +81,9 @@ enum {
 	ADS111X_DR_860_SPS,
 };
 
-void ads111x_init(ads111x_t *adc);
-void ads111x_config(ads111x_t *adc, uint16_t addr);
-float ads111x_measure(ads111x_t *adc, uint16_t addr);
-float ads111x_measure_req(ads111x_t *adc, i2c_req_t *req);
-i2c_req_t *ads111x_measure_req_alloc(int devaddr);
-void ads111x_measure_req_free(i2c_req_t *req);
+void ads111x_init(ads111x_t *adc, uint16_t devaddr);
+ads111x_t *ads111x_req_init(ads111x_t *adc, uint16_t devaddr);
+void ads111x_config_write(ads111x_t *adc);
+float ads111x_measure_req(ads111x_t *adc);
+ads111x_t *ads111x_measure_req_alloc(int devaddr);
+void ads111x_measure_req_free(ads111x_t *req);
