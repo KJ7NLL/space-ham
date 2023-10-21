@@ -62,6 +62,9 @@ typedef volatile struct
 	// It must be cleared before submitting a request
 	volatile uint8_t complete:1;
 
+	// Valid is true if result contains valid data
+	volatile uint8_t valid:1;
+
 	uint64_t complete_time;
 } i2c_req_t;
 

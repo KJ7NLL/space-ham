@@ -82,6 +82,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	if (req->status == i2cTransferDone)
 	{
 		req->complete_time = rtcc_get_sec();
+		req->valid = 1;
 		if (req->result != NULL && req->result != req->data)
 			memcpy(req->result, req->data, req->n_bytes);
 	}
@@ -195,6 +196,7 @@ void i2c_req_add_cont(i2c_req_t *req)
 
 	req->status = 0;
 	req->complete = 0;
+	req->valid = 0;
 
 	// Allow reverse lookups by device address
 	if (devaddr < I2C_REQ_CONT_ARRAY_SIZE)
@@ -217,6 +219,7 @@ void i2c_req_submit_async(i2c_req_t *req)
 {
 	req->status = 0;
 	req->complete = 0;
+	req->valid = 0;
 	add_tail_node(&i2c_req_once, req);
 
 	// It might be strange to call the IRQ handler directly, but it is
