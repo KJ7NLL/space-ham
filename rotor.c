@@ -124,23 +124,9 @@ struct motor *motor_get(char *name)
 		return NULL;
 }
 
-// Return the degree position of the motor based on the voltage and calibrated values
-float rotor_pos(struct rotor *r)
+float rotor_get_voltage(struct rotor *r)
 {
-	struct rotor_cal *cal_min = NULL, *cal_max = NULL;
-
-	float v, v_range, v_frac;
-
-	int i;
-	int ascending;
-
-	if (!rotor_valid(r))
-		return NAN;
-
-	if (rotor_cal_min(r)->v < rotor_cal_max(r)->v)
-		ascending = 1;
-	else
-		ascending = 0;
+	float v;
 
 	if (r->adc_type == ADC_TYPE_INTERNAL)
 	{
@@ -161,12 +147,33 @@ float rotor_pos(struct rotor *r)
 				v = NAN;
 		}
 	}
-
 	else
 	{
 		return NAN;
 	}
 
+	return v;
+}
+
+// Return the degree position of the motor based on the voltage and calibrated values
+float rotor_pos(struct rotor *r)
+{
+	struct rotor_cal *cal_min = NULL, *cal_max = NULL;
+
+	float v, v_range, v_frac;
+
+	int i;
+	int ascending;
+
+	if (!rotor_valid(r))
+		return NAN;
+
+	if (rotor_cal_min(r)->v < rotor_cal_max(r)->v)
+		ascending = 1;
+	else
+		ascending = 0;
+
+	v = rotor_get_voltage(r);
 
 	if (ascending && v < rotor_cal_min(r)->v)
 	{
@@ -780,15 +787,7 @@ void rotor_cal_add(struct rotor *r, float deg)
 	r->cal[r->cal_count].ready = 0;
 	r->cal[r->cal_count].deg = deg;
 
-	if (r->adc_type == ADC_TYPE_INTERNAL)
-	{
-		r->cal[r->cal_count].v = iadc_get_result(r->adc_channel);
-	}
-	else
-	{
-		printf("Unsuported ADC type: %d\r\n", r->adc_type);
-		return;
-	}
+	r->cal[r->cal_count].v = rotor_get_voltage(r);
 
 	r->cal[r->cal_count].ready = 1;
 
