@@ -36,6 +36,7 @@
 #include "iadc.h"
 #include "i2c.h"
 #include "i2c/ads111x.h"
+#include "rtcc.h"
 
 #define ROTOR_CAL_MAGIC   0x458FD1E9
 #define ROTOR_CUR_VERSION 2
@@ -147,7 +148,18 @@ float rotor_pos(struct rotor *r)
 	}
 	else if (r->adc_type == ADC_TYPE_I2C_ADS111X)
 	{
-		v = ads111x_measure_req((ads111x_t *)i2c_req_get_cont(r->adc_addr));
+		ads111x_t *ads = (ads111x_t *)i2c_req_get_cont(r->adc_addr);
+
+		if (rtcc_get_sec() - ads->req.complete_time >= 2)
+			v = NAN;
+		else
+		{
+			v = ads111x_measure_req(ads);
+
+			// If the voltage is below 50 mV, then something is wrong:
+			if (v < 0.050)
+				v = NAN;
+		}
 	}
 
 	else

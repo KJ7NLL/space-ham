@@ -56,6 +56,12 @@ void SysTick_Handler(void)
 			rotor->target = rotor_cal_max(rotor)->deg;
 
 		float rpos = rotor_pos(rotor);
+		if (isnan(rpos))
+		{
+			motor_speed(motor, 0);
+			continue;
+		}
+
 		float rtarget = rotor->target;
 
 		// Return to relative positioning when we are within 90 degrees
