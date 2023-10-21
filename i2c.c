@@ -33,6 +33,7 @@
 #include "i2c.h"
 #include "serial.h"
 #include "linklist.h"
+#include "rtcc.h"
 
 #define I2C_REQ_CONT_ARRAY_SIZE 128
 
@@ -80,6 +81,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	// We completed successfully:
 	if (req->status == i2cTransferDone)
 	{
+		req->complete_time = rtcc_get_sec();
 		if (req->result != NULL && req->result != req->data)
 			memcpy(req->result, req->data, req->n_bytes);
 	}
@@ -114,7 +116,11 @@ void I2C0_IRQHandler()
 	if (req_active == NULL)
 	{
 		if (i2c_req_cont_pos == NULL)
+		{
 			i2c_req_cont_pos = i2c_req_cont.head;
+
+			count++;
+		}
 
 		if (i2c_req_cont_pos != NULL)
 		{
@@ -129,8 +135,6 @@ void I2C0_IRQHandler()
 			i2c_handle_req(req_active);
 		}
 	}
-
-	count++;
 }
 
 void initI2C()
@@ -268,4 +272,17 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 	printf("write result: %d (count=%d)\r\n", req.status, count);
 
 	return req.status;
+}
+
+// This is intended to display in status. It zeros but returns the count of
+// complete i2c_req_cont iterations since the previous call. If you call this
+// once per second, then you can estimate how many measurements per second are
+// made across all i2c devices.
+int i2c_get_count()
+{
+	int c = count;
+
+	count = 0;
+
+	return c;
 }

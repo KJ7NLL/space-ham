@@ -61,6 +61,8 @@ typedef volatile struct
 	// This is true if the request has been completed.
 	// It must be cleared before submitting a request
 	volatile uint8_t complete:1;
+
+	uint64_t complete_time;
 } i2c_req_t;
 
 void initI2C();
@@ -75,3 +77,4 @@ void i2c_req_submit_async(i2c_req_t *req);
 void i2c_req_add_cont(i2c_req_t *req);
 i2c_req_t *i2c_req_get_cont(uint16_t devaddr);
 void i2c_req_set_cont(uint16_t devaddr, i2c_req_t *req);
+int i2c_get_count();
