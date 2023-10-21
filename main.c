@@ -205,7 +205,7 @@ void status()
 		Degrees(config.observer.lat), Degrees(config.observer.lon),
 		config.observer.alt);
 
-	printf("%d calcs/sec\r\n", idle_counts);
+	printf("%d calcs/sec   %d i2c/sec\r\n", idle_counts, i2c_get_count());
 	idle_counts = 0;
 
 	for (i = 0; i < IADC_NUM_INPUTS; i++)
