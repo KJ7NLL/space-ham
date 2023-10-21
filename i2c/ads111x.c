@@ -67,10 +67,10 @@ float ads111x_measure_req(ads111x_t *adc)
 {
 	uint8_t *data = adc->req.result;
 
-	int ivalue;
+	int16_t ivalue;
 	float value;
 
-	if (data == NULL)
+	if (data == NULL || !adc->req.valid)
 		return NAN;
 
 	ivalue = (data[0] << 8) + data[1];
