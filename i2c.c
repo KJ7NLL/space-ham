@@ -34,6 +34,7 @@
 #include "serial.h"
 #include "linklist.h"
 #include "rtcc.h"
+#include "config.h"
 
 #define I2C_REQ_CONT_ARRAY_SIZE 128
 
@@ -144,6 +145,7 @@ void initI2C()
 
 	// Using default settings
 	I2C_Init_TypeDef i2cInit = I2C_INIT_DEFAULT;
+	i2cInit.freq = config.i2c_freq;
 
 	// Route GPIO pins to I2C module
 	GPIO->I2CROUTE[0].SDAROUTE =
