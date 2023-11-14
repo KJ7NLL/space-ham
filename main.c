@@ -86,7 +86,8 @@ config_t config = {
 	// Observer's geodetic co-ordinates.
 	// Lat North, Lon East in rads, Alt in km 
 	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
-	.username = "user"
+	.username = "user",
+	.i2c_freq = 10000
 };
 
 void initGpio(void)
@@ -627,7 +628,7 @@ void rotor_cal(struct rotor *r, int argc, char **args)
 	{
 		if (match(args[4], "offset"))
 		{
-			rotor_cal_add(r, rotor_pos(r));
+			rotor_cal_add(r, r->target);
 
 			r->offset = 0;
 		}
@@ -1343,7 +1344,7 @@ void astro(int argc, char **args)
 
 	if (argc < 2)
 		printf("usage: astro (list|search <body>|track <body>)\r\n"
-			"list                  # Show all celestial bodies\r\n"
+			"list [above <deg>]    # Show all celestial bodies\r\n"
 			"search <text>         # Find celestial body by name\r\n"
 			"track <body|N>        # Track a body by name or number\r\n"
 		);
@@ -1359,15 +1360,27 @@ void astro(int argc, char **args)
 		match(args[1], "track"))
 	{
 		int n = 0, found = 0, idx = 0;
-		if (argc >= 3)
+
+		float degrees = -INFINITY;
+
+		char c;
+
+		if (argc == 3)
 			n = atoi(args[2]);
+		else if (argc >= 4 && match(args[2], "above"))
+				degrees = atof(args[3]);
+
+		serial_read_async(&c, 1);
+
 		printf("  n. BODY                                        RA      DEC       AZ      ALT      MAG\r\n");
 		for (i = 0; i < num_bodies; i++)
 		{
+			if (serial_read_done())
+				break;
 			idx++;
 
 			if (n != idx
-				&& argc >= 3
+				&& argc == 3
 				&& !strcasestr(Astronomy_BodyName(body[i]), args[2]))
 				continue;
 
@@ -1394,18 +1407,22 @@ void astro(int argc, char **args)
 
 			hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra,
 						equ_ofdate.dec, REFRACTION_NORMAL);
-			printf("%3d. %-37s %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
-			       idx, Astronomy_BodyName(body[i]),
-			       equ_2000.ra, equ_2000.dec,
-			       hor.azimuth, hor.altitude, imag.mag);
+
+			if (hor.altitude > degrees)
+				printf("%3d. %-37s %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
+				       idx, Astronomy_BodyName(body[i]),
+				       equ_2000.ra, equ_2000.dec,
+				       hor.azimuth, hor.altitude, imag.mag);
 		}
 
 		for (i = 0; i < NUM_STARS; i++)
 		{
+			if (serial_read_done())
+				break;
 			idx++;
 
 			if (n != idx
-				&& argc >= 3
+				&& argc == 3
 				&& !strcasestr(stars[i].name, args[2]))
 				continue;
 
@@ -1428,13 +1445,16 @@ void astro(int argc, char **args)
 			// parallax, and aberration---but show the star's
 			// actual J2000 ra/dec for informational display.
 			hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NORMAL);
-			printf("%3d. %-37s %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
-			       idx, stars[i].name,
-			       stars[i].ra, //equ_ofdate.ra,
-			       stars[i].dec,// equ_ofdate.dec,
-			       hor.azimuth, hor.altitude,
-			       stars[i].mag_vis);
+
+			if (hor.altitude > degrees)
+				printf("%3d. %-37s %8.2lf %8.2lf %8.2lf %8.2lf %8.2lf\r\n",
+				       idx, stars[i].name,
+				       stars[i].ra, //equ_ofdate.ra,
+				       stars[i].dec,// equ_ofdate.dec,
+				       hor.azimuth, hor.altitude,
+				       stars[i].mag_vis);
 		}
+		serial_read_async_cancel();
 
 		if (match(args[1], "track"))
 		{
@@ -1592,6 +1612,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 			config.uplink_mhz = atof(args[2]);
 		else if (match(args[1], "downlink"))
 			config.downlink_mhz = atof(args[2]);
+		else if (match(args[1], "i2cfreq"))
+			config.i2c_freq = atoi(args[2]);
 		else
 		{
 			printf("invalid setting: %s\r\n", args[1]);
@@ -1852,6 +1874,14 @@ int main()
 
 	meminfo();
 
+	// Mount fatfs
+	res = f_mount(&fatfs, "", 0);
+	if (res != FR_OK)
+		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
+
+	// Load user config
+	f_read_file("config.bin", &config, sizeof(config));
+
 	initIADC();
 	initI2C();
 
@@ -1864,11 +1894,6 @@ int main()
 
 	rtcc_set_sec(boot_time);
 
-	// Mount fatfs
-	res = f_mount(&fatfs, "", 0);
-	if (res != FR_OK)
-		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
-	
 	// Initialize rotors
 	initRotors();
 
@@ -1886,9 +1911,6 @@ int main()
 
 	// Load calibrations from FAT
 	rotor_cal_load();
-
-	// Load user config
-	f_read_file("config.bin", &config, sizeof(config));
 
 	// Initalize motors that were loaded from flash if they were valid
 	for (i = 0; i < NUM_ROTORS; i++)
