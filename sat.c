@@ -93,7 +93,7 @@ int tle_csum(char *s)
 	return csum % 10;
 }
 
-void sat_init(tle_t *tle)
+const sat_t *sat_init(tle_t *tle)
 {
 	// Copy the provided tle into our static private satellite structure
 	sat->tle = *tle;
@@ -115,7 +115,7 @@ void sat_init(tle_t *tle)
 	select_ephemeris(&sat->tle);
 
 	sat->ready = 1;
-	sat_update();
+	return sat_update();
 }
 
 const sat_t *sat_update()

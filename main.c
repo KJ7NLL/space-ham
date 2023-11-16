@@ -1153,28 +1153,48 @@ void sat(int argc, char **args)
 			return;
 		}
 		
+		sat_t *sat;
 		tle_t tle_tmp;
+
 		i = 1;
+
 		int n = 0, found = 0;
-		if (argc >= 3)
+
+		float degrees = -INFINITY;
+
+		if (argc == 3)
 			n = atoi(args[2]);
+		else if (argc >= 4 && match(args[2], "above"))
+				degrees = atof(args[3]);
+
+		printf("  n. [CAT #] SATELLITE                   AZI    ELE\r\n");
+		printf("===================================================\r\n");
 		do
 		{
 			res = f_read(&in, &tle_tmp, sizeof(tle_tmp), &br);
 			if (br < sizeof(tle_tmp))
 				break;
 
-			if (argc < 3 ||
-				n == i ||
+			if (n == i ||
 				n == tle.catnr ||
-				(n == 0 && strcasestr(tle_tmp.sat_name, args[2])))
+				(argc == 3 && n == 0 &&
+					strcasestr(tle_tmp.sat_name, args[2])) ||
+				argc >= 4 || argc < 3)
 			{
-				memcpy(&tle, &tle_tmp, sizeof(tle_t));
-				printf("%d. %s (%d)\r\n", i, tle.sat_name, tle.catnr);
+				tle = tle_tmp;
+				sat = sat_init(&tle);
+				if (sat->sat_el > degrees)
+				{
+					printf("%3d. [%5d] %-24s %6.2f %6.2f\r\n",
+						i, tle.catnr, tle.sat_name,
+						sat->sat_az, sat->sat_el);
+				}
 				found++;
 			}
 			i++;
 		} while (res == FR_OK);
+
+		sat_reset();
 
 		if (match(args[1], "track"))
 		{

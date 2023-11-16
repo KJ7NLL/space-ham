@@ -51,7 +51,7 @@ void tle_info(tle_t *s);
 void tle_detail(tle_t *s);
 int tle_csum(char *s);
 
-void sat_init(tle_t *tle);
+const sat_t *sat_init(tle_t *tle);
 const sat_t *sat_update();
 void sat_status();
 int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf);
