@@ -162,7 +162,8 @@ void help()
 		"date (read|set|scale)                                           # Set or get the date\r\n"
 		"config (latitude|longitude|altitude|username) <value>           # User configuration\r\n"
 		"motor <motor_name> (speed|online|offline|...)                   # Motor commands\r\n"
-		"rotor <rotor_name> (cal|detail|pid|target|ramptime)             # Rotor commands\r\n"
+		"rotor <rotor_name> (cal|detail|pid|target|ramptime|adc)         # Rotor commands\r\n"
+		"pc <command_prefix>                                             # prefix a command\r\n"
 		"flash (save|load)                                               # Save to flash\r\n"
 		"mv <motor_name> <([+-]deg|n|e|s|w)>                             # Moves antenna\r\n"
 		"sat (load|rx|demo|track|list|search)                            # Track satellites\r\n"
@@ -1054,6 +1055,57 @@ void watch(int argc, char **args, struct linklist *history)
 	while (!serial_read_done());
 }
 
+void cmd_prefix(int argc, char **args, struct linklist *history)
+{
+	int i;
+	int argc2;
+
+	char buf[128];
+	char *inbuf;
+
+	if (argc == 1)
+	{
+		printf("Usage: pc <command_prefix>\r\n"
+		       "\r\n"
+		       "Prepend every command you type with <command_prefix>.\r\n"
+		       "For example: if you run `pc rotor theta`, then all you\r\n"
+		       "have to run is `cal...` or whatever theta command you\r\n"
+		       "wish to run because `rotor theta` is already typed for\r\n"
+		       "you.\r\n"
+		       "\r\n"
+		       "Press enter to return to normal input\r\n"
+		       );
+		return;
+	}
+
+	buf[0] = 0;
+	for (i = 1; i < argc; i++)
+	{
+		strncat(buf, args[i], sizeof(buf)-1);
+
+		if (i < argc-1)
+			strncat(buf, " ", sizeof(buf)-1);
+	}
+
+	inbuf = buf+strlen(buf);
+
+	printf("Press <enter> to quit\r\n");
+	do
+	{
+		inbuf[0] = 0;
+		printf("[%s@prefix]# %s: ", config.username, buf);
+
+		fflush(stdout);
+
+		input(inbuf, sizeof(buf)-strlen(buf), history, main_idle);
+		print("\r\n");
+
+		argc2 = parse_args(inbuf, args+argc, MAX_ARGS - argc);
+		if (argc2 > 0)
+			dispatch(argc+argc2-1, args+1, history);
+	} while (argc2 > 0);
+}
+
 void sat(int argc, char **args)
 {
 	FRESULT res = FR_OK;  /* API result code */
@@ -1536,6 +1588,11 @@ void dispatch(int argc, char **args, struct linklist *history)
 	else if (match(args[0], "watch"))
 	{
 		watch(argc, args, history);
+	}
+
+	else if (match(args[0], "pc"))
+	{
+		cmd_prefix(argc, args, history);
 	}
 
 	else if (match(args[0], "free"))
