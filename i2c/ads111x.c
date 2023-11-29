@@ -96,63 +96,25 @@ float ads111x_measure_req(ads111x_t *adc)
 	return NAN;
 }
 
-ads111x_t *ads111x_req_init(ads111x_t *adc, uint16_t devaddr)
+ads111x_t *ads111x_measure_req_alloc(int devaddr)
 {
+	ads111x_t *adc;
+
+	adc = (ads111x_t*)i2c_req_alloc(sizeof(ads111x_t), 2);
 	if (adc == NULL)
 		return NULL;
 
 	i2c_req_t *req = &adc->req;
 
-	req->addr = (devaddr << 1) | 1;
-	req->target = ADS111X_REG_CONV;
-	req->n_bytes = 2;
-
-	req->data = malloc(req->n_bytes);
-	if (req->data == NULL)
-		return NULL;
-
-	req->result = malloc(req->n_bytes);
-	if (req->result == NULL)
-		goto out_data;
-
 	req->name = "ads111x";
 
-	memset(req->data, 0, req->n_bytes);
-	memset(req->result, 0, req->n_bytes);
-
-	return adc;
-
-out_data:
-	free(req->data);
-
-	return NULL;
-}
-
-ads111x_t *ads111x_measure_req_alloc(int devaddr)
-{
-	ads111x_t *req, *adc;
-
-	req = malloc(sizeof(ads111x_t));
-
-	if (req == NULL)
-		return NULL;
-
-	adc = ads111x_req_init(req, devaddr);
-
-	if (adc == NULL)
-		free(req);
+	req->addr = (devaddr << 1) | 1;
+	req->target = ADS111X_REG_CONV;
 
 	return adc;
 }
 
 void ads111x_measure_req_free(ads111x_t *adc)
 {
-	if (&adc->req == i2c_req_get_cont(adc->req.addr >> 1))
-	{
-		i2c_req_set_cont(adc->req.addr >> 1, NULL);
-	}
-
-	free(adc->req.data);
-	free(adc->req.result);
-	free(adc);
+	i2c_req_free((i2c_req_t*)adc);
 }

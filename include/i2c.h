@@ -81,3 +81,5 @@ void i2c_req_add_cont(i2c_req_t *req);
 i2c_req_t *i2c_req_get_cont(uint16_t devaddr);
 void i2c_req_set_cont(uint16_t devaddr, i2c_req_t *req);
 int i2c_get_count();
+i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes);
+void i2c_req_free(i2c_req_t *req);

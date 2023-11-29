@@ -291,3 +291,46 @@ int i2c_get_count()
 
 	return c;
 }
+
+i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
+{
+	i2c_req_t *req;
+
+	req = malloc(reqtype_size);
+	if (req == NULL)
+		return NULL;
+
+	req->n_bytes = n_bytes;
+
+	req->data = malloc(req->n_bytes);
+	if (req->data == NULL)
+		goto out_req;
+
+	req->result = malloc(req->n_bytes);
+	if (req->result == NULL)
+		goto out_data;
+
+	memset(req->data, 0, req->n_bytes);
+	memset(req->result, 0, req->n_bytes);
+
+	return req;
+
+out_data:
+	free(req->data);
+out_req:
+	free(req);
+
+	return NULL;
+}
+
+void i2c_req_free(i2c_req_t *req)
+{
+	if (req == i2c_req_get_cont(req->addr >> 1))
+	{
+		i2c_req_set_cont(req->addr >> 1, NULL);
+	}
+
+	free(req->data);
+	free(req->result);
+	free(req);
+}
