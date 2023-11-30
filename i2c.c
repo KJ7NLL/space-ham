@@ -81,9 +81,14 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	if (req->status == i2cTransferDone)
 	{
 		req->complete_time = rtcc_get_sec();
+		req->sample_count++;
 		req->valid = 1;
 		if (req->result != NULL && req->result != req->data)
 			memcpy(req->result, req->data, req->n_bytes);
+	}
+	else if (req->complete && req->status != i2cTransferInProgress)
+	{
+		req->err_count++;
 	}
 
 	return req;
@@ -300,6 +305,8 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
 	if (req == NULL)
 		return NULL;
 
+	memset(req, 0, reqtype_size);
+
 	req->n_bytes = n_bytes;
 
 	req->data = malloc(req->n_bytes);
@@ -333,4 +340,9 @@ void i2c_req_free(i2c_req_t *req)
 	free(req->data);
 	free(req->result);
 	free(req);
+}
+
+const volatile struct linklist *i2c_req_cont_list()
+{
+	return &i2c_req_cont;
 }

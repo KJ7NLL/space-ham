@@ -1758,10 +1758,38 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 			printf("voltage: %.12f\r\n", value);
 		}
+		else if (match(args[1], "list"))
+		{
+			struct linklist *reqs = i2c_req_cont_list();
+
+			struct llnode *node = reqs->head;
+			printf("i2c cont completions: %5d\r\n", i2c_get_count());
+			while (node != NULL)
+			{
+				i2c_req_t *req = node->data;
+				printf("%02x: %s: target=%02x valid=%d age=%d samples=%d errors=%d\r\n",
+					req->addr >> 1,
+					req->name,
+					req->target,
+					req->valid,
+					(int)(rtcc_get_sec() - req->complete_time),
+					req->sample_count,
+					req->err_count);
+
+				for (i = 0; i < req->n_bytes; i++)
+					printf("  %d. %02X\r\n", i, req->result[i]);
+				if (match(req->name, "ads111x"))
+					printf("  %.9f volts\r\n",
+						ads111x_measure_req((ads111x_t*)req));
+
+				node = node->next;
+			}
+		}
 		else
 			printf("usage: i2c read <hex_addr> <target_addr> <num_bytes>\r\n"
 				"usage: i2c write <hex_addr> <target_addr> [<byte> <byte> <byte>...]\r\n"
 				"usage: i2c adc <hex_addr>\r\n"
+				"usage: i2c list - list continuously sampled measurements\r\n"
 				"\r\n"
 				"Read              # Reads from the i2c device\r\n"
 				"  <num_bytes>     # Selects number of bytes to read using a decimal\r\n"

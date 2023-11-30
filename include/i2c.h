@@ -66,6 +66,8 @@ typedef volatile struct
 	volatile uint8_t valid:1;
 
 	uint64_t complete_time;
+
+	int sample_count, err_count;
 } i2c_req_t;
 
 void initI2C();
@@ -83,3 +85,4 @@ void i2c_req_set_cont(uint16_t devaddr, i2c_req_t *req);
 int i2c_get_count();
 i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes);
 void i2c_req_free(i2c_req_t *req);
+const volatile struct linklist *i2c_req_cont_list();
