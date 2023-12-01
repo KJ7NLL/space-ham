@@ -26,7 +26,7 @@
 #include "i2c/ads111x.h"
 
 
-void ads111x_init(ads111x_t *adc, uint16_t devaddr)
+void ads111x_init(ads111x_t *adc)
 {
 	adc->os         =  ADS111X_OS_START_SINGLE;
 	adc->mux        =  ADS111X_MUX_A0_A1;
@@ -37,8 +37,6 @@ void ads111x_init(ads111x_t *adc, uint16_t devaddr)
 	adc->comp_pol   =  0x00;
 	adc->comp_lat   =  0x00;
 	adc->comp_que   =  0x03;
-
-	ads111x_req_init(adc, devaddr);
 }
 
 void ads111x_config_write(ads111x_t *adc)
@@ -110,6 +108,8 @@ ads111x_t *ads111x_measure_req_alloc(int devaddr)
 
 	req->addr = (devaddr << 1) | 1;
 	req->target = ADS111X_REG_CONV;
+
+	ads111x_init(adc);
 
 	return adc;
 }

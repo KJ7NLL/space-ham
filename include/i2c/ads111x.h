@@ -81,8 +81,7 @@ enum {
 	ADS111X_DR_860_SPS,
 };
 
-void ads111x_init(ads111x_t *adc, uint16_t devaddr);
-ads111x_t *ads111x_req_init(ads111x_t *adc, uint16_t devaddr);
+void ads111x_init(ads111x_t *adc);
 void ads111x_config_write(ads111x_t *adc);
 float ads111x_measure_req(ads111x_t *adc);
 ads111x_t *ads111x_measure_req_alloc(int devaddr);
