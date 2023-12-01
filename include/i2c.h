@@ -54,6 +54,9 @@ typedef volatile struct
 	//    successfully.
 	uint8_t *result;
 
+	// This function is called when a result has completed
+	void (*callback)(void *);
+
 	// The status of the current request.  Set this to 0
 	// when starting a new request:
 	volatile I2C_TransferReturn_TypeDef status;

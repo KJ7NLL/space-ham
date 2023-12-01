@@ -85,6 +85,9 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 		req->valid = 1;
 		if (req->result != NULL && req->result != req->data)
 			memcpy(req->result, req->data, req->n_bytes);
+
+		if (req->callback != NULL)
+			req->callback(req);
 	}
 	else if (req->complete && req->status != i2cTransferInProgress)
 	{
@@ -252,12 +255,12 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 {
 	i2c_req_t req;
 
-	req.name = NULL;
+	memset(&req, 0, sizeof(i2c_req_t));
+
 	req.addr = slaveAddress | 1;
 	req.target = targetAddress;
 	req.n_bytes = numBytes;
 	req.data = rxBuff;
-	req.result = NULL;
 
 	// Sending data
 	i2c_req_submit_sync(&req);
@@ -271,12 +274,12 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 {
 	i2c_req_t req;
 
-	req.name = NULL;
+	memset(&req, 0, sizeof(i2c_req_t));
+
 	req.addr = slaveAddress & 0xFFFE;
 	req.target = targetAddress;
 	req.n_bytes = numBytes;
 	req.data = txBuff;
-	req.result = NULL;
 
 	i2c_req_submit_sync(&req);
 	printf("write result: %d (count=%d)\r\n", req.status, count);
