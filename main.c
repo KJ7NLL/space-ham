@@ -52,6 +52,7 @@
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
 #include "i2c/ads111x.h"
+#include "i2c/qmc5883l.h"
 
 #include "sat.h"
 #include "stars.h"
@@ -1778,9 +1779,35 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 				for (i = 0; i < req->n_bytes; i++)
 					printf("  %d. %02X\r\n", i, req->result[i]);
+
 				if (match(req->name, "ads111x"))
 					printf("  %.9f volts\r\n",
 						ads111x_measure_req((ads111x_t*)req));
+				else if (match(req->name, "qmc5883l"))
+				{
+					printf("  x=%6d y=%6d z=%6d (raw)\r\n",
+						qmc5883l_measure_req_raw((qmc5883l_t*)req, QMC5883L_DATA_X),
+						qmc5883l_measure_req_raw((qmc5883l_t*)req, QMC5883L_DATA_Y),
+						qmc5883l_measure_req_raw((qmc5883l_t*)req, QMC5883L_DATA_Z)
+						);
+					printf("  x=%6.3f y=%6.3f z=%6.3f (calibrated -1 to 1)\r\n",
+						qmc5883l_measure_req((qmc5883l_t*)req, QMC5883L_DATA_X),
+						qmc5883l_measure_req((qmc5883l_t*)req, QMC5883L_DATA_Y),
+						qmc5883l_measure_req((qmc5883l_t*)req, QMC5883L_DATA_Z)
+						);
+					printf("  xy=%8.3f xz=%8.3f yz=%8.3f (deg)\r\n",
+						qmc5883l_measure_req_plane((qmc5883l_t*)req, QMC5883L_PLANE_XY),
+						qmc5883l_measure_req_plane((qmc5883l_t*)req, QMC5883L_PLANE_XZ),
+						qmc5883l_measure_req_plane((qmc5883l_t*)req, QMC5883L_PLANE_YZ)
+						);
+					qmc5883l_t *mag = (qmc5883l_t*)req;
+					printf("  x cal range: %6d - %6d\r\n"
+					       "  y cal range: %6d - %6d\r\n"
+					       "  z cal range: %6d - %6d\r\n",
+					       mag->min_x, mag->max_x,
+					       mag->min_y, mag->max_y,
+					       mag->min_z, mag->max_z);
+				}
 
 				node = node->next;
 			}
@@ -1989,6 +2016,19 @@ int main()
 
 	initIADC();
 	initI2C();
+	qmc5883l_t *compass = qmc5883l_measure_req_alloc(0x0d);
+
+	// Reset the compass device by putting it in standby first, otherwise
+	// it will not accept the new config.
+	compass->control_reg_1_mode = QMC5883L_MODE_STANDBY;
+	qmc5883l_config_write(compass);
+
+	compass->control_reg_1_mode = QMC5883L_MODE_CONTINUOUS;
+	compass->control_reg_1_odr = QMC5883L_DATA_RATE_200HZ;
+	compass->control_reg_1_osr = QMC5883L_OVER_SAMPLE_512;
+
+	qmc5883l_config_write(compass);
+	i2c_req_add_cont((i2c_req_t *)compass);
 
 	// Initialize realtime clock
 	rtcc_init(128);
