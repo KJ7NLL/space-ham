@@ -26,7 +26,7 @@
 #define I2C_SDA 5
 #define I2C_TXBUFFER_SIZE 32
 
-typedef volatile struct
+typedef volatile struct i2c_req_t
 {
 	// The name of the request, in case it is useful.
 	char *name;
@@ -55,7 +55,7 @@ typedef volatile struct
 	uint8_t *result;
 
 	// This function is called when a result has completed
-	void (*callback)(void *);
+	void (*callback)(volatile struct i2c_req_t *);
 
 	// The status of the current request.  Set this to 0
 	// when starting a new request:
