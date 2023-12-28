@@ -22,11 +22,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "em_device.h"
-#include "em_chip.h"
-#include "em_cmu.h"
-#include "em_iadc.h"
-#include "em_gpio.h"
+#include "platform.h"
 
 #include "iadc.h"
 #include "rotor.h"

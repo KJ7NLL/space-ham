@@ -18,7 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
-#include "em_i2c.h"
+
+#include "platform.h"
 
 #define I2C_SCL_PORT gpioPortC
 #define I2C_SDA_PORT gpioPortC

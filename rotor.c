@@ -23,7 +23,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "em_gpio.h"
+#include "platform.h"
 
 #include "ff.h"
 #include "fatfs-efr32.h"

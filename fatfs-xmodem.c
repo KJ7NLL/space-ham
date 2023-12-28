@@ -20,7 +20,7 @@
 //
 #include <stdio.h>
 
-#include "em_chip.h"
+#include "platform.h"
 
 #include "ff.h"
 #include "xmodem.h"

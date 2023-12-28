@@ -23,8 +23,7 @@
 #include <time.h>
 #include <math.h>
 
-#include "em_cmu.h"
-#include "em_emu.h"
+#include "platform.h"
 
 #include "rotor.h"
 

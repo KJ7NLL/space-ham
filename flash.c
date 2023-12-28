@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "em_msc.h"
+#include "platform.h"
 
 #include "flash.h"
 

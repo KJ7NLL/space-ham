@@ -22,12 +22,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "em_device.h"
-#include "em_chip.h"
-#include "em_emu.h"
-#include "em_cmu.h"
-#include "em_gpio.h"
-#include "em_usart.h"
+#include "platform.h"
 
 #include "rtcc.h"
 #include "linklist.h"

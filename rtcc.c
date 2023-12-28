@@ -22,9 +22,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "em_cmu.h"
-#include "em_emu.h"
-#include "em_rtcc.h"
+#include "platform.h"
 
 volatile uint64_t rtcc_ticks = 0;
 static volatile int _rtcc_bypass = 0;

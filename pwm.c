@@ -18,12 +18,7 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
-#include "em_device.h"
-#include "em_cmu.h"
-#include "em_emu.h"
-#include "em_chip.h"
-#include "em_gpio.h"
-#include "em_timer.h"
+#include "platform.h"
 
 #include "pwm.h"
 #include "iadc.h"
