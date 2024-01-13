@@ -38,7 +38,9 @@ volatile struct linklist i2c_req_cont = { .head = NULL, .tail = NULL };
 volatile struct llnode *i2c_req_cont_pos = NULL;
 volatile i2c_req_t *i2c_req_cont_array[I2C_REQ_CONT_ARRAY_SIZE] = {NULL};
 
+#ifdef __EFR32__
 I2C_TransferSeq_TypeDef i2c0_transfer;
+#endif
 
 // This only works with I2C0. Refactor if you need I2C1
 i2c_req_t *i2c_handle_req(i2c_req_t *req)
@@ -51,6 +53,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	{
 		req->status = i2cTransferInProgress;
 
+#ifdef __EFR32__
 		// Initializing I2C transfer
 		i2c0_transfer.addr = req->addr;
 		if (i2c0_transfer.addr & 0x01)
@@ -64,9 +67,12 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 		i2c0_transfer.buf[1].len = req->n_bytes;
 
 		req->status = I2C_TransferInit(I2C0, &i2c0_transfer);
+#endif
 	}
+#ifdef __EFR32__
 	else if (req->status == i2cTransferInProgress)
 		req->status = I2C_Transfer(I2C0);
+#endif
 
 	// Mark the request as complete whether or not it is sucessful
 	if (req->status == i2cTransferDone || req->status != i2cTransferInProgress)
@@ -105,7 +111,7 @@ void I2C0_IRQHandler()
 	// See if there is a new "once" request pending
 	if (req_active == NULL)
 	{
-		req_active = delete_node(&i2c_req_once, i2c_req_once.head);
+		req_active = delete_node((struct linklist*)&i2c_req_once, i2c_req_once.head);
 
 		if (req_active != NULL)
 		{
@@ -144,6 +150,7 @@ void I2C0_IRQHandler()
 // cares, this function may still be licensed as zlib.
 void initI2C()
 {
+#ifdef __EFR32__
 	CMU_ClockEnable(cmuClock_I2C0, true);
 
 	// Using default settings
@@ -179,6 +186,7 @@ void initI2C()
 		I2C_IEN_CLTO
 	);
 	NVIC_EnableIRQ(I2C0_IRQn);
+#endif
 }
 
 i2c_req_t *i2c_req_get_cont(uint16_t devaddr)
@@ -209,7 +217,7 @@ void i2c_req_add_cont(i2c_req_t *req)
 		i2c_req_cont_array[devaddr] = req;
 	}
 
-	add_tail_node(&i2c_req_cont, req);
+	add_tail_node((struct linklist*)&i2c_req_cont, (void*)req);
 
 	// It might be strange to call the IRQ handler directly, but it is
 	// responsible for setting up the transfer via I2C_TransferInit(), and
@@ -225,7 +233,7 @@ void i2c_req_submit_async(i2c_req_t *req)
 	req->status = 0;
 	req->complete = 0;
 	req->valid = 0;
-	add_tail_node(&i2c_req_once, req);
+	add_tail_node((struct linklist*)&i2c_req_once, (void*)req);
 
 	// It might be strange to call the IRQ handler directly, but it is
 	// responsible for setting up the transfer via I2C_TransferInit(), and
@@ -240,7 +248,7 @@ I2C_TransferReturn_TypeDef i2c_req_submit_sync(i2c_req_t *req)
 {
 	i2c_req_submit_async(req);
 	while (!req->complete)
-		EMU_EnterEM1();
+		platform_sleep();
 
 	return req->status;
 }
@@ -250,7 +258,7 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 {
 	i2c_req_t req;
 
-	memset(&req, 0, sizeof(i2c_req_t));
+	memset((void*)&req, 0, sizeof(i2c_req_t));
 
 	req.addr = slaveAddress | 1;
 	req.target = targetAddress;
@@ -269,7 +277,7 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 {
 	i2c_req_t req;
 
-	memset(&req, 0, sizeof(i2c_req_t));
+	memset((void*)&req, 0, sizeof(i2c_req_t));
 
 	req.addr = slaveAddress & 0xFFFE;
 	req.target = targetAddress;
@@ -303,7 +311,7 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
 	if (req == NULL)
 		return NULL;
 
-	memset(req, 0, reqtype_size);
+	memset((void*)req, 0, reqtype_size);
 
 	req->n_bytes = n_bytes;
 
@@ -323,7 +331,7 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
 out_data:
 	free(req->data);
 out_req:
-	free(req);
+	free((void*)req);
 
 	return NULL;
 }
@@ -337,7 +345,7 @@ void i2c_req_free(i2c_req_t *req)
 
 	free(req->data);
 	free(req->result);
-	free(req);
+	free((void*)req);
 }
 
 const volatile struct linklist *i2c_req_cont_list()

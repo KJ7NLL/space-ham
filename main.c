@@ -87,6 +87,7 @@ config_t config = {
 
 void initGpio(void)
 {
+#ifdef __EFR32__
 	CMU_ClockEnable(cmuClock_GPIO, true);
 
 	// Configure PA5 as an output (TX)
@@ -138,6 +139,7 @@ void initGpio(void)
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
 	GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 0);
+#endif
 }
 
 void print_tm(struct tm *rtc)
@@ -234,6 +236,7 @@ void status()
 	{
 		char port = '?';
 
+#ifdef __EFR32__
 		switch (rotors[i].motor.port)
 		{
 			case gpioPortA: port = 'A'; break;
@@ -241,6 +244,7 @@ void status()
 			case gpioPortC: port = 'C'; break;
 			case gpioPortD: port = 'D'; break;
 		}
+#endif
 
 		printf("%-8s pos:%7.2f tgt:%7.2f err: %6.2f deg [%s, port:%c%d/%c%d]: P:%6.1f%% I:%6.1f%% D:%6.1f%% speed:%6.1f%%\r\n",
 			rotors[i].motor.name,
@@ -440,10 +444,14 @@ void motor(int argc, char **args)
 		switch (tolower(args[3][0]))
 		{
 			case '0': m->port = -1; break;
+
+#ifdef __EFR32__
 			case 'a': m->port = gpioPortA; break;
 			case 'b': m->port = gpioPortB; break;
 			case 'c': m->port = gpioPortC; break;
 			case 'd': m->port = gpioPortD; break;
+#endif
+
 			default:
 				printf("invalid port: %s\r\n", args[3]);
 				return;
@@ -1200,7 +1208,7 @@ void sat(int argc, char **args)
 			return;
 		}
 		
-		sat_t *sat;
+		const sat_t *sat;
 		tle_t tle_tmp;
 
 		i = 1;
@@ -1555,6 +1563,7 @@ void astro(int argc, char **args)
 
 void meminfo()
 {
+#ifdef __EFR32__
 	// 0x20000000 is the memory base on the EFR32:
 	char *p = malloc(1);
 	printf("heap : %p\r\n", p);
@@ -1564,6 +1573,9 @@ void meminfo()
 	free(p);
 
 	printf("sizeof(rotors): %d bytes\r\n", sizeof(rotors));
+#else
+	printf("sizeof(rotors): %ld bytes\r\n", sizeof(rotors));
+#endif
 }
 
 void dispatch(int argc, char **args, struct linklist *history)
@@ -1655,7 +1667,9 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 	else if (match(args[0], "reset") || match(args[0], "reboot"))
 	{
+#ifdef __EFR32__
 		NVIC_SystemReset();
+#endif
 	}
 	else if (match(args[0], "config"))
 	{
@@ -1755,7 +1769,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 		else if (match(args[1], "list"))
 		{
-			struct linklist *reqs = i2c_req_cont_list();
+			const volatile struct linklist *reqs = i2c_req_cont_list();
 
 			struct llnode *node = reqs->head;
 			printf("i2c cont completions: %5d\r\n", i2c_get_count());
@@ -1970,7 +1984,8 @@ void main_idle()
 
 	}
 	else
-		EMU_EnterEM1();
+		platform_sleep();
+
 }
 
 int main()
@@ -1984,7 +1999,9 @@ int main()
 	int i, argc;
 
 	// Chip errata
+#ifdef __EFR32__
 	CHIP_Init();
+#endif
 
 	// Initialize efr32 features
 	initGpio();
@@ -1996,7 +2013,7 @@ int main()
 	if (sizeof(struct motor) > sizeof(((struct motor *)0)->pad))
 		printf("Warning: struct motor (%d) is bigger than its pad (%d), increase pad size for flash "
 			"backwards compatibility\r\n",
-			sizeof(struct motor), sizeof(((struct motor *)0)->pad));
+			(int)sizeof(struct motor), (int)sizeof(((struct motor *)0)->pad));
 
 	meminfo();
 
@@ -2008,8 +2025,13 @@ int main()
 	// Load user config
 	f_read_file("config.bin", &config, sizeof(config));
 
+#ifdef HAVE_IADC
 	initIADC();
+#endif
+
+#ifdef HAVE_I2C
 	initI2C();
+
 	qmc5883l_t *compass = qmc5883l_measure_req_alloc(0x0d);
 
 	// Reset the compass device by putting it in standby first, otherwise
@@ -2030,12 +2052,14 @@ int main()
 
 	ds3231_read_time(&rtc);
 	boot_time = mktime(&rtc);
+#endif
 
 	rtcc_set_sec(boot_time);
 
 	// Initialize rotors
 	initRotors();
 
+#ifdef __EFR32__
 	theta->motor.port = gpioPortB;
 	theta->motor.pin1 = 0;
 	theta->motor.pin2 = 1;
@@ -2047,6 +2071,11 @@ int main()
 	focus->motor.port = gpioPortC;
 	focus->motor.pin1 = 2;
 	focus->motor.pin2 = 3;
+#else
+	theta->motor.port = -1;
+	phi->motor.port = -1;
+	focus->motor.port = -1;
+#endif
 
 	// Load calibrations from FAT
 	rotor_cal_load();

@@ -32,6 +32,7 @@ static volatile int lock = 0, locked_ticks = 0, ticks_per_sec = 1024;
 // all timer and elapsed time calculations:
 static int rtcc_clock_scale = 1;
 
+#ifdef __EFR32__
 void RTCC_IRQHandler(void)
 {
 	if (!lock)
@@ -48,11 +49,13 @@ void RTCC_IRQHandler(void)
 
 	RTCC_IntClear(RTCC_IF_CC1);
 }
+#endif
 
 void rtcc_init(int tps)
 {
 	ticks_per_sec = tps;
 
+#ifdef __EFR32__
 	RTCC_Init_TypeDef rtccInit = RTCC_INIT_DEFAULT;
 	RTCC_CCChConf_TypeDef rtccInitCompareChannel = RTCC_CH_INIT_COMPARE_DEFAULT;
 
@@ -80,6 +83,7 @@ void rtcc_init(int tps)
 	RTCC_IntEnable(RTCC_IEN_CC1);
 	NVIC_ClearPendingIRQ(RTCC_IRQn);
 	NVIC_EnableIRQ(RTCC_IRQn);
+#endif
 }
 
 void rtcc_bypass(int b)
@@ -123,8 +127,7 @@ void rtcc_delay_ticks(uint64_t delay, void (*idle)())
 		if (idle != NULL)
 			idle();
 		else
-			EMU_EnterEM1();
-
+			platform_sleep();
 }
 
 void rtcc_delay_sec(float sec, void (*idle)())

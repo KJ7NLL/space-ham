@@ -21,10 +21,20 @@
 
 #include "platform.h"
 
+#ifdef __EFR32__
+
 #define I2C_SCL_PORT gpioPortC
 #define I2C_SDA_PORT gpioPortC
 #define I2C_SCL 4
 #define I2C_SDA 5
+
+#else
+enum {
+	i2cTransferInProgress,
+	i2cTransferDone
+};
+#endif
+
 #define I2C_TXBUFFER_SIZE 32
 
 typedef volatile struct i2c_req_t

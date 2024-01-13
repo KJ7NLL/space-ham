@@ -33,6 +33,7 @@ static volatile uint32_t scan_total[IADC_NUM_INPUTS];
 
 void initIADC(void)
 {
+#ifdef __EFR32__
 	// Declare init structs
 	IADC_Init_t init = IADC_INIT_DEFAULT;
 	IADC_AllConfigs_t initAllConfigs = IADC_ALLCONFIGS_DEFAULT;
@@ -126,8 +127,10 @@ void initIADC(void)
 	NVIC_EnableIRQ(IADC_IRQn);
 
 	IADC_command(IADC0, iadcCmdStartScan);
+#endif
 }
 
+#ifdef __EFR32__
 void IADC_IRQHandler(void)
 {
 	IADC_Result_t result = { 0, 0 };
@@ -168,9 +171,11 @@ void IADC_IRQHandler(void)
 
 	IADC_command(IADC0, iadcCmdStartScan);
 }
+#endif
 
 float iadc_get_result(int i)
 {
+#ifdef __EFR32__
 	// Disable the interrupt to prevent the results from changing while we operate
 	NVIC_DisableIRQ(IADC_IRQn);
 
@@ -179,4 +184,7 @@ float iadc_get_result(int i)
 	NVIC_EnableIRQ(IADC_IRQn);
 	
 	return (float)((double) 3.3 * result / 4095.0);
+#else
+	return NAN;
+#endif
 }

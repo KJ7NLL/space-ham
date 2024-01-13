@@ -29,21 +29,25 @@
 
 void flash_init()
 {
+#ifdef __EFR32__
 	MSC_ExecConfig_TypeDef execConfig = MSC_EXECCONFIG_DEFAULT;
 	MSC_ExecConfigSet(&execConfig);
 
 	MSC_Init();
+#endif
 }
 
 char *flash_status(int status)
 {
 	switch (status)
 	{
+#ifdef __EFR32__
 		case mscReturnOk: return "mscReturnOk";
 		case -1: return "mscReturnInvalidAddr";
 		case -2: return "flashReturnLocked";
 		case -3: return "flashReturnTimeOut";
 		case -4: return "mscReturnUnaligned";
+#endif
 
 		default: return "Unkown flash status";
 	}
@@ -62,6 +66,7 @@ uint32_t checksum(void *buf, uint32_t len)
 	return csum;
 }
 
+#ifdef __EFR32__
 int flash_write(struct flash_entry **entries, uint32_t location)
 {
 	struct flash_header header;
@@ -173,3 +178,4 @@ int flash_read(struct flash_entry **entries, uint32_t location)
 
 	return 1;
 }
+#endif

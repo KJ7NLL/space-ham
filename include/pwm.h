@@ -18,6 +18,7 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
+
 int timer_idx(TIMER_TypeDef *timer);
 
 void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, int pwm_Hz, float duty_cycle);

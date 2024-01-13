@@ -30,6 +30,7 @@
 static volatile int _systick_bypass = 0;
 static volatile int ticks_per_sec = 1000;
 
+#ifdef __EFR32__
 void SysTick_Handler(void)
 {
 	struct motor *motor;
@@ -133,11 +134,16 @@ int systick_update()
 {
 	return SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / ticks_per_sec);
 }
+#endif
 
 int systick_init(int tps)
 {
+#ifdef __EFR32__
 	ticks_per_sec = tps;
 	return systick_update();
+#else
+	return 0;
+#endif
 }
 
 void systick_bypass(int b)

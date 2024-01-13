@@ -78,6 +78,7 @@ int xmodem_rx(char *filename)
 	}
 
 
+#ifdef __EFR32__
 	// IADC and systick handlers drown the CPU in IRQ triggers
 	// so turn them off while transferring:
 	int iadc = NVIC_GetEnableIRQ(IADC_IRQn);
@@ -86,12 +87,15 @@ int xmodem_rx(char *filename)
 		NVIC_DisableIRQ(IADC_IRQn);
 		NVIC_ClearPendingIRQ(IADC_IRQn);
 	}
+#endif
 	systick_bypass(1);
 	
 	len = XmodemReceive(xmodem_rx_chunk, &out, 1024*1024, 1, 0);
 
 	systick_bypass(0);
+#ifdef __EFR32__
 	if (iadc) NVIC_EnableIRQ(IADC_IRQn);
+#endif
 
 	f_close(&out);
 
@@ -130,6 +134,7 @@ int xmodem_tx(char *filename)
 	printf("sending %s: %d bytes\r\n", filename, (int)f_size(&in));
 
 
+#ifdef __EFR32__
 	// IADC and systick handlers drown the CPU in IRQ triggers
 	// so turn them off while transferring:
 	int iadc = NVIC_GetEnableIRQ(IADC_IRQn);
@@ -138,12 +143,15 @@ int xmodem_tx(char *filename)
 		NVIC_DisableIRQ(IADC_IRQn);
 		NVIC_ClearPendingIRQ(IADC_IRQn);
 	}
+#endif
 	systick_bypass(1);
 	
 	len = XmodemTransmit(xmodem_tx_chunk, &in, (int)f_size(&in), 1, 0);
 
 	systick_bypass(0);
+#ifdef __EFR32__
 	if (iadc) NVIC_EnableIRQ(IADC_IRQn);
+#endif
 
 	f_close(&in);
 

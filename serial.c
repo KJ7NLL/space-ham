@@ -21,6 +21,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "platform.h"
 
@@ -72,6 +73,7 @@ char *vt102[] =
 
 void initUsart0(void)
 {
+#ifdef __EFR32__
 	// Default asynchronous initializer (115.2 Kbps, 8N1, no flow
 	// control)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
@@ -108,6 +110,7 @@ void initUsart0(void)
 
 	// Enable receive data valid interrupt
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+#endif
 }
 
 int _read_buf_to_bufrx()
@@ -142,13 +145,18 @@ int read_buf_to_bufrx()
 	if (bufrx == NULL || bufrxlen == 0 || read_buf_cur == read_buf_next)
 		return 0;
 
+#ifdef __EFR32__
 	USART_IntDisable(USART0, USART_IEN_RXDATAV);
+#endif
 	count = _read_buf_to_bufrx();
+#ifdef __EFR32__
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+#endif
 
 	return count;
 }
 
+#ifdef __EFR32__
 void USART0_RX_IRQHandler(void)
 {
 	unsigned char c = USART0->RXDATA;
@@ -184,6 +192,7 @@ void USART0_TX_IRQHandler(void)
 		USART_IntClear(USART0, USART_IEN_TXBL);
 	}
 }
+#endif
 
 void serial_write(void *s, int len)
 {
@@ -193,29 +202,41 @@ void serial_write(void *s, int len)
 	if (s == NULL)
 		return;
 	
+#ifdef __EFR32__
 	// Enable transmit buffer level interrupt
 	USART_IntEnable(USART0, USART_IEN_TXBL);
 	while (buftx != NULL)
-		EMU_EnterEM1();
+		platform_sleep();
 
+#else
+	write(1, s, len);
+#endif
 }
 
 void serial_read_async(void *s, int len)
 {
+#ifdef __EFR32__
 	USART_IntDisable(USART0, USART_IEN_RXDATAV);
+#endif
 	bufrx = s;
 	bufrxlen = len;
 	serial_read_async_bytes_read = 0;
+#ifdef __EFR32__
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+#endif
 }
 
 void serial_read_async_cancel()
 {
+#ifdef __EFR32__
 	USART_IntDisable(USART0, USART_IEN_RXDATAV);
+#endif
 	bufrxlen = 0;
 	bufrx = NULL;
 	serial_read_async_bytes_read = 0;
+#ifdef __EFR32__
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+#endif
 }
 
 int serial_read_done()
@@ -237,7 +258,7 @@ void serial_read_idle(void *s, int len, void (*idle)())
 			if (idle != NULL)
 				idle();
 			else
-				EMU_EnterEM1();
+				platform_sleep();
 		}
 	}
 
@@ -262,7 +283,7 @@ int serial_read_timeout(void *s, int len, float timeout)
 		// was called before bufrx configured by serial_read_async().
 		read_buf_to_bufrx();
 		if (!serial_read_done())
-			EMU_EnterEM1();
+			platform_sleep();
 	}
 
 	count = serial_read_async_bytes_read;
@@ -300,6 +321,7 @@ int serial_read_line(char *s, int len)
 	return n;
 }
 
+#ifdef __EFR32__
 int _read(int handle, char *data, int size)
 {
 	if (!size) return 0;
@@ -328,6 +350,7 @@ int _write(int handle, char *data, int size)
 
 	return size;
 }
+#endif
 
 void print(char *s)
 {

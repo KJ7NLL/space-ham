@@ -11,7 +11,7 @@
 ###### Project Environment #####
 
 # Set minimum CMake version
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.0.0)
 
 # Optional verbose mode, uncomment or pass in -DCMAKE_VERBOSE_MAKEFILE=ON
 # set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -106,6 +106,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
        xmodem
        fatfs
        )
+
+target_link_libraries(${PROJECT_NAME} m)
 
 if (DEFINED USE_EFM32_BASE)
 	target_include_directories(${PROJECT_NAME} PRIVATE ${EFM32_BASE_LOCATION}/include)

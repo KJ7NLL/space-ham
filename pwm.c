@@ -23,7 +23,13 @@
 #include "pwm.h"
 #include "iadc.h"
 
+#ifdef __EFR32__
 TIMER_TypeDef *TIMERS[4] = {TIMER0, TIMER1, TIMER2, TIMER3};
+#else
+TIMER_TypeDef *TIMERS[4];
+#endif
+
+#ifdef __EFR32__
 static uint32_t top_values[4] = {0, 0, 0, 0};
 static volatile float duty_cycles[4] = {-1, -1, -1, -1};
 
@@ -178,9 +184,11 @@ void timer_disable(TIMER_TypeDef *timer)
 {
 	TIMER_Enable(timer, false);
 }
+#endif
 
 void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, int pwm_Hz, float duty_cycle)
 {
+#ifdef __EFR32__
 	uint32_t timerFreq = 0;
 
 	int idx;
@@ -223,4 +231,5 @@ void timer_init_pwm(TIMER_TypeDef *timer, int cc, int port, int pin, int pwm_Hz,
 
 	// Start the timer
 	TIMER_Enable(timer, true);
+#endif
 }

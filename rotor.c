@@ -253,7 +253,6 @@ void motor_init(struct motor *m)
 void motor_speed(struct motor *m, float speed)
 {
 	float duty_cycle, aspeed;
-	int pin;
 
 	if (speed > 1)
 		speed = 1;
@@ -295,6 +294,9 @@ void motor_speed(struct motor *m, float speed)
 
 	m->speed = speed; // For future reference
 
+#ifdef __EFR32__
+	int pin;
+
 	// Choose the pin based on the direction
 	if (speed >= 0)
 	{
@@ -332,6 +334,7 @@ void motor_speed(struct motor *m, float speed)
 		timer_cc_duty_cycle(m->timer, 0, duty_cycle);
 		timer_enable(m->timer);
 	}
+#endif
 }
 
 void motor_detail(struct motor *m)
@@ -339,10 +342,12 @@ void motor_detail(struct motor *m)
 	char port = '?';
 	switch (m->port)
 	{
+#ifdef __EFR32__
 		case gpioPortA: port = 'A'; break;
 		case gpioPortB: port = 'B'; break;
 		case gpioPortC: port = 'C'; break;
 		case gpioPortD: port = 'D'; break;
+#endif
 	}
 
 	printf("%s:\r\n"
@@ -549,7 +554,7 @@ void rotor_cal_load()
 {
 	struct rotor_cal_header h;
 
-	uint32_t i;
+	unsigned int i;
 
 	char *filename = "cal.bin";
 
@@ -568,7 +573,7 @@ void rotor_cal_load()
 	if (res != FR_OK || br != sizeof(h))
 	{
 		printf("%s[header]: read error %d: %s (bytes read=%d/%d)\r\n",
-			filename, res, ff_strerror(res), br, sizeof(h));
+			filename, res, ff_strerror(res), br, (int)sizeof(h));
 	}
 
 	// Load cal.bin version 1 files
@@ -576,7 +581,7 @@ void rotor_cal_load()
 	{
 		for (i = 0; i < h.n; i++)
 		{
-			uint32_t len = h.size;
+			unsigned int len = h.size;
 			if (sizeof(struct rotor) < len)
 				len = sizeof(struct rotor);
 
@@ -585,7 +590,7 @@ void rotor_cal_load()
 			res = f_read(&in, &rotors[i], len, &br);
 			if (res != FR_OK || br != len)
 			{
-				printf("%s[%ld]: V1: read error %d: %s (bytes read=%d/%ld)\r\n",
+				printf("%s[%d]: V1: read error %d: %s (bytes read=%d/%d)\r\n",
 					filename, i, res, ff_strerror(res), br, len);
 			}
 		}
@@ -595,7 +600,7 @@ void rotor_cal_load()
 		// Load version 0 files if there is no header
 		for (i = 0; i < NUM_ROTORS; i++)
 		{
-			uint32_t len = 256;
+			unsigned int len = 256;
 			memset(&rotors[i], 0, sizeof(struct rotor));
 			if (sizeof(struct rotor) < len)
 				len = sizeof(struct rotor);
@@ -605,7 +610,7 @@ void rotor_cal_load()
 			res = f_read(&in, &rotors[i], len, &br);
 			if (res != FR_OK || br != len)
 			{
-				printf("%s[%ld]: V0: read error %d: %s (bytes read=%d/%ld)\r\n",
+				printf("%s[%d]: V0: read error %d: %s (bytes read=%d/%d)\r\n",
 					filename, i, res, ff_strerror(res), br, len);
 			}
 		}
@@ -704,8 +709,8 @@ void rotor_cal_save()
 	res = f_write(&out, &h, len, &bw);
 	if (res != FR_OK || bw != len)
 	{
-		printf("%s: write error %d: %s (bytes written=%d/%d)\r\n",
-			filename, res, ff_strerror(res), bw, len);
+		printf("%s: write error %d: %s (bytes written=%d/%ld)\r\n",
+			filename, res, ff_strerror(res), bw, (long)len);
 	}
 
 	len = sizeof(rotors);
@@ -716,8 +721,8 @@ void rotor_cal_save()
 	res = f_write(&out, rotors, len, &bw);
 	if (res != FR_OK || bw != len)
 	{
-		printf("%s: write error %d: %s (bytes written=%d/%d)\r\n",
-			filename, res, ff_strerror(res), bw, len);
+		printf("%s: write error %d: %s (bytes written=%d/%ld)\r\n",
+			filename, res, ff_strerror(res), bw, (long)len);
 	}
 
 	f_close(&out);

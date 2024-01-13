@@ -178,11 +178,15 @@ void rotor_adc_init(struct rotor *r);
 
 static inline int motor_valid(struct motor *m)
 {
+#ifdef __EFR32__
 	return m != NULL && m->pwm_Hz > 0 &&
 		(m->port == gpioPortA ||
 			m->port == gpioPortB ||
 			m->port == gpioPortC ||
 			m->port == gpioPortD);
+#else
+	return m != NULL && m->pwm_Hz > 0;
+#endif
 }
 
 static inline int motor_online(struct motor *m)

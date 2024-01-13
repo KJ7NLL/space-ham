@@ -46,7 +46,9 @@ DSTATUS disk_status(BYTE pdrv)
 
 DSTATUS disk_initialize(BYTE pdrv)
 {
+#ifdef __EFR32__
 	flash_init();
+#endif
 	global_status = 0;
 
 	return global_status;
@@ -54,7 +56,9 @@ DSTATUS disk_initialize(BYTE pdrv)
 
 DRESULT disk_read(BYTE pdrv, BYTE *buf, LBA_t sector, UINT count)
 {
+#ifdef __EFR32__
 	memcpy(buf, lba_to_ptr(sector), count*FLASH_FAT_LBA_SIZE);
+#endif
 
 	return RES_OK;
 }
@@ -63,6 +67,7 @@ DRESULT disk_read(BYTE pdrv, BYTE *buf, LBA_t sector, UINT count)
 
 DRESULT msc_erase_write(uint32_t *page, unsigned char *buf)
 {
+#ifdef __EFR32__
 	int status;
 
 	status = MSC_ErasePage((uint32_t *)page);
@@ -84,12 +89,14 @@ DRESULT msc_erase_write(uint32_t *page, unsigned char *buf)
 
 		return RES_ERROR;
 	}
+#endif
 
 	return RES_OK;
 }
 
 DRESULT disk_write(BYTE pdrv, const BYTE *buf, LBA_t sector, UINT count)
 {
+#ifdef __EFR32__
 	DRESULT status;
 	unsigned char tmp[FLASH_PAGE_SIZE];
 	LBA_t i, offset;
@@ -121,12 +128,16 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buf, LBA_t sector, UINT count)
 
 	status = msc_erase_write((uint32_t *)page, tmp);
 	return status;
+#else
+	return RES_OK;
+#endif
 }
 
 #endif
 
 DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buf)
 {
+#ifdef __EFR32__
 	LBA_t *lba = buf;
 	WORD *word = buf;
 	DWORD *dword = buf;
@@ -158,6 +169,7 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE cmd, void *buf)
 			printf("FLASH_TRIM: not implemented, lba=%lu\r\n", *lba);
 			return RES_OK;
 	}
+#endif
 
 	return RES_PARERR;
 }
@@ -248,8 +260,8 @@ FRESULT f_read_file(char *filename, void *data, size_t len)
 	res = f_read(&in, data, len, &br);
 	if (res != FR_OK || br != len)
 	{
-		printf("%s: read error %d: %s (bytes read=%d/%d)\r\n",
-			filename, res, ff_strerror(res), br, len);
+		printf("%s: read error %d: %s (bytes read=%d/%ld)\r\n",
+			filename, res, ff_strerror(res), br, (long)len);
 	}
 
 	f_close(&in);
@@ -273,8 +285,8 @@ FRESULT f_write_file(char *filename, void *data, size_t len)
 	res = f_write(&out, data, len, &bw);
 	if (res != FR_OK || bw != len)
 	{
-		printf("%s: write error %d: %s (bytes written=%d/%d)\r\n",
-			filename, res, ff_strerror(res), bw, len);
+		printf("%s: write error %d: %s (bytes written=%d/%ld)\r\n",
+			filename, res, ff_strerror(res), bw, (long)len);
 	}
 
 	f_close(&out);
