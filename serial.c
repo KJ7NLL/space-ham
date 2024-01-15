@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
+
+#include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -221,7 +223,7 @@ int serial_read_char()
 
 	if (read_buf_next != read_buf_cur)
 	{
-		ret = read_buf[read_buf_next];
+		ret = read_buf[read_buf_cur];
 
 		read_buf_cur = ((read_buf_cur+1) & READ_BUF_MASK);
 	}
@@ -262,14 +264,21 @@ int serial_read_done()
 
 void serial_read_idle(void *s, int len, void (*idle)())
 {
-	serial_read_async(s, len);
+	unsigned char *p = s;
 
-	while (!serial_read_done())
+	int i = 0;
+
+	while (len)
 	{
-		// Call read_buf_to_bufrx() here in case the RX interrupt 
-		// was called before bufrx configured by serial_read_async().
-		read_buf_to_bufrx();
-		if (!serial_read_done())
+		int c = serial_read_char();
+		if (c != -1)
+		{
+			p[i] = c;
+
+			len--;
+			i++;
+		}
+		else
 		{
 			if (idle != NULL)
 				idle();
@@ -277,7 +286,6 @@ void serial_read_idle(void *s, int len, void (*idle)())
 				platform_sleep();
 		}
 	}
-
 }
 
 void serial_read(void *s, int len)
