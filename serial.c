@@ -42,9 +42,8 @@ volatile int read_buf_cur = 0, read_buf_next = 0;
 volatile int serial_read_async_bytes_read = 0;
 
 // Receive data buf provided by user code
-volatile unsigned char *bufrx = NULL;
 volatile unsigned char *buftx = NULL;
-volatile int buftxlen = 0, bufrxlen = 0;
+volatile int buftxlen = 0;
 
 enum KEYS 
 {
@@ -115,49 +114,6 @@ void initUsart0(void)
 #endif
 }
 
-int _read_buf_to_bufrx()
-{
-	int i = 0;
-
-	while (bufrx != NULL && bufrxlen > 0 && read_buf_cur != read_buf_next)
-	{
-		*bufrx = read_buf[read_buf_cur];
-		read_buf_cur = ((read_buf_cur+1) & READ_BUF_MASK); 
-
-		bufrx++;
-		bufrxlen--;
-
-		if (bufrxlen == 0)
-		{
-			bufrx = NULL;
-		}
-
-		i++;
-	}
-
-	serial_read_async_bytes_read += i;
-
-	return i;
-}
-
-int read_buf_to_bufrx()
-{
-	int count;
-
-	if (bufrx == NULL || bufrxlen == 0 || read_buf_cur == read_buf_next)
-		return 0;
-
-#ifdef __EFR32__
-	USART_IntDisable(USART0, USART_IEN_RXDATAV);
-#endif
-	count = _read_buf_to_bufrx();
-#ifdef __EFR32__
-	USART_IntEnable(USART0, USART_IEN_RXDATAV);
-#endif
-
-	return count;
-}
-
 #ifdef __EFR32__
 void USART0_RX_IRQHandler(void)
 {
@@ -167,8 +123,6 @@ void USART0_RX_IRQHandler(void)
 		read_buf[read_buf_next] = c;
 		read_buf_next = ((read_buf_next+1) & READ_BUF_MASK); 
 	}
-
-	_read_buf_to_bufrx();
 }
 
 void USART0_TX_IRQHandler(void)
@@ -218,8 +172,6 @@ void serial_write(void *s, int len)
 int serial_read_char()
 {
 	int ret = -1;
-	if (bufrx != NULL)
-		return -1;
 
 	if (read_buf_next != read_buf_cur)
 	{
@@ -229,37 +181,6 @@ int serial_read_char()
 	}
 
 	return ret;
-}
-
-void serial_read_async(void *s, int len)
-{
-#ifdef __EFR32__
-	USART_IntDisable(USART0, USART_IEN_RXDATAV);
-#endif
-	bufrx = s;
-	bufrxlen = len;
-	serial_read_async_bytes_read = 0;
-#ifdef __EFR32__
-	USART_IntEnable(USART0, USART_IEN_RXDATAV);
-#endif
-}
-
-void serial_read_async_cancel()
-{
-#ifdef __EFR32__
-	USART_IntDisable(USART0, USART_IEN_RXDATAV);
-#endif
-	bufrxlen = 0;
-	bufrx = NULL;
-	serial_read_async_bytes_read = 0;
-#ifdef __EFR32__
-	USART_IntEnable(USART0, USART_IEN_RXDATAV);
-#endif
-}
-
-int serial_read_done()
-{
-	return bufrx == NULL;
 }
 
 void serial_read_idle(void *s, int len, void (*idle)())
@@ -351,20 +272,7 @@ int _read(int handle, char *data, int size)
 {
 	if (!size) return 0;
 
-	// Wait for the first char
 	serial_read(data, size);
-/*	
-	int n = 0;
-	n++;
-	serial_read_async(data + 1, size - 1);
-
-	// Read more if there is any available
-	USART_IntDisable(USART0, USART_IEN_RXDATAV);
-	n += read_buf_to_bufrx();
-	bufrx = NULL;
-	bufrxlen = 0;
-	USART_IntEnable(USART0, USART_IEN_RXDATAV);
-*/
 
 	return size;
 }
