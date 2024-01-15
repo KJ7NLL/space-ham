@@ -295,26 +295,27 @@ void serial_read(void *s, int len)
 
 int serial_read_timeout(void *s, int len, float timeout)
 {
-	int count = 0;
+	int i = 0;
+	unsigned char *p = s;
 	uint64_t start;
 
 	start = rtcc_get();
-	serial_read_async(s, len);
 
-	while (!serial_read_done() && rtcc_elapsed_sec(start) < timeout)
+	while (len && rtcc_elapsed_sec(start) < timeout)
 	{
-		// Call read_buf_to_bufrx() here in case the RX interrupt 
-		// was called before bufrx configured by serial_read_async().
-		read_buf_to_bufrx();
-		if (!serial_read_done())
+		int c = serial_read_char();
+		if (c != -1)
+		{
+			p[i] = c;
+
+			len--;
+			i++;
+		}
+		else
 			platform_sleep();
 	}
 
-	count = serial_read_async_bytes_read;
-	
-	serial_read_async_cancel();
-
-	return count;
+	return i;
 }
 
 int serial_read_line(char *s, int len)
