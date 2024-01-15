@@ -31,6 +31,7 @@ int serial_read_line(char *s, int len);
 int serial_read_done();
 void serial_read_async(void *s, int len);
 void serial_read_async_cancel();
+int serial_read_char();
 void print(char *s);
 void print_back(char *s);
 void print_lots(char c, int n);

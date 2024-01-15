@@ -213,6 +213,22 @@ void serial_write(void *s, int len)
 #endif
 }
 
+int serial_read_char()
+{
+	int ret = -1;
+	if (bufrx != NULL)
+		return -1;
+
+	if (read_buf_next != read_buf_cur)
+	{
+		ret = read_buf[read_buf_next];
+
+		read_buf_cur = ((read_buf_cur+1) & READ_BUF_MASK);
+	}
+
+	return ret;
+}
+
 void serial_read_async(void *s, int len)
 {
 #ifdef __EFR32__

@@ -710,8 +710,6 @@ void rotor(int argc, char **args)
 	}
 	else if (match(args[2], "stat"))
 	{
-		char c;
-		serial_read_async(&c, 1);
 		float min_err = 1e9, max_err = -1e9;
 		float prev_range_err = 0;
 		float avg_range_err = 0;
@@ -753,11 +751,8 @@ void rotor(int argc, char **args)
 
 				rtcc_delay_sec(0.5, main_idle);
 				prev_range_err = err;
-
 		}
-		while (!serial_read_done());
-
-		serial_read_async_cancel();
+		while (serial_read_char() == -1);
 	}
 	else if (match(args[2], "pid"))
 	{
@@ -1032,7 +1027,7 @@ void flash(int argc, char **args)
 
 void watch(int argc, char **args, struct linklist *history)
 {
-	char c;
+	int c;
 
 	if (argc < 2)
 	{
@@ -1043,19 +1038,19 @@ void watch(int argc, char **args, struct linklist *history)
 			return;
 	}
 
-	serial_read_async(&c, 1);
-
 	print("\x0c");
 	do
 	{
 		dispatch(argc-1, &args[1], history);
 		rtcc_delay_sec(1, main_idle);
-		if (!serial_read_done())
+
+		c = serial_read_char();
+		if (c == -1)
 		{
 			print("\x1b[H");
 		}
 	}
-	while (!serial_read_done());
+	while (c == -1);
 }
 
 void cmd_prefix(int argc, char **args, struct linklist *history)
@@ -1275,14 +1270,9 @@ void sat(int argc, char **args)
 
 		tle_t tle_tmp;
 		i = 1;
-		int n = 3;
-		char c = 0;
+		int n = 3, c = -1;
 		if (argc >= 3)
 			n = atoi(args[2]);
-
-		// Watch uses serial_read_async(&c) so watch's character is replaced.
-		// this is safe because watch never uses &c again.
-		serial_read_async(&c, 1);
 
 		do
 		{
@@ -1292,18 +1282,17 @@ void sat(int argc, char **args)
 
 			memcpy(&tle, &tle_tmp, sizeof(tle_t));
 			sat_init(&tle);
-			for (int t = 0; t < n && !serial_read_done(); t++)
+			for (int t = 0; t < n && c == -1; t++)
 			{
+				c = serial_read_char();
+
 				print("\x0c");
 				status();
 				rtcc_delay_sec(1, main_idle);
 			}
 			printf("%d. %s (%d)\r\n", i, tle.sat_name, tle.catnr);
 			i++;
-		} while (res == FR_OK && !serial_read_done());
-
-		serial_read_async_cancel();
-
+		} while (res == FR_OK && c == -1);
 	}
 	else
 		print("Sat: invalid argument\r\n");
@@ -1438,20 +1427,17 @@ void astro(int argc, char **args)
 
 		float degrees = -INFINITY;
 
-		char c;
+		int c = -1;
 
 		if (argc == 3)
 			n = atoi(args[2]);
 		else if (argc >= 4 && match(args[2], "above"))
 				degrees = atof(args[3]);
 
-		serial_read_async(&c, 1);
-
 		printf("  n. BODY                                        RA      DEC       AZ      ALT      MAG\r\n");
-		for (i = 0; i < num_bodies; i++)
+		for (i = 0; i < num_bodies && c == -1; i++)
 		{
-			if (serial_read_done())
-				break;
+			c = serial_read_char();
 			idx++;
 
 			if (n != idx
@@ -1490,10 +1476,9 @@ void astro(int argc, char **args)
 				       hor.azimuth, hor.altitude, imag.mag);
 		}
 
-		for (i = 0; i < NUM_STARS; i++)
+		for (i = 0; i < NUM_STARS && c == -1; i++)
 		{
-			if (serial_read_done())
-				break;
+			c = serial_read_char();
 			idx++;
 
 			if (n != idx
@@ -1529,7 +1514,6 @@ void astro(int argc, char **args)
 				       hor.azimuth, hor.altitude,
 				       stars[i].mag_vis);
 		}
-		serial_read_async_cancel();
 
 		if (match(args[1], "track"))
 		{
