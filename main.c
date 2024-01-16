@@ -1555,16 +1555,17 @@ void meminfo()
 	printf("heap used : %5d bytes\r\n", (int)p - 0x20000000);
 	printf("stack used: %5d bytes\r\n", (0x20000000+96*1024)- (int)(&p));
 	free(p);
-
-	printf("sizeof(rotors): %d bytes\r\n", sizeof(rotors));
-#else
-	printf("sizeof(rotors): %ld bytes\r\n", sizeof(rotors));
 #endif
+
+	printf("sizeof(rotors): %d bytes\r\n", (int)sizeof(rotors));
 }
 
 void dispatch(int argc, char **args, struct linklist *history)
 {
 	int i, c;
+
+	if (argc <= 0)
+		return;
 
 	if (match(args[0], "history") || match(args[0], "hist"))
 	{
@@ -1653,6 +1654,9 @@ void dispatch(int argc, char **args, struct linklist *history)
 	{
 #ifdef __EFR32__
 		NVIC_SystemReset();
+#else
+		system("stty cooked echo");
+		exit(0);
 #endif
 	}
 	else if (match(args[0], "config"))
