@@ -40,7 +40,7 @@ endif ()
 
 set(MY_C_FLAGS "${MY_C_FLAGS} -fdiagnostics-color")
 
-set(MY_C_FLAGS "${MY_C_FLAGS} -O2")
+set(MY_C_FLAGS "${MY_C_FLAGS} -Og -g")
 
 set(MY_C_FLAGS "${MY_C_FLAGS} -Wall")
 set(MY_C_FLAGS "${MY_C_FLAGS} -Werror")
