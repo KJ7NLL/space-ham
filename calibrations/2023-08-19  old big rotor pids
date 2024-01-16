@@ -1,0 +1,88 @@
+theta:
+  cal_min.v:            475.406464       mV
+  cal_min.deg:          0.000000       deg
+  cal_min.ready:        1
+  cal_max.v:            1602.383911       mV
+  cal_max.deg:          720.000000       deg
+  cal_max.ready:        1
+  iadc:                 0
+  position:             522.912781       deg
+  offset:               0.000000       deg
+  target:               529.159485       deg
+  target_enabled:       1
+  ramp_time:            0.500000
+  pid.Kp:               0.009000
+  pid.Ki:               0.000000
+  pid.Kd:               0.007000
+  pid.tau:              0.093140       sec
+  pid.out_min:          -1.000000
+  pid.out_max:          1.000000
+  pid.int_min:          -1.000000
+  pid.int_max:          1.000000
+  pid.T:                0.010000       sec
+  pid.prevError:        6.250732
+  pid.prevMeasurement:  522.908752
+  pid.proportional:     0.056257
+  pid.integrator:       0.000000
+  pid.differentiator:   0.000313
+  pid.out:              0.056569
+
+phi:
+  cal_min.v:            1507.429199       mV
+  cal_min.deg:          0.000000       deg
+  cal_min.ready:        1
+  cal_max.v:            1642.334839       mV
+  cal_max.deg:          90.000000       deg
+  cal_max.ready:        1
+  iadc:                 1
+  position:             -11.021137       deg
+  offset:               0.000000       deg
+  target:               -0.795842       deg
+  target_enabled:       0
+  ramp_time:            3.000000
+  pid.Kp:               0.200000
+  pid.Ki:               0.000000
+  pid.Kd:               0.009000
+  pid.tau:              3.000000       sec
+  pid.out_min:          -1.000000
+  pid.out_max:          1.000000
+  pid.int_min:          -1.000000
+  pid.int_max:          1.000000
+  pid.T:                0.010000       sec
+  pid.prevError:        0.000000
+  pid.prevMeasurement:  0.000000
+  pid.proportional:     0.000000
+  pid.integrator:       0.000000
+  pid.differentiator:   0.000000
+  pid.out:              1.000000
+
+  focus:
+  cal_min.v:            478.678131       mV
+  cal_min.deg:          0.000000       deg
+  cal_min.ready:        1
+  cal_max.v:            3128.351807       mV
+  cal_max.deg:          100.000000       deg
+  cal_max.ready:        1
+  iadc:                 3
+  position:             0.029815       deg
+  offset:               0.000000       deg
+  target:               6.451393       deg
+  target_enabled:       1
+  ramp_time:            0.000000
+  pid.Kp:               0.010000
+  pid.Ki:               0.000000
+  pid.Kd:               0.000000
+  pid.tau:              0.011670       sec
+  pid.out_min:          -1.000000
+  pid.out_max:          1.000000
+  pid.int_min:          -1.000000
+  pid.int_max:          1.000000
+  pid.T:                0.010000       sec
+  pid.prevError:        6.421458
+  pid.prevMeasurement:  0.029935
+  pid.proportional:     0.064215
+  pid.integrator:       0.000000
+  pid.differentiator:   -0.000000
+  pid.out:              0.064215
+
+
