@@ -24,6 +24,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "platform.h"
 
@@ -111,6 +112,9 @@ void initUsart0(void)
 
 	// Enable receive data valid interrupt
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
+#else
+	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+	system("stty raw -echo");
 #endif
 }
 
@@ -173,12 +177,19 @@ int serial_read_char()
 {
 	int ret = -1;
 
+#ifdef __EFR32__
 	if (read_buf_next != read_buf_cur)
 	{
 		ret = read_buf[read_buf_cur];
 
 		read_buf_cur = ((read_buf_cur+1) & READ_BUF_MASK);
 	}
+#else
+	unsigned char c;
+	int num = read(0, &c, 1);
+	if (num > 0)
+		ret = c;
+#endif
 
 	return ret;
 }
@@ -393,7 +404,7 @@ int input(char *buf, int len, struct linklist *history, void (*idle)())
 			buf[end] = 0;
 			print_back(&buf[pos]);
 		}
-		else if (c == 8)	// Backspace
+		else if (c == 8 || c == 127) // Backspace
 		{  
 			if (end != 0 && pos != 0)
 			{
