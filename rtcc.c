@@ -103,7 +103,11 @@ uint64_t rtcc_get()
 {
 	uint64_t t;
 	lock = 1;
+#ifdef __EFR32__
 	t = rtcc_ticks;
+#else
+	t = time(0) * ticks_per_sec;
+#endif
 	lock = 0;
 	
 	return t;
@@ -141,6 +145,7 @@ float rtcc_elapsed_sec(uint64_t start)
 	return (rtcc_get() - start) / (float)ticks_per_sec;
 }
 
+#ifdef __EFR32__
 int _gettimeofday(struct timeval *tv, void *tz)
 {
 	uint64_t now = rtcc_get(); 
@@ -183,11 +188,6 @@ time_t _time(time_t *t)
 		return rtcc_get_sec();
 }
 
-void rtcc_set_clock_scale(int scale)
-{
-	rtcc_clock_scale = scale;
-}
-
 int clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
 	struct timeval tv;
@@ -197,4 +197,10 @@ int clock_gettime(clockid_t clk_id, struct timespec *tp)
 	tp->tv_nsec = tv.tv_usec*1000;
 
 	return 0;
+}
+#endif
+
+void rtcc_set_clock_scale(int scale)
+{
+	rtcc_clock_scale = scale;
 }

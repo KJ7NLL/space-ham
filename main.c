@@ -195,7 +195,7 @@ void status()
 	
 	struct tm rtc;
 	
-	time_t now = rtcc_get_sec();
+	time_t now = time(0);
 	gmtime_r(&now, &rtc);
 	print_tm(&rtc);
 	printf("Uptime: %0.2f hours - ", (float)(now-boot_time)/3600.0);
@@ -1038,7 +1038,7 @@ void watch(int argc, char **args, struct linklist *history)
 			return;
 	}
 
-	print("\x0c");
+	print("\x1b[3J\x1b[H\x1b[2J");
 	do
 	{
 		dispatch(argc-1, &args[1], history);
@@ -1769,7 +1769,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 					req->name,
 					req->target,
 					req->valid,
-					(int)(rtcc_get_sec() - req->complete_time),
+					(int)(time(0) - req->complete_time),
 					req->sample_count,
 					req->err_count);
 
@@ -1834,7 +1834,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 			ds3231_read_time(&rtc);
 			time_t now = mktime(&rtc);
 			printf("clock skew: %d\r\n",
-				(int)(rtcc_get_sec() - now));
+				(int)(time(0) - now));
 			rtcc_set_sec(now);
 		}
 		else if (argc >= 3 && match(args[1], "scale"))
