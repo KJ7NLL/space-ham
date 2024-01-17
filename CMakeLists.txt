@@ -22,8 +22,12 @@ if (DEFINED USE_EFM32_BASE)
 	# Set this if gcc-arm-none-eabi is not in path
 	#set(COMPILER_PREFIX /opt/gcc-arm-none-eabi/bin/)
 
+	# ${DEVICE} sets the target specific model name
+	set(BOARD BRD4180A)
+	set(DEVICE EFR32MG21A020F1024IM32)
+
 	# Set the compiler (must be prior to project setup)
-	set(EFM32_BASE_LOCATION efm32-base)
+	set(EFM32_BASE_LOCATION ${CMAKE_SOURCE_DIR}/efm32-base)
 	include(${EFM32_BASE_LOCATION}/toolchain/arm-gcc.cmake)
 endif ()
 
@@ -46,53 +50,13 @@ list(APPEND MY_C_FLAGS "-Wno-error=missing-field-initializers")
 # Configure project and languages
 project(space-ham C ASM)
 
+
 # Generate executable and link
-add_executable(${PROJECT_NAME}
-    main.c
-	serial.c
-	strutil.c
-	linklist.c
-	iadc.c
-	pwm.c
-	rotor.c
-	flash.c
-	systick.c
-	rtcc.c
-	pid.c
-	sat.c
-	i2c.c
-	stars.c
+add_executable(${PROJECT_NAME} /dev/null)
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
 
-	i2c/rtc-ds3231.c
-	i2c/ads111x.c
-	i2c/qmc5883l.c
-
-	sgp4sdp4/sgp4sdp4.c
-	sgp4sdp4/sgp_in.c
-	sgp4sdp4/sgp_math.c
-	sgp4sdp4/sgp_obs.c
-	sgp4sdp4/sgp_time.c
-	sgp4sdp4/solar.c
-
-	astronomy/source/c/astronomy.c
-
-	xmodem/xmodem.c
-
-	fatfs-efr32.c
-	fatfs-xmodem.c
-	fatfs/ff.c
-	)
-
-# Add project headers
-target_include_directories(${PROJECT_NAME} PRIVATE
-       include
-       sgp4sdp4
-       astronomy/source/c
-       xmodem
-       fatfs
-       )
-
-target_link_libraries(${PROJECT_NAME} m)
+add_subdirectory(src)
+target_link_libraries(${PROJECT_NAME} space-ham-src)
 
 if (DEFINED USE_EFM32_BASE)
 	# Note that "Release" has different flags.  See efm32-base/toolchain/efm32-base.cmake.
@@ -102,11 +66,7 @@ if (DEFINED USE_EFM32_BASE)
 	# remotely.
 	set(CMAKE_BUILD_TYPE Release)
 
-	target_include_directories(${PROJECT_NAME} PRIVATE ${EFM32_BASE_LOCATION}/include)
-
-	# ${DEVICE} sets the target specific model name
-	set(BOARD BRD4180A)
-	set(DEVICE EFR32MG21A020F1024IM32)
+	#target_include_directories(${PROJECT_NAME} PRIVATE ${EFM32_BASE_LOCATION}/include)
 
 	include(${EFM32_BASE_LOCATION}/toolchain/efm32-base.cmake)
 
@@ -114,7 +74,6 @@ if (DEFINED USE_EFM32_BASE)
 	target_compile_options(${PROJECT_NAME} PUBLIC ${MY_C_FLAGS})
 	target_compile_definitions(${PROJECT_NAME} PUBLIC
 		__unix__
-		_POSIX_TIMERS
 		__EFR32__
 		)
 

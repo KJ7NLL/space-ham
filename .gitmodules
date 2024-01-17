@@ -2,11 +2,11 @@
 	path = efm32-base
 	url = https://github.com/ryankurte/efm32-base.git
 [submodule "xmodem"]
-	path = xmodem
+	path = src/xmodem
 	url = https://github.com/Thuffir/xmodem.git
 [submodule "sgp4sdp4"]
-	path = sgp4sdp4
+	path = src/sgp4sdp4
 	url = https://github.com/KJ7LNW/sgp4sdp4.git
 [submodule "astronomy"]
-	path = astronomy
+	path = src/astronomy
 	url = https://github.com/cosinekitty/astronomy.git
