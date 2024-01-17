@@ -30,33 +30,18 @@ endif ()
 ##### Project Setup #####
 # Set build
 
-# Note that "Release" has different flags.
-# See efm32-base/toolchain/efm32-base.cmake
-set(CMAKE_BUILD_TYPE Release)
-
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE DEBUG)
 endif ()
 
-set(MY_C_FLAGS "${MY_C_FLAGS} -fdiagnostics-color")
+list(APPEND MY_C_FLAGS "-fdiagnostics-color")
 
-set(MY_C_FLAGS "${MY_C_FLAGS} -Og -g")
-
-set(MY_C_FLAGS "${MY_C_FLAGS} -Wall")
-set(MY_C_FLAGS "${MY_C_FLAGS} -Werror")
-set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=cpp")
-set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=array-bounds")
-set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=discarded-qualifiers")
-set(MY_C_FLAGS "${MY_C_FLAGS} -Wno-error=missing-field-initializers")
-
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${MY_C_FLAGS}")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${MY_C_FLAGS}")
-
-##### Modules #####
-
-# Libraries can be added to the LIBS variable
-# or manually included here.
-
+list(APPEND MY_C_FLAGS "-Wall")
+list(APPEND MY_C_FLAGS "-Werror")
+list(APPEND MY_C_FLAGS "-Wno-error=cpp")
+list(APPEND MY_C_FLAGS "-Wno-error=array-bounds")
+list(APPEND MY_C_FLAGS "-Wno-error=discarded-qualifiers")
+list(APPEND MY_C_FLAGS "-Wno-error=missing-field-initializers")
 
 # Configure project and languages
 project(space-ham C ASM)
@@ -110,62 +95,48 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} m)
 
 if (DEFINED USE_EFM32_BASE)
+	# Note that "Release" has different flags.  See efm32-base/toolchain/efm32-base.cmake.
+	#
+	# For EFM32, we only use a "Release" version because its smaller and
+	# debug symbols aren't that helpful because gdb doesn't work well
+	# remotely.
+	set(CMAKE_BUILD_TYPE Release)
+
 	target_include_directories(${PROJECT_NAME} PRIVATE ${EFM32_BASE_LOCATION}/include)
 
 	# ${DEVICE} sets the target specific model name
-	if (NOT DEVICE)
-	    set(DEVICE EFR32MG21A020F1024IM32)
-	    # set(DEVICE BGM13P22F512GA)
-	    set(BOARD BRD4180A)
-	    # set(BLE_LIB EFR32BG13P)
-	    #set(FLASH_ORIGIN 0x0)
-	endif ()
+	set(BOARD BRD4180A)
+	set(DEVICE EFR32MG21A020F1024IM32)
 
-	# ${JLINK_DEVICE} device model setting specifically for JLink. (Defaults to ${DEVICE} when not set)
-	# set(JLINK_DEVICE EFM32TG11BXXXF128)
-
-	# When ${JLINK_SERVER_IP} is set, JLink will try to connect over IP to a JLink server
-	# set(JLINK_SERVER_IP 127.0.0.1)
-	# Add base libs (emlib, CMSIS, device files)
 	include(${EFM32_BASE_LOCATION}/toolchain/efm32-base.cmake)
 
 	# for clock_gettime():
-	set(MY_C_FLAGS "${MY_C_FLAGS} -D__unix__")
-	set(MY_C_FLAGS "${MY_C_FLAGS} -D_POSIX_TIMERS")
+	target_compile_options(${PROJECT_NAME} PUBLIC ${MY_C_FLAGS})
+	target_compile_definitions(${PROJECT_NAME} PUBLIC
+		__unix__
+		_POSIX_TIMERS
+		__EFR32__
+		)
 
-	set(MY_C_FLAGS "${MY_C_FLAGS} -D__EFR32__")
-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${MY_C_FLAGS}")
-	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${MY_C_FLAGS}")
-
-
-	# Enable protocols / BLE if desired
-	# Note this will overwrite the default linker files / may not behave in the manner you expect
-	#set(USE_PROTOCOL 1)
-
+	# Add base libs (emlib, CMSIS, device files)
 	add_subdirectory(${EFM32_BASE_LOCATION}/cmsis)
 	add_subdirectory(${EFM32_BASE_LOCATION}/emlib)
 	add_subdirectory(${EFM32_BASE_LOCATION}/device)
-	add_subdirectory(${EFM32_BASE_LOCATION}/protocol)
-	add_subdirectory(${EFM32_BASE_LOCATION}/hardware)
-
-	# This is normally set in efm32-base.cmake, but libraries may modify it so set
-	# it after libraries/subdirectories have been added
-	set(CMAKE_EXE_LINKER_FLAGS "${COMMON_DEFINITIONS} -Xlinker -T${LINKER_SCRIPT} -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map -Wl,--gc-sections -Wl,-v -u _printf_float")
-
-	##### Files #####
-
-	efm32_configure_linker_addresses(${PROJECT_NAME})
 
 	target_link_libraries(${PROJECT_NAME} ${LIBS} m emlib cmsis device)
 
-	# Link optional libraries if available
-	if (${HAS_HARDWARE})
-	    target_link_libraries(${PROJECT_NAME} hardware)
-	endif ()
+	# This is normally set in efm32-base.cmake, but libraries may modify it
+	# so set it after libraries/subdirectories have been added
+	target_link_options(${PROJECT_NAME} PUBLIC
+		-Xlinker
+		-T${LINKER_SCRIPT}
+		-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.map
+		-Wl,--gc-sections
+		-Wl,-v
+		-u _printf_float
+		)
 
-	if (${HAS_PROTOCOL})
-	    target_link_libraries(${PROJECT_NAME} protocol)
-	endif ()
+	efm32_configure_linker_addresses(${PROJECT_NAME})
 
 	##### Post build #####
 
