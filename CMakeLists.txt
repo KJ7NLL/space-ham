@@ -66,16 +66,10 @@ if (DEFINED USE_EFM32_BASE)
 	# remotely.
 	set(CMAKE_BUILD_TYPE Release)
 
-	#target_include_directories(${PROJECT_NAME} PRIVATE ${EFM32_BASE_LOCATION}/include)
-
 	include(${EFM32_BASE_LOCATION}/toolchain/efm32-base.cmake)
 
 	# for clock_gettime():
 	target_compile_options(${PROJECT_NAME} PUBLIC ${MY_C_FLAGS})
-	target_compile_definitions(${PROJECT_NAME} PUBLIC
-		__unix__
-		__EFR32__
-		)
 
 	# Add base libs (emlib, CMSIS, device files)
 	add_subdirectory(${EFM32_BASE_LOCATION}/cmsis)
