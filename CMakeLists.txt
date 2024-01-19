@@ -55,7 +55,7 @@ project(space-ham C ASM)
 add_executable(${PROJECT_NAME} /dev/null)
 set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
 
-add_subdirectory(src)
+add_subdirectory(main)
 target_link_libraries(${PROJECT_NAME} space-ham-src)
 
 if (DEFINED USE_EFM32_BASE)
