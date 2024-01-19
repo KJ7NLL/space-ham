@@ -1976,7 +1976,11 @@ void main_idle()
 
 }
 
+#ifdef __ESP32__
+int app_main()
+#else
 int main()
+#endif
 {
 	FRESULT res;
 

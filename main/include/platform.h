@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#ifdef __EFR32__
+#if defined(__EFR32__)
 
 #include "em_chip.h"
 #include "em_cmu.h"
@@ -23,6 +23,21 @@
 inline static void platform_sleep()
 {
 	EMU_EnterEM1();
+}
+
+#elif defined(__ESP32__)
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "sdkconfig.h"
+
+#define FLASH_PAGE_SIZE 65536
+typedef void* TIMER_TypeDef;
+typedef int I2C_TransferReturn_TypeDef;
+
+inline static void platform_sleep()
+{
+	vTaskDelay(10);
 }
 
 #else
