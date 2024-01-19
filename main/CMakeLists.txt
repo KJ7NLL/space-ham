@@ -1,18 +1,4 @@
-add_library(space-ham-src)
-
-if (DEFINED USE_EFM32_BASE)
-	target_compile_options(space-ham-src PRIVATE
-		-D__unix__
-		-D__EFR32__
-		)
-	message("USING EFM32: ${EFM32_BASE_LOCATION}")
-	include(${EFM32_BASE_LOCATION}/toolchain/efm32-base.cmake)
-	set(CMAKE_BUILD_TYPE Release)
-	target_link_libraries(space-ham-src m emlib cmsis device)
-endif()
-
-# Generate executable and link
-target_sources(space-ham-src PRIVATE
+list(APPEND MY_SOURCES
 		main.c
 		serial.c
 		strutil.c
@@ -46,15 +32,38 @@ target_sources(space-ham-src PRIVATE
 		fatfs-efr32.c
 		fatfs-xmodem.c
 		fatfs/ff.c
-	)
+)
 
-# Add project headers
-target_include_directories(space-ham-src PUBLIC
+list(APPEND MY_INCLUDES
        include
        sgp4sdp4
        astronomy/source/c
        xmodem
        fatfs
-       )
+)
 
-target_link_libraries(space-ham-src m)
+if (${ESP_PLATFORM})
+	idf_component_register(SRCS ${MY_SOURCES}
+			INCLUDE_DIRS ${MY_INCLUDES})
+else()
+	add_library(space-ham-src)
+
+	if (DEFINED USE_EFM32_BASE)
+		target_compile_options(space-ham-src PRIVATE
+			-D__unix__
+			-D__EFR32__
+			)
+		message("USING EFM32: ${EFM32_BASE_LOCATION}")
+		include(${EFM32_BASE_LOCATION}/toolchain/efm32-base.cmake)
+		set(CMAKE_BUILD_TYPE Release)
+		target_link_libraries(space-ham-src emlib cmsis device)
+	endif()
+
+	# Generate executable and link
+	target_sources(space-ham-src PRIVATE ${MY_SOURCES})
+
+	# Add project headers
+	target_include_directories(space-ham-src PUBLIC ${MY_INCLUDES})
+
+	target_link_libraries(space-ham-src m)
+endif()

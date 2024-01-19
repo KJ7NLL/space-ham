@@ -11,12 +11,20 @@
 ###### Project Environment #####
 
 # Set minimum CMake version
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.16)
 
 # Optional verbose mode, uncomment or pass in -DCMAKE_VERBOSE_MAKEFILE=ON
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(USE_EFM32_BASE 1)
+# Uncomment USE_EFM32_BASE to enable building on Silacon Labs EFM32/EFR32 devices.
+# You will need to specify your board and device model below.
+#set(USE_EFM32_BASE 1)
+
+# Uncomment USE_ESP32 to enable building on Espressif ESP32 devices
+# To build on ESP32, run `idf.py set-target esp32-c6 && idf.py flash`
+set(USE_ESP32 ${ESP_PLATFORM})
+
+# Leave both USE_EFM32_BASE and USE_ESP32 disabled to build on Linux/UNIX.
 
 if (DEFINED USE_EFM32_BASE)
 	# Set this if gcc-arm-none-eabi is not in path
@@ -34,29 +42,39 @@ endif ()
 ##### Project Setup #####
 # Set build
 
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE DEBUG)
-endif ()
-
-list(APPEND MY_C_FLAGS "-fdiagnostics-color")
-
-list(APPEND MY_C_FLAGS "-Wall")
-list(APPEND MY_C_FLAGS "-Werror")
-list(APPEND MY_C_FLAGS "-Wno-error=cpp")
-list(APPEND MY_C_FLAGS "-Wno-error=array-bounds")
-list(APPEND MY_C_FLAGS "-Wno-error=discarded-qualifiers")
-list(APPEND MY_C_FLAGS "-Wno-error=missing-field-initializers")
-
 # Configure project and languages
-project(space-ham C ASM)
 
+if (DEFINED USE_ESP32)
+	include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+	add_compile_definitions(
+		ASTRONOMY_ENGINE_WHOLE_SECOND
+		__ESP32__
+	)
+	project(space-ham)
+else ()
+	project(space-ham C ASM)
 
-# Generate executable and link
-add_executable(${PROJECT_NAME} /dev/null)
-set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
+	if (NOT CMAKE_BUILD_TYPE)
+	    set(CMAKE_BUILD_TYPE DEBUG)
+	endif ()
 
-add_subdirectory(main)
-target_link_libraries(${PROJECT_NAME} space-ham-src)
+	list(APPEND MY_C_FLAGS "-fdiagnostics-color")
+
+	list(APPEND MY_C_FLAGS "-Wall")
+	list(APPEND MY_C_FLAGS "-Werror")
+	list(APPEND MY_C_FLAGS "-Wno-error=cpp")
+	list(APPEND MY_C_FLAGS "-Wno-error=array-bounds")
+	list(APPEND MY_C_FLAGS "-Wno-error=discarded-qualifiers")
+	list(APPEND MY_C_FLAGS "-Wno-error=missing-field-initializers")
+
+	# Generate executable and link
+	add_executable(${PROJECT_NAME} /dev/null)
+	set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
+
+	add_subdirectory(main)
+	target_link_libraries(${PROJECT_NAME} space-ham-src)
+
+endif ()
 
 if (DEFINED USE_EFM32_BASE)
 	# Note that "Release" has different flags.  See efm32-base/toolchain/efm32-base.cmake.
@@ -102,6 +120,6 @@ if (DEFINED USE_EFM32_BASE)
 endif ()
 
 ##### CMake debug prints #####
-if (CMAKE_VERBOSE_MAKEFILE)
-    print_debug_info()
-endif ()
+#if (CMAKE_VERBOSE_MAKEFILE)
+ #   print_debug_info()
+#endif ()
