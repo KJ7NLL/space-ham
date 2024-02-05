@@ -58,9 +58,15 @@ void SysTick_Handler(void)
 		float rpos = rotor_pos(rotor);
 		if (isnan(rpos))
 		{
-			motor_speed(motor, 0);
+			rotor->error_count++;
+
+			if (rotor->error_count > rotor->error_count_max)
+				motor_speed(motor, 0);
+
 			continue;
 		}
+		else
+			rotor->error_count = 0;
 
 		float rtarget = rotor->target;
 

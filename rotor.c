@@ -39,7 +39,7 @@
 #include "rtcc.h"
 
 #define ROTOR_CAL_MAGIC   0x458FD1E9
-#define ROTOR_CUR_VERSION 2
+#define ROTOR_CUR_VERSION 3
 
 // Rotor calibration file header (cal.bin)
 struct rotor_cal_header
@@ -174,6 +174,9 @@ float rotor_pos(struct rotor *r)
 		ascending = 0;
 
 	v = rotor_get_voltage(r);
+
+	if (isnan(v))
+		return NAN;
 
 	if (ascending && v < rotor_cal_min(r)->v)
 	{
@@ -381,6 +384,8 @@ void rotor_detail(struct rotor *r)
 		cal_max = &dummy;
 
 	printf("%s:\r\n"
+		"  error_count:           %d\r\n"
+		"  error_count_max        %d\r\n"
 		"  cal_min.v:             %13.9f       mV\r\n"
 		"  cal_min.deg:           %13.9f       deg\r\n"
 		"  cal_min.ready:         %3d\r\n"
@@ -421,6 +426,8 @@ void rotor_detail(struct rotor *r)
 		"  pid.SMC:               %13.9f\r\n"
 		"  pid.out:               %13.9f\r\n",
 			r->motor.name,
+			r->error_count,
+			r->error_count_max,
 			cal_min->v * 1000,
 			cal_min->deg,
 			cal_min->ready,
@@ -618,6 +625,8 @@ void rotor_cal_load()
 		rotors[i].pid.target_prev_count = 0;
 		rotors[i].pid.target_slope = 0;
 
+		rotors[i].error_count = 0;
+
 		// Upgrade rotor structures if they are an old version
 		if (rotors[i].version < 1)
 		{
@@ -644,6 +653,13 @@ void rotor_cal_load()
 
 			rotors[i].version = 2;
 
+		}
+
+		if (rotors[i].version < 3)
+		{
+			rotors[i].error_count = 0;
+			rotors[i].error_count_max = 300; // 3s at 100ticks/sec
+			rotors[i].version = 3;
 		}
 
 

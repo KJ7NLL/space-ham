@@ -141,6 +141,9 @@ struct rotor
 		// `one_dir_motion`.
 		float one_dir_motion;
 	} pid;
+
+	int error_count;
+	int error_count_max;
 };
 
 extern struct rotor rotors[NUM_ROTORS];
