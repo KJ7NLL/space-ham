@@ -42,6 +42,10 @@ volatile i2c_req_t *i2c_req_cont_array[I2C_REQ_CONT_ARRAY_SIZE] = {NULL};
 I2C_TransferSeq_TypeDef i2c0_transfer;
 #endif
 
+#ifdef __ESP32__
+	i2c_master_bus_handle_t i2c_bus_handle;
+#endif
+
 // This only works with I2C0. Refactor if you need I2C1
 i2c_req_t *i2c_handle_req(i2c_req_t *req)
 {
@@ -52,6 +56,21 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	if (req->status == i2cTransferDone)
 	{
 		req->status = i2cTransferInProgress;
+
+#ifdef __ESP32__
+		if (req->addr & 0x01)
+		{
+			esp_err_t e = i2c_master_transmit_receive(req->dev_handle, (void *) &req->target, 1,
+				req->data, req->n_bytes, I2C_TIMEOUT_MS);
+			if (e == ESP_OK)
+				req->status = i2cTransferDone;
+			else
+				req->status = i2cTransferError;
+		}
+		else
+			req->status = i2cTransferError;
+
+#endif
 
 #ifdef __EFR32__
 		// Initializing I2C transfer
@@ -144,12 +163,49 @@ void I2C0_IRQHandler()
 			i2c_handle_req(req_active);
 		}
 	}
+
+#ifdef __ESP32__
+
+	// If there are no active requests, sleep for 100 ms
+	if (req_active == NULL)
+	{
+		vTaskDelay(100/portTICK_PERIOD_MS);
+	}
+#endif
+}
+
+void i2c_req_task(void *p)
+{
+	while (1)
+	{
+		I2C0_IRQHandler();
+		vTaskDelay(100/portTICK_PERIOD_MS);
+	}
 }
 
 // This function is mostly coppied from a Silicon Labs example. If anyone
 // cares, this function may still be licensed as zlib.
 void initI2C()
 {
+#ifdef __ESP32__
+	i2c_master_bus_config_t i2c_mst_config = {
+		.clk_source = I2C_CLK_SRC_DEFAULT,
+		.i2c_port = -1,
+		.scl_io_num = I2C_SCL,
+		.sda_io_num = I2C_SDA,
+		.glitch_ignore_cnt = 7,
+		.flags.enable_internal_pullup = true,
+	};
+
+	ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &i2c_bus_handle));
+
+	xTaskCreate(i2c_req_task,
+		"i2c_req_task",
+		2048,
+		NULL,
+		0,
+		NULL);
+#endif
 #ifdef __EFR32__
 	CMU_ClockEnable(cmuClock_I2C0, true);
 
@@ -254,7 +310,7 @@ I2C_TransferReturn_TypeDef i2c_req_submit_sync(i2c_req_t *req)
 }
 
 I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t targetAddress,
-		uint8_t * rxBuff, uint8_t numBytes)
+		uint8_t *rxBuff, uint8_t numBytes)
 {
 	i2c_req_t req;
 
@@ -265,8 +321,22 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 	req.n_bytes = numBytes;
 	req.data = rxBuff;
 
-	// Sending data
+#ifdef __ESP32__
+	i2c_device_config_t dev_cfg = {
+		.dev_addr_length = I2C_ADDR_BIT_LEN_7,
+		.device_address = slaveAddress >> 1,
+		.scl_speed_hz = 10000,
+	};
+
+	i2c_master_dev_handle_t dev_handle;
+
+	ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
+
+	req.status = i2c_master_transmit_receive(dev_handle, &targetAddress, 1, rxBuff, numBytes, -1);
+	ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+#else
 	i2c_req_submit_sync(&req);
+#endif
 	printf("read result: %d (count=%d)\r\n", req.status, count);
 
 	return req.status;
@@ -283,8 +353,35 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 	req.target = targetAddress;
 	req.n_bytes = numBytes;
 	req.data = txBuff;
-
+#if defined(__EFR32__)
 	i2c_req_submit_sync(&req);
+#elif defined(__ESP32__)
+	req.data = malloc(numBytes + 1);
+
+	if (req.data != NULL)
+	{
+		req.data[0] = targetAddress;
+		memcpy(req.data + 1, txBuff, numBytes);
+
+		i2c_device_config_t dev_cfg = {
+			.dev_addr_length = I2C_ADDR_BIT_LEN_7,
+			.device_address = slaveAddress >> 1,
+			.scl_speed_hz = 10000,
+		};
+
+		i2c_master_dev_handle_t dev_handle;
+
+		ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
+
+		req.status = i2c_master_transmit(dev_handle, req.data, numBytes + 1, -1);
+		ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+
+		req.status = 0;
+		free(req.data);
+	}
+	else
+		req.status = -1;
+#endif
 	printf("write result: %d (count=%d)\r\n", req.status, count);
 
 	return req.status;
@@ -303,7 +400,7 @@ int i2c_get_count()
 	return c;
 }
 
-i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
+i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes, int busaddr)
 {
 	i2c_req_t *req;
 
@@ -313,6 +410,7 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
 
 	memset((void*)req, 0, reqtype_size);
 
+	req->addr = busaddr;
 	req->n_bytes = n_bytes;
 
 	req->data = malloc(req->n_bytes);
@@ -323,11 +421,23 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes)
 	if (req->result == NULL)
 		goto out_data;
 
+#ifdef __ESP32__
+	req->dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+	req->dev_cfg.device_address = busaddr >> 1;
+	req->dev_cfg.scl_speed_hz = config.i2c_freq;
+
+	if (i2c_master_bus_add_device(i2c_bus_handle, &req->dev_cfg, &req->dev_handle) != ESP_OK)
+	{
+		goto out_result;
+	}
+#endif
+
 	memset(req->data, 0, req->n_bytes);
 	memset(req->result, 0, req->n_bytes);
 
 	return req;
-
+out_result:
+	free(req->result);
 out_data:
 	free(req->data);
 out_req:

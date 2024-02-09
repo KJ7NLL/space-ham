@@ -31,13 +31,17 @@ inline static void platform_sleep()
 #include "freertos/task.h"
 #include "sdkconfig.h"
 
+#include "driver/i2c_master.h"
+
 #define FLASH_PAGE_SIZE 65536
+#define HAVE_I2C 1
+
 typedef void* TIMER_TypeDef;
 typedef int I2C_TransferReturn_TypeDef;
 
 inline static void platform_sleep()
 {
-	vTaskDelay(10);
+	vTaskDelay(40/portTICK_PERIOD_MS);
 }
 
 #else

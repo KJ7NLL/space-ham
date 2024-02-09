@@ -175,7 +175,7 @@ qmc5883l_t *qmc5883l_measure_req_alloc(int devaddr)
 {
 	qmc5883l_t *mag;
 
-	mag = (qmc5883l_t *)i2c_req_alloc(sizeof(qmc5883l_t), 6);
+	mag = (qmc5883l_t *)i2c_req_alloc(sizeof(qmc5883l_t), 6, (devaddr << 1) | 1);
 
 	if (mag == NULL)
 		return NULL;
@@ -183,7 +183,6 @@ qmc5883l_t *qmc5883l_measure_req_alloc(int devaddr)
 	i2c_req_t *req = &mag->req;
 
 	req->name = "qmc5883l";
-	req->addr = (devaddr << 1) | 1;
 	req->target = QMC5883L_DATA_X;
 	req->callback = (void (*)(i2c_req_t *))qmc5883l_calibration_callback;
 

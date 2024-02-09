@@ -29,9 +29,19 @@
 #define I2C_SDA 5
 
 #else
+
+#ifdef __ESP32__
+
+#define I2C_SCL 11
+#define I2C_SDA 10
+#define I2C_TIMEOUT_MS 100
+
+#endif
+
 enum {
+	i2cTransferDone = 0,
 	i2cTransferInProgress,
-	i2cTransferDone
+	i2cTransferError
 };
 #endif
 
@@ -39,6 +49,10 @@ enum {
 
 typedef volatile struct i2c_req_t
 {
+#ifdef __ESP32__
+	i2c_device_config_t dev_cfg;
+	i2c_master_dev_handle_t dev_handle;
+#endif
 	// The name of the request, in case it is useful.
 	char *name;
 
@@ -97,6 +111,6 @@ void i2c_req_add_cont(i2c_req_t *req);
 i2c_req_t *i2c_req_get_cont(uint16_t devaddr);
 void i2c_req_set_cont(uint16_t devaddr, i2c_req_t *req);
 int i2c_get_count();
-i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes);
+i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes, int busaddr);
 void i2c_req_free(i2c_req_t *req);
 const volatile struct linklist *i2c_req_cont_list();

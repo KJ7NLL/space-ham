@@ -98,7 +98,7 @@ ads111x_t *ads111x_measure_req_alloc(int devaddr)
 {
 	ads111x_t *adc;
 
-	adc = (ads111x_t*)i2c_req_alloc(sizeof(ads111x_t), 2);
+	adc = (ads111x_t*)i2c_req_alloc(sizeof(ads111x_t), 2, (devaddr << 1) | 1);
 	if (adc == NULL)
 		return NULL;
 
@@ -106,7 +106,6 @@ ads111x_t *ads111x_measure_req_alloc(int devaddr)
 
 	req->name = "ads111x";
 
-	req->addr = (devaddr << 1) | 1;
 	req->target = ADS111X_REG_CONV;
 
 	ads111x_init(adc);
