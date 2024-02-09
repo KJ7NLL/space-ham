@@ -336,7 +336,7 @@ void motor(int argc, char **args)
 	{
 		motor_detail(m);
 	}
-	else if (match(args[2], "speed") && argc == 4 && !isalpha((int)args[3][0]))
+	else if (argc == 4 && match(args[2], "speed") && !isalpha((int)args[3][0]))
 	{
 		if (!motor_online(m))
 		{
@@ -1332,7 +1332,7 @@ void fat(int argc, char **args)
 		buf[0] = 0;
 		res = scan_files(buf);
 	}
-	else if (match(args[1], "load") && argc >= 3)
+	else if (argc >= 3 && match(args[1], "load"))
 	{
 		printf("Paste data into %s and press CTRL+D when done\r\n", args[2]);
 		res = f_open(&fil, args[2], FA_CREATE_ALWAYS | FA_WRITE);
@@ -1345,7 +1345,7 @@ void fat(int argc, char **args)
 		if (res != FR_OK)
 			res = f_close(&fil);
 	}
-	else if (match(args[1], "cat") && argc >= 3)
+	else if (argc >= 3 && match(args[1], "cat"))
 	{
 		res = f_open(&fil, args[2], FA_READ);
 		printf("res: %d\r\n", res);
@@ -1361,13 +1361,13 @@ void fat(int argc, char **args)
 		printf("\r\n");
 		res = f_close(&fil);
 	}
-	else if (match(args[1], "rx") && argc >= 3)
+	else if (argc >= 3 && match(args[1], "rx"))
 	{
 		br = xmodem_rx(args[2]);
 
 		printf("Receved %d bytes\r\n", br);
 	}
-	else if (match(args[1], "tx") && argc >= 3)
+	else if (argc >= 3 && match(args[1], "tx"))
 	{
 		bw = xmodem_tx(args[2]);
 
@@ -1699,7 +1699,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 	else if  (match(args[0], "i2c"))
 	{
-		if (match(args[1], "read") && argc >= 5)
+		if (argc >= 5 && match(args[1], "read"))
 		{
 			int addr = strtol(args[2], NULL, 16);
 			int target = strtol(args[3], NULL, 16);
@@ -1720,7 +1720,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 			free(buf);
 		}
-		else if (match(args[1], "write") && argc >= 5)
+		else if (argc >= 5 && match(args[1], "write"))
 		{
 			int addr = strtol(args[2], NULL, 16);
 			int target = strtol(args[3], NULL, 16);
@@ -1746,7 +1746,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 			free(buf);
 		}
-		else if (match(args[1], "adc") && argc >= 3)
+		else if (argc >= 3 && match(args[1], "adc"))
 		{
 			float value = 0;
 			int addr = strtol(args[2], NULL, 16);
@@ -1755,7 +1755,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 			printf("voltage: %.12f\r\n", value);
 		}
-		else if (match(args[1], "list"))
+		else if (argc >= 2 && match(args[1], "list"))
 		{
 			const volatile struct linklist *reqs = i2c_req_cont_list();
 
