@@ -45,6 +45,7 @@ list(APPEND MY_INCLUDES
 if (${ESP_PLATFORM})
 	idf_component_register(SRCS ${MY_SOURCES}
 			INCLUDE_DIRS ${MY_INCLUDES})
+	add_compile_options(-fdiagnostics-color=always)
 else()
 	add_library(space-ham-src)
 

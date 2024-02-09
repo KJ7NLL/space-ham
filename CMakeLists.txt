@@ -46,6 +46,7 @@ endif ()
 
 if (DEFINED USE_ESP32)
 	include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+	add_compile_options(-fdiagnostics-color=always)
 	add_compile_definitions(
 		ASTRONOMY_ENGINE_WHOLE_SECOND
 		__ESP32__
