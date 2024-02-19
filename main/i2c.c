@@ -62,13 +62,21 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 		{
 			esp_err_t e = i2c_master_transmit_receive(req->dev_handle, (void *) &req->target, 1,
 				req->data, req->n_bytes, I2C_TIMEOUT_MS);
+
 			if (e == ESP_OK)
 				req->status = i2cTransferDone;
 			else
+			{
+				ESP_ERROR_CHECK(e);
 				req->status = i2cTransferError;
+			}
 		}
 		else
-			req->status = i2cTransferError;
+		{
+			// TODO: Implement write
+			req->status = i2cTransferNotImplemented;
+			req->complete = 1;
+		}
 
 #endif
 
@@ -179,7 +187,7 @@ void i2c_req_task(void *p)
 	while (1)
 	{
 		I2C0_IRQHandler();
-		vTaskDelay(100/portTICK_PERIOD_MS);
+		vTaskDelay(1);
 	}
 }
 
@@ -201,7 +209,7 @@ void initI2C()
 
 	xTaskCreate(i2c_req_task,
 		"i2c_req_task",
-		2048,
+		4096,
 		NULL,
 		0,
 		NULL);
@@ -275,13 +283,16 @@ void i2c_req_add_cont(i2c_req_t *req)
 
 	add_tail_node((struct linklist*)&i2c_req_cont, (void*)req);
 
+#ifdef __EFR32__
 	// It might be strange to call the IRQ handler directly, but it is
 	// responsible for setting up the transfer via I2C_TransferInit(), and
 	// I2C_TransferInit() is safe to run inside _or_ outside of an
 	// interrupt handler.  We cannot setup the new request here because an
 	// existing transfer may be in progress so we cannot trigger
 	// I2C_TransferInit().
+
 	I2C0_IRQHandler();
+#endif
 }
 
 void i2c_req_submit_async(i2c_req_t *req)
@@ -291,6 +302,7 @@ void i2c_req_submit_async(i2c_req_t *req)
 	req->valid = 0;
 	add_tail_node((struct linklist*)&i2c_req_once, (void*)req);
 
+#ifdef __EFR32__
 	// It might be strange to call the IRQ handler directly, but it is
 	// responsible for setting up the transfer via I2C_TransferInit(), and
 	// I2C_TransferInit() is safe to run inside _or_ outside of an
@@ -298,6 +310,7 @@ void i2c_req_submit_async(i2c_req_t *req)
 	// existing transfer may be in progress so we cannot trigger
 	// I2C_TransferInit().
 	I2C0_IRQHandler();
+#endif
 }
 
 I2C_TransferReturn_TypeDef i2c_req_submit_sync(i2c_req_t *req)
@@ -400,7 +413,7 @@ int i2c_get_count()
 	return c;
 }
 
-i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes, int busaddr)
+i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes, uint16_t busaddr)
 {
 	i2c_req_t *req;
 
@@ -410,6 +423,7 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes, int busaddr)
 
 	memset((void*)req, 0, reqtype_size);
 
+	req->name = "i2c_req_alloc";
 	req->addr = busaddr;
 	req->n_bytes = n_bytes;
 
@@ -426,8 +440,12 @@ i2c_req_t *i2c_req_alloc(size_t reqtype_size, size_t n_bytes, int busaddr)
 	req->dev_cfg.device_address = busaddr >> 1;
 	req->dev_cfg.scl_speed_hz = config.i2c_freq;
 
-	if (i2c_master_bus_add_device(i2c_bus_handle, &req->dev_cfg, &req->dev_handle) != ESP_OK)
+	esp_err_t e;
+
+	e = i2c_master_bus_add_device(i2c_bus_handle, &req->dev_cfg, &req->dev_handle);
+	if (e != ESP_OK)
 	{
+		ESP_ERROR_CHECK(e);
 		goto out_result;
 	}
 #endif
@@ -453,6 +471,11 @@ void i2c_req_free(i2c_req_t *req)
 		i2c_req_set_cont(req->addr >> 1, NULL);
 	}
 
+
+#ifdef __ESP32__
+	ESP_ERROR_CHECK(i2c_master_bus_rm_device(req->dev_handle));
+#endif
+
 	free(req->data);
 	free(req->result);
 	free((void*)req);
@@ -461,4 +484,36 @@ void i2c_req_free(i2c_req_t *req)
 const volatile struct linklist *i2c_req_cont_list()
 {
 	return &i2c_req_cont;
+}
+
+
+void dump_req(i2c_req_t *req, char *msg)
+{
+	printf("\r\n%s: req=%p\r\n"
+		"  req.name=%s\r\n"
+		"  req.addr=%02x devaddr=%02x rw=%c\r\n"
+		"  req.target=%d\r\n"
+		"  req.n_bytes=%d\r\n"
+		"  req.status=%d\r\n"
+		"  req.complete=%d\r\n"
+		"  req.valid=%d\r\n"
+		"  req.complete_time=%d\r\n",
+			msg,
+			req,
+			req->name,
+			req->addr, req->addr >> 1, req->addr & 0x01 ? 'R' : 'W',
+			req->target,
+			req->n_bytes,
+			req->status,
+			req->complete,
+			req->valid,
+			(int)req->complete_time);
+
+	printf("  req.data: %p\r\n", req->data);
+	for (int i = 0; i < req->n_bytes; i++)
+		printf("    %d. %02X\r\n", i, req->data[i]);
+
+	printf("  req.result: %p\r\n", req->result);
+	for (int i = 0; i < req->n_bytes; i++)
+		printf("    %d. %02X\r\n", i, req->result[i]);
 }
