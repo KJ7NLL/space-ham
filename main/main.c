@@ -82,7 +82,7 @@ config_t config = {
 	// Lat North, Lon East in rads, Alt in km 
 	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
 	.username = "user",
-	.i2c_freq = 10000
+	.i2c_freq = 100000
 };
 
 void initGpio(void)
@@ -1556,6 +1556,38 @@ void meminfo()
 	printf("stack used: %5d bytes\r\n", (0x20000000+96*1024)- (int)(&p));
 	free(p);
 #endif
+
+#ifdef __ESP32__
+	printf("=== MALLOC_CAP_INTERNAL\r\n");
+	heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+
+	printf("\r\n=== MALLOC_CAP_8BIT\r\n");
+	heap_caps_print_heap_info(MALLOC_CAP_8BIT);
+
+	char *stats = malloc(2048);
+	if (stats == NULL)
+	{
+		printf("failed to allocate memory\r\n");
+		return;
+	}
+
+	printf("\r\n=== TASK STATS\r\n");
+	printf("name\t\trun ctr\t\tavg %%cpu\r\n");
+	vTaskGetRunTimeStats(stats);
+	printf(stats);
+	printf("text length=%d\r\n", strlen(stats));
+
+	printf("\r\n=== TASK LIST\r\n");
+	printf("Name\t\tstate\t\tprio\t\tcore?\t\tmax stack\t\ttask number\r\n");
+	vTaskList(stats);
+	printf(stats);
+	printf("text length=%d\r\n", strlen(stats));
+	printf("Tasks are reported as blocked (B), ready (R), deleted (D) or suspended (S).\r\n");
+
+	printf("before free\r\n");
+	free(stats);
+#endif
+
 
 	printf("sizeof(rotors): %d bytes\r\n", (int)sizeof(rotors));
 }
