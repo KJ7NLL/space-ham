@@ -67,7 +67,9 @@ char *vt102[] =
 	(char[]){KEY_RT, 0x1b, '[', 'C', 0},
 	(char[]){KEY_LT, 0x1b, '[', 'D', 0},
 	(char[]){KEY_HOME, 0x1b, '[', '1', '~', 0},
+	(char[]){KEY_HOME, 0x1b, '[', 'H', 0},
 	(char[]){KEY_END, 0x1b, 'O', 'F', 0},
+	(char[]){KEY_END, 0x1b, '[', 'F', 0},
 	(char[]){KEY_DEL, 0x1b, '[', '3', '~', 0},
 	NULL	 
 };
