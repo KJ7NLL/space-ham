@@ -43,7 +43,8 @@ I2C_TransferSeq_TypeDef i2c0_transfer;
 #endif
 
 #ifdef __ESP32__
-	i2c_master_bus_handle_t i2c_bus_handle;
+i2c_master_bus_handle_t i2c_bus_handle;
+SemaphoreHandle_t i2c_bus_mutex;
 #endif
 
 // This only works with I2C0. Refactor if you need I2C1
@@ -60,8 +61,18 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 #ifdef __ESP32__
 		if (req->addr & 0x01)
 		{
-			esp_err_t e = i2c_master_transmit_receive(req->dev_handle, (void *) &req->target, 1,
-				req->data, req->n_bytes, I2C_TIMEOUT_MS);
+			esp_err_t e;
+			if (xSemaphoreTake(i2c_bus_mutex, 10) == pdTRUE)
+			{
+				e = i2c_master_transmit_receive(req->dev_handle, (void *) &req->target, 1,
+					req->data, req->n_bytes, I2C_TIMEOUT_MS);
+				xSemaphoreGive(i2c_bus_mutex);
+			}
+			else
+			{
+				printf("%s: failed to hold semaphore\r\n", __func__);
+				req->status = i2cTransferError;
+			}
 
 			if (e == ESP_OK)
 				req->status = i2cTransferDone;
@@ -207,6 +218,8 @@ void initI2C()
 
 	ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &i2c_bus_handle));
 
+	i2c_bus_mutex = xSemaphoreCreateMutex();
+
 	xTaskCreate(i2c_req_task,
 		"i2c_req_task",
 		4096,
@@ -343,10 +356,20 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 
 	i2c_master_dev_handle_t dev_handle;
 
-	ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
+	if (xSemaphoreTake(i2c_bus_mutex, 10) == pdTRUE)
+	{
+		ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
 
-	req.status = i2c_master_transmit_receive(dev_handle, &targetAddress, 1, rxBuff, numBytes, -1);
-	ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+		req.status = i2c_master_transmit_receive(dev_handle, &targetAddress, 1, rxBuff, numBytes, -1);
+		ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+
+		xSemaphoreGive(i2c_bus_mutex);
+	}
+	else
+	{
+		printf("%s: failed to hold semaphore\r\n", __func__);
+		req.status = -1;
+	}
 #else
 	i2c_req_submit_sync(&req);
 #endif
@@ -384,13 +407,22 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 
 		i2c_master_dev_handle_t dev_handle;
 
-		ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
+		if (xSemaphoreTake(i2c_bus_mutex, 10) == pdTRUE)
+		{
+			ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
 
-		req.status = i2c_master_transmit(dev_handle, req.data, numBytes + 1, -1);
-		ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+			req.status = i2c_master_transmit(dev_handle, req.data, numBytes + 1, -1);
+			ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
 
-		req.status = 0;
-		free(req.data);
+			req.status = 0;
+			free(req.data);
+			xSemaphoreGive(i2c_bus_mutex);
+		}
+		else
+		{
+			printf("%s: failed to hold semaphore\r\n", __func__);
+			req.status = -1;
+		}
 	}
 	else
 		req.status = -1;

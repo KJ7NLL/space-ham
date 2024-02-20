@@ -29,6 +29,7 @@ inline static void platform_sleep()
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "sdkconfig.h"
 
 #include "driver/i2c_master.h"
