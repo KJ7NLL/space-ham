@@ -82,7 +82,7 @@ config_t config = {
 	// Lat North, Lon East in rads, Alt in km 
 	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
 	.username = "user",
-	.i2c_freq = 100000
+	.i2c_freq = 400000
 };
 
 void initGpio(void)
