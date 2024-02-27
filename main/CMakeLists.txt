@@ -17,6 +17,7 @@ list(APPEND MY_SOURCES
 		i2c/rtc-ds3231.c
 		i2c/ads111x.c
 		i2c/qmc5883l.c
+		i2c/drv8830.c
 
 		sgp4sdp4/sgp4sdp4.c
 		sgp4sdp4/sgp_in.c
