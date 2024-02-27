@@ -34,6 +34,11 @@ enum {
 	ADC_TYPE_I2C_ADS111X,
 };
 
+enum {
+	MOTOR_TYPE_PWM,
+	MOTOR_TYPE_DRV8830,
+};
+
 struct motor
 {
 	union {
@@ -68,6 +73,14 @@ struct motor
 
 			// -1 to 1, informational only, does not set the speed:
 			float speed;
+
+			struct
+			{
+				uint8_t motor_type:4;
+				uint8_t motor_bus:4;
+				uint16_t motor_addr;
+				uint8_t motor_channel;
+			} __attribute__((packed));
 		};
 
 		char pad[80];

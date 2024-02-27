@@ -36,6 +36,7 @@
 #include "iadc.h"
 #include "i2c.h"
 #include "i2c/ads111x.h"
+#include "i2c/drv8830.h"
 #include "rtcc.h"
 
 #define ROTOR_CAL_MAGIC   0x458FD1E9
@@ -253,12 +254,17 @@ void motor_init(struct motor *m)
 void motor_speed(struct motor *m, float speed)
 {
 	float duty_cycle, aspeed;
+	float dir;
 
 	if (speed > 1)
 		speed = 1;
 	else if (speed < -1)
 		speed = -1;
 
+	if (speed >= 0)
+		dir = 1;
+	else
+		dir = -1;
 
 	aspeed = fabs(speed); // really fast situps!
 
@@ -293,6 +299,9 @@ void motor_speed(struct motor *m, float speed)
 		duty_cycle = m->duty_cycle_limit;
 
 	m->speed = speed; // For future reference
+
+	if (m->motor_type == MOTOR_TYPE_DRV8830)
+		drv8830_set_speed(m->motor_addr, duty_cycle * dir);
 
 #ifdef __EFR32__
 	int pin;
