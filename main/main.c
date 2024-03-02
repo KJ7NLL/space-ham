@@ -47,6 +47,7 @@
 #include "i2c/rtc-ds3231.h"
 #include "i2c/ads111x.h"
 #include "i2c/qmc5883l.h"
+#include "lcd.h"
 
 #include "sat.h"
 #include "stars.h"
@@ -139,6 +140,18 @@ void initGpio(void)
 	// turn on LED0 
 	GPIO_PinModeSet(LED_PORT, LED0_PIN, gpioModePushPull, 0);
 	GPIO_PinModeSet(LED_PORT, LED1_PIN, gpioModePushPull, 0);
+#endif
+
+#ifdef __ESP32__
+	// set button GPIOs to pulldown
+	gpio_config_t gpio = {0};
+
+	gpio.pin_bit_mask = (1 << 20) | (1 << 21) | (1 << 22);
+	gpio.mode = GPIO_MODE_INPUT;
+	gpio.pull_up_en = GPIO_PULLUP_DISABLE;
+	gpio.pull_down_en = GPIO_PULLDOWN_ENABLE;
+	gpio.intr_type = GPIO_INTR_DISABLE;
+	gpio_config(&gpio);
 #endif
 }
 
@@ -1945,6 +1958,20 @@ void dispatch(int argc, char **args, struct linklist *history)
 		print_tm(&rtc);
 	}
 
+	else if (match(args[0], "iodump"))
+		gpio_dump_io_configuration(stdout, (1 << GPIO_PIN_COUNT)-1);
+
+	else if (match(args[0], "ioread"))
+		printf("gpio setting: %d\r\n"
+			"gpio setting: %d\r\n"
+			"gpio setting: %d\r\n"
+			"button number: %d\r\n",
+			gpio_get_level(20),
+			gpio_get_level(21),
+			gpio_get_level(22),
+			(gpio_get_level(20) << 0) | (gpio_get_level(21) << 1) | (gpio_get_level(22) << 2)
+			);
+
 	// This must be the last else if:
 	else if (!match(args[0], ""))
 	{
@@ -2030,7 +2057,7 @@ int main()
 	// Initialize efr32 features
 	initGpio();
 	initUsart0();
-	print("\x0c\r\n");
+	//print("\x0c\r\n");
 
 	// These should be compiler errors:
 	// Make sure that the structures are NOT larger then the padding
@@ -2099,6 +2126,11 @@ int main()
 	theta->motor.port = -1;
 	phi->motor.port = -1;
 	focus->motor.port = -1;
+
+	theta->motor.motor_addr = 0x61;
+	theta->motor.motor_type = MOTOR_TYPE_DRV8830;
+	phi->motor.motor_addr = 0x60;
+	phi->motor.motor_type = MOTOR_TYPE_DRV8830;
 #endif
 
 	// Load calibrations from FAT

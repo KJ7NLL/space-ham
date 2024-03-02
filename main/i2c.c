@@ -23,7 +23,12 @@
 
 #include "platform.h"
 
+// Only Espressif's LVGL port includes I2C locking, so use their lock to make
+// i2c thread safe:
+#include "esp_lvgl_port.h"
+
 #include "i2c.h"
+#include "lcd.h"
 #include "serial.h"
 #include "linklist.h"
 #include "rtcc.h"
@@ -44,8 +49,12 @@ I2C_TransferSeq_TypeDef i2c0_transfer;
 
 #ifdef __ESP32__
 i2c_master_bus_handle_t i2c_bus_handle;
-SemaphoreHandle_t i2c_bus_mutex;
 #endif
+
+i2c_master_bus_handle_t i2c_get_bus_handle()
+{
+	return i2c_bus_handle;
+}
 
 // This only works with I2C0. Refactor if you need I2C1
 i2c_req_t *i2c_handle_req(i2c_req_t *req)
@@ -62,11 +71,11 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 		if (req->addr & 0x01)
 		{
 			esp_err_t e;
-			if (xSemaphoreTake(i2c_bus_mutex, 10) == pdTRUE)
+			if (lvgl_port_lock(0))
 			{
 				e = i2c_master_transmit_receive(req->dev_handle, (void *) &req->target, 1,
 					req->data, req->n_bytes, I2C_TIMEOUT_MS);
-				xSemaphoreGive(i2c_bus_mutex);
+				lvgl_port_unlock();
 			}
 			else
 			{
@@ -218,6 +227,8 @@ void initI2C()
 
 	ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &i2c_bus_handle));
 
+	init_lcd();
+
 	i2c_bus_mutex = xSemaphoreCreateMutex();
 
 	xTaskCreate(i2c_req_task,
@@ -356,14 +367,14 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 
 	i2c_master_dev_handle_t dev_handle;
 
-	if (xSemaphoreTake(i2c_bus_mutex, 10) == pdTRUE)
+	if (lvgl_port_lock(0))
 	{
 		ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
 
 		req.status = i2c_master_transmit_receive(dev_handle, &targetAddress, 1, rxBuff, numBytes, -1);
 		ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
 
-		xSemaphoreGive(i2c_bus_mutex);
+		lvgl_port_unlock();
 	}
 	else
 	{
@@ -407,7 +418,7 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 
 		i2c_master_dev_handle_t dev_handle;
 
-		if (xSemaphoreTake(i2c_bus_mutex, 10) == pdTRUE)
+		if (lvgl_port_lock(0))
 		{
 			ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
 
@@ -416,7 +427,8 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 
 			req.status = 0;
 			free(req.data);
-			xSemaphoreGive(i2c_bus_mutex);
+
+			lvgl_port_unlock();
 		}
 		else
 		{

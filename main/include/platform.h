@@ -32,7 +32,11 @@ inline static void platform_sleep()
 #include "freertos/semphr.h"
 #include "sdkconfig.h"
 
+#include "esp_err.h"
+#include "esp_log.h"
+
 #include "driver/i2c_master.h"
+#include "driver/gpio.h"
 
 #define FLASH_PAGE_SIZE 65536
 #define HAVE_I2C 1
