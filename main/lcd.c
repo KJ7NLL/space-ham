@@ -24,10 +24,10 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lvgl_port.h"
-#include "lvgl.h"
 #include "esp_lcd_panel_vendor.h"
 
 #include "i2c.h"
+#include "lcd.h"
 
 #define LCD_PIXEL_CLOCK_HZ    (400 * 1000)
 #define PIN_NUM_RST           -1
@@ -40,8 +40,18 @@
 #define LCD_CMD_BITS           8
 #define LCD_PARAM_BITS         8
 
+// Button bits for LCD screen
+#define BUTTON_BIT_0_GPIO      20
+#define BUTTON_BIT_1_GPIO      21
+#define BUTTON_BIT_2_GPIO      22
+
+lv_indev_t *indev_keypad;
+lv_indev_drv_t indev_drv;
+lv_disp_t *disp;
+
 void init_lcd()
 {
+	static lv_indev_drv_t indev_drv;
 	esp_lcd_panel_io_handle_t io_handle = NULL;
 
 	esp_lcd_panel_io_i2c_config_t io_config = {
@@ -92,17 +102,92 @@ void init_lcd()
 			     .mirror_y = false,
 			     }
 	};
-	lv_disp_t *disp = lvgl_port_add_disp(&disp_cfg);
 
-	/*
-	   Rotation of the screen 
-	 */
+	disp = lvgl_port_add_disp(&disp_cfg);
+
+	// Rotation of the screen
 	lv_disp_set_rotation(disp, LV_DISP_ROT_180);
+
+	// setup keypad
+	lv_indev_drv_init(&indev_drv);
+	indev_drv.type = LV_INDEV_TYPE_KEYPAD;
+	indev_drv.read_cb = keypad_read;
+	indev_keypad = lv_indev_drv_register(&indev_drv);
+
+	lvgl_menu();
+}
+
+button_status_enum_t get_button_status()
+{
+	button_status_enum_t button_status;
+
+	button_status = (gpio_get_level(BUTTON_BIT_0_GPIO) << 0) |
+		(gpio_get_level(BUTTON_BIT_1_GPIO) << 1) |
+		(gpio_get_level(BUTTON_BIT_2_GPIO) << 2);
+
+	return button_status;
+}
+
+static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
+{
+	static uint32_t last_key = 0;
+
+	// Get the current x and y coordinates
+	data->point.x = 0;
+	data->point.y = 0;
+
+	// Get whether the a key is pressed and save the pressed key
+	uint32_t act_key = get_button_status();
+
+	if (act_key != 0)
+	{
+		data->state = LV_INDEV_STATE_PRESSED;
+
+		// Translate the keys to LVGL control characters according to
+		// your key definitions
+		switch (act_key)
+		{
+			case BUTTON_UP:
+				act_key = LV_KEY_UP;
+				break;
+
+			case BUTTON_DOWN:
+				act_key = LV_KEY_DOWN;
+				break;
+
+			case BUTTON_LEFT:
+				act_key = LV_KEY_LEFT;
+				break;
+
+			case BUTTON_RIGHT:
+				act_key = LV_KEY_RIGHT;
+				break;
+
+			case BUTTON_OK:
+				act_key = LV_KEY_ENTER;
+				break;
+		}
+		last_key = act_key;
+		printf("button num: %d\r\n", get_button_status());
+	}
+	else
+	{
+		data->state = LV_INDEV_STATE_RELEASED;
+	}
+        data->key = last_key;
+}
+
+void lvgl_menu()
+{
+	lv_group_t *group = lv_group_create();
+	lv_indev_set_group(indev_keypad, group);
 
 	// Lock the mutex due to the LVGL APIs are not thread-safe
 	if (lvgl_port_lock(0))
 	{
 		lv_obj_t *scr = lv_disp_get_scr_act(disp);
+		lv_group_add_obj(group, scr);
+
 		lv_obj_t *label = lv_label_create(scr);
 
 		lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);	/* Circular 

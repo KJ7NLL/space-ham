@@ -18,4 +18,24 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
+#include "lvgl.h"
+
+typedef enum {
+	BUTTON_NONE,
+	BUTTON_UP,
+	BUTTON_RIGHT,
+	BUTTON_DOWN,
+	BUTTON_LEFT,
+	BUTTON_OK,
+
+	// Button combinations for secret things, :)
+	BUTTON_LEFT_RIGHT = 6,
+	BUTTON_LEFT_UP_RIGHT = 7,
+	BUTTON_OK_RIGHT = 7,
+	BUTTON_DOWN_LEFT = 7,
+} button_status_enum_t;
+
 void init_lcd();
+void lvgl_menu();
+button_status_enum_t get_button_status();
+static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);

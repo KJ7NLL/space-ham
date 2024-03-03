@@ -229,8 +229,6 @@ void initI2C()
 
 	init_lcd();
 
-	i2c_bus_mutex = xSemaphoreCreateMutex();
-
 	xTaskCreate(i2c_req_task,
 		"i2c_req_task",
 		4096,
