@@ -177,12 +177,14 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         data->key = last_key;
 }
 
-void menu_item(lv_group_t *group, lv_obj_t *main_page, lv_style_t *style, char *item_name)
+void menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
+	lv_style_t *style, char *menu_name)
 {
 	lv_obj_t *cont;
 	lv_obj_t *label;
 
-	cont = lv_menu_cont_create(main_page);
+	// Main menu init
+	cont = lv_menu_cont_create(page);
 	lv_obj_add_style(cont, style, LV_STATE_DEFAULT);
 	lv_obj_add_style(cont, style, LV_STATE_FOCUS_KEY);
 
@@ -191,13 +193,16 @@ void menu_item(lv_group_t *group, lv_obj_t *main_page, lv_style_t *style, char *
 	lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
 	label = lv_label_create(cont);
-	lv_label_set_text(label, item_name);
+	lv_label_set_text(label, menu_name);
 
-	const lv_font_t *font = lv_obj_get_style_text_font(main_page,
+	const lv_font_t *font = lv_obj_get_style_text_font(page,
 		LV_PART_ITEMS); // or LV_PART_MAIN?
 	lv_coord_t menuList_h = lv_font_get_line_height(font);
 
-	lv_obj_set_size(main_page, LV_PCT(100), menuList_h);
+	lv_obj_set_size(page, LV_PCT(100), menuList_h);
+
+	if (sub_page != NULL)
+		lv_menu_set_load_page_event(menu, cont, sub_page);
 }
 
 void lvgl_menu()
@@ -258,17 +263,18 @@ void lvgl_menu()
 
 		// Create a main page
 		lv_obj_t *main_page = lv_menu_page_create(menu, NULL);
+		// Create a sub page
+		lv_obj_t *sub_page_sat = lv_menu_page_create(menu, NULL);
+		lv_obj_t *sub_page_planet = lv_menu_page_create(menu, NULL);
+		lv_obj_t *sub_page_star = lv_menu_page_create(menu, NULL);
 
-		menu_item(group, main_page, &style, "Satellite");
-		menu_item(group, main_page, &style, "Planet");
-		menu_item(group, main_page, &style, "Star");
-		menu_item(group, main_page, &style, "zeke 4");
-		menu_item(group, main_page, &style, "zeke 5");
-		menu_item(group, main_page, &style, "zeke 6");
-		menu_item(group, main_page, &style, "zeke 7");
-		menu_item(group, main_page, &style, "zeke 8");
-		menu_item(group, main_page, &style, "zeke 9");
-		menu_item(group, main_page, &style, "zeke 10");
+		menu_item(group, menu, sub_page_sat, NULL, &style, "ISS");
+		menu_item(group, menu, sub_page_planet, NULL, &style, "Mars");
+		menu_item(group, menu, sub_page_star, NULL, &style, "Alpha Centuri");
+
+		menu_item(group, menu, main_page, sub_page_sat, &style, "Satellite");
+		menu_item(group, menu, main_page, sub_page_planet, &style, "Planet");
+		menu_item(group, menu, main_page, sub_page_star, &style, "Star");
 
 		lv_menu_set_page(menu, main_page);
 
@@ -276,27 +282,3 @@ void lvgl_menu()
 		lvgl_port_unlock();
 	}
 }
-		/*
-
-		// Create a sub page
-		lv_obj_t * sub_page = lv_menu_page_create(menu, NULL);
-
-		cont = lv_menu_cont_create(sub_page);
-		lv_obj_add_style(cont, &style, LV_STATE_FOCUS_KEY);
-		lv_group_add_obj(group, cont);
-		lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
-		lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-		lv_group_add_obj(group, cont);
-		label = lv_label_create(cont);
-		lv_label_set_text(label, "Hello, I am hiding here");
-
-		cont = lv_menu_cont_create(main_page);
-		lv_obj_add_style(cont, &style, LV_STATE_FOCUS_KEY);
-		lv_group_add_obj(group, cont);
-		lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
-		lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-		label = lv_label_create(cont);
-		lv_label_set_text(label, "Item 3 (Click me!)");
-		lv_menu_set_load_page_event(menu, cont, sub_page);
-
-*/
