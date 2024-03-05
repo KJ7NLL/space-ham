@@ -148,11 +148,11 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 		switch (act_key)
 		{
 			case BUTTON_UP:
-				act_key = LV_KEY_UP;
+				act_key = LV_KEY_PREV;
 				break;
 
 			case BUTTON_DOWN:
-				act_key = LV_KEY_DOWN;
+				act_key = LV_KEY_NEXT;
 				break;
 
 			case BUTTON_LEFT:
@@ -177,30 +177,126 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         data->key = last_key;
 }
 
+void menu_item(lv_group_t *group, lv_obj_t *main_page, lv_style_t *style, char *item_name)
+{
+	lv_obj_t *cont;
+	lv_obj_t *label;
+
+	cont = lv_menu_cont_create(main_page);
+	lv_obj_add_style(cont, style, LV_STATE_DEFAULT);
+	lv_obj_add_style(cont, style, LV_STATE_FOCUS_KEY);
+
+	lv_group_add_obj(group, cont);
+	lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+
+	label = lv_label_create(cont);
+	lv_label_set_text(label, item_name);
+
+	const lv_font_t *font = lv_obj_get_style_text_font(main_page,
+		LV_PART_ITEMS); // or LV_PART_MAIN?
+	lv_coord_t menuList_h = lv_font_get_line_height(font);
+
+	lv_obj_set_size(main_page, LV_PCT(100), menuList_h);
+}
+
 void lvgl_menu()
 {
-	lv_group_t *group = lv_group_create();
-	lv_indev_set_group(indev_keypad, group);
-
 	// Lock the mutex due to the LVGL APIs are not thread-safe
 	if (lvgl_port_lock(0))
 	{
-		lv_obj_t *scr = lv_disp_get_scr_act(disp);
-		lv_group_add_obj(group, scr);
+		lv_obj_t *scr = lv_disp_get_scr_act(NULL);
+		lv_obj_set_size(scr, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
 
-		lv_obj_t *label = lv_label_create(scr);
+		lv_group_t *group = lv_group_create();
+		lv_group_set_default(group);
+		lv_indev_set_group(indev_keypad, group);
 
-		lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);	/* Circular 
-										   scroll 
-										 */
-		lv_label_set_text(label, "Hello Espressif, Hello LVGL.");
-		/*
-		   Size of the screen (if you use rotation 90 or 270, please
-		   set disp->driver->ver_res) 
-		 */
-		lv_obj_set_width(label, disp->driver->hor_res);
-		lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 0);
+		static lv_style_t style;
+		lv_style_init(&style);
+		lv_style_set_bg_color(&style, lv_color_hex(0x000000));
+		lv_style_set_border_width(&style, 0);
+		lv_style_set_border_color(&style, lv_color_hex(0xff0000));
+		lv_style_set_pad_all(&style, 1);
+		lv_style_set_radius(&style, 0);
+
+		static lv_style_t no_border;
+		lv_style_init(&no_border);
+
+		lv_style_set_border_width(&no_border, 0);
+
+		lv_style_set_pad_all(&no_border, 0);
+		lv_style_set_radius(&no_border, 0);
+
+		lv_obj_add_style(scr, &no_border, LV_STATE_DEFAULT);
+
+		static lv_coord_t col[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+		static lv_coord_t row[] = {8, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+
+		lv_obj_t *grid = lv_obj_create(scr);
+		lv_obj_add_style(grid, &no_border, LV_STATE_DEFAULT);
+
+		lv_obj_set_size(grid, lv_disp_get_hor_res(NULL), lv_disp_get_ver_res(NULL));
+		lv_obj_center(grid);
+		lv_obj_set_grid_dsc_array(grid, col, row);
+
+		lv_obj_t *status_bar_label = lv_label_create(grid);
+		lv_label_set_text(status_bar_label, "bar");
+		lv_obj_center(status_bar_label);
+		lv_obj_add_style(status_bar_label, &no_border, LV_STATE_DEFAULT);
+
+		lv_obj_add_style(status_bar_label, &no_border, LV_STATE_DEFAULT);
+		lv_obj_set_grid_cell(status_bar_label, LV_GRID_ALIGN_STRETCH, 0, 1,
+			LV_GRID_ALIGN_STRETCH, 0, 1);
+
+		lv_obj_t *menu = lv_menu_create(grid);
+		lv_obj_set_grid_cell(menu, LV_GRID_ALIGN_STRETCH, 0, 1,
+			LV_GRID_ALIGN_STRETCH, 1, 1);
+		lv_obj_add_style(menu, &no_border, LV_STATE_DEFAULT);
+
+		lv_obj_center(menu);
+
+		// Create a main page
+		lv_obj_t *main_page = lv_menu_page_create(menu, NULL);
+
+		menu_item(group, main_page, &style, "Satellite");
+		menu_item(group, main_page, &style, "Planet");
+		menu_item(group, main_page, &style, "Star");
+		menu_item(group, main_page, &style, "zeke 4");
+		menu_item(group, main_page, &style, "zeke 5");
+		menu_item(group, main_page, &style, "zeke 6");
+		menu_item(group, main_page, &style, "zeke 7");
+		menu_item(group, main_page, &style, "zeke 8");
+		menu_item(group, main_page, &style, "zeke 9");
+		menu_item(group, main_page, &style, "zeke 10");
+
+		lv_menu_set_page(menu, main_page);
+
 		// Release the mutex
 		lvgl_port_unlock();
 	}
 }
+		/*
+
+		// Create a sub page
+		lv_obj_t * sub_page = lv_menu_page_create(menu, NULL);
+
+		cont = lv_menu_cont_create(sub_page);
+		lv_obj_add_style(cont, &style, LV_STATE_FOCUS_KEY);
+		lv_group_add_obj(group, cont);
+		lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+		lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+		lv_group_add_obj(group, cont);
+		label = lv_label_create(cont);
+		lv_label_set_text(label, "Hello, I am hiding here");
+
+		cont = lv_menu_cont_create(main_page);
+		lv_obj_add_style(cont, &style, LV_STATE_FOCUS_KEY);
+		lv_group_add_obj(group, cont);
+		lv_obj_clear_flag(cont, LV_OBJ_FLAG_SCROLLABLE);
+		lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+		label = lv_label_create(cont);
+		lv_label_set_text(label, "Item 3 (Click me!)");
+		lv_menu_set_load_page_event(menu, cont, sub_page);
+
+*/
