@@ -29,6 +29,9 @@
 #include "i2c.h"
 #include "lcd.h"
 
+#include "astronomy.h"
+#include "stars.h"
+
 #define LCD_PIXEL_CLOCK_HZ    (400 * 1000)
 #define PIN_NUM_RST           -1
 #define LCD_HW_ADDR           0x3C
@@ -177,6 +180,25 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         data->key = last_key;
 }
 
+void ev_label_scroll_cb(lv_event_t * e)
+{
+	//star_t *star = lv_event_get_user_data(e);
+	lv_event_code_t code = lv_event_get_code(e);
+	lv_obj_t *menu_cont = lv_event_get_target(e);
+	lv_obj_t *label = lv_obj_get_child(menu_cont, 0);
+
+	if (code == LV_EVENT_FOCUSED)
+	{
+		lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+		lv_obj_set_style_anim_speed(label, 25, LV_PART_MAIN);
+		lv_obj_set_width(label, 128);
+	}
+	else if (code == LV_EVENT_DEFOCUSED)
+	{
+		lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+	}
+}
+
 void menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
 	lv_style_t *style, char *menu_name)
 {
@@ -193,7 +215,10 @@ void menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_
 	lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
 
 	label = lv_label_create(cont);
+
 	lv_label_set_text(label, menu_name);
+	lv_obj_add_event_cb(cont, ev_label_scroll_cb, LV_EVENT_FOCUSED, NULL);
+	lv_obj_add_event_cb(cont, ev_label_scroll_cb, LV_EVENT_DEFOCUSED, NULL);
 
 	const lv_font_t *font = lv_obj_get_style_text_font(page,
 		LV_PART_ITEMS); // or LV_PART_MAIN?
@@ -207,6 +232,13 @@ void menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_
 
 void lvgl_menu()
 {
+	static const astro_body_t body[] = {
+		BODY_SUN, BODY_MOON, BODY_MERCURY, BODY_VENUS, BODY_EARTH, BODY_MARS,
+		BODY_JUPITER, BODY_SATURN, BODY_URANUS, BODY_NEPTUNE, BODY_PLUTO,
+	};
+
+	int num_bodies = sizeof(body) / sizeof(body[0]);
+
 	// Lock the mutex due to the LVGL APIs are not thread-safe
 	if (lvgl_port_lock(0))
 	{
@@ -269,13 +301,24 @@ void lvgl_menu()
 		lv_obj_t *sub_page_star = lv_menu_page_create(menu, NULL);
 
 		menu_item(group, menu, sub_page_sat, NULL, &style, "ISS");
-		menu_item(group, menu, sub_page_planet, NULL, &style, "Mars");
-		menu_item(group, menu, sub_page_star, NULL, &style, "Alpha Centuri");
+
+		int i;
+
+		for (i = 0; i < num_bodies; i++)
+		{
+			menu_item(group, menu, sub_page_planet, NULL, &style, Astronomy_BodyName(body[i]));
+		}
+
+		for (i = 0; i < 5; i++)
+		{
+			menu_item(group, menu, sub_page_star, NULL, &style, stars[i].name);
+		}
 
 		menu_item(group, menu, main_page, sub_page_sat, &style, "Satellite");
 		menu_item(group, menu, main_page, sub_page_planet, &style, "Planet");
 		menu_item(group, menu, main_page, sub_page_star, &style, "Star");
 
+		// MUST BE LAST MENU LINE
 		lv_menu_set_page(menu, main_page);
 
 		// Release the mutex
