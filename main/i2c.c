@@ -207,7 +207,10 @@ void i2c_req_task(void *p)
 	while (1)
 	{
 		I2C0_IRQHandler();
-		vTaskDelay(1);
+		// Enable this if this task causes watchdog timeouts. This
+		// should no longer be a problem after the i2c busy waiting bug
+		// in esp-idf is fixed.
+		//vTaskDelay(1);
 	}
 }
 
@@ -233,7 +236,7 @@ void initI2C()
 		"i2c_req_task",
 		4096,
 		NULL,
-		0,
+		3,
 		NULL);
 #endif
 #ifdef __EFR32__
