@@ -1402,6 +1402,10 @@ void astro(int argc, char **args)
 	static const astro_body_t body[] = {
 		BODY_SUN, BODY_MOON, BODY_MERCURY, BODY_VENUS, BODY_EARTH, BODY_MARS,
 		BODY_JUPITER, BODY_SATURN, BODY_URANUS, BODY_NEPTUNE,
+#ifdef __ESP32__
+		// Requires a big stack
+		BODY_PLUTO,
+#endif
 	};
 
 	astro_observer_t observer;
@@ -1591,7 +1595,7 @@ void meminfo()
 	printf("text length=%d\r\n", strlen(stats));
 
 	printf("\r\n=== TASK LIST\r\n");
-	printf("Name\t\tstate\t\tprio\t\tcore?\t\tmax stack\t\ttask number\r\n");
+	printf("Name\t\tstate\tprio\tcore?\tmin free stack\ttask number\r\n");
 	vTaskList(stats);
 	printf(stats);
 	printf("text length=%d\r\n", strlen(stats));
@@ -1981,7 +1985,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 	}
 }
 
-void main_idle()
+int tracking_update()
 {
 	static int az_rotor_idx = 0;
 	static int el_rotor_idx = 1;
@@ -1995,6 +1999,8 @@ void main_idle()
 	{
 		rotors[az_rotor_idx].target = sat->sat_az;
 		rotors[el_rotor_idx].target = sat->sat_el;
+
+		return 1;
 	}
 	else if (astro_tracked_body != BODY_INVALID)
 	{
@@ -2019,7 +2025,7 @@ void main_idle()
 			astro_tracked_body = BODY_INVALID;
 			astro_tracked_name = NULL;
 
-			return;
+			return 0;
 		}
 
 		hor = Astronomy_Horizon(&time, observer, equ_ofdate.ra,
@@ -2028,11 +2034,35 @@ void main_idle()
 		rotors[az_rotor_idx].target = hor.azimuth;
 		rotors[el_rotor_idx].target = hor.altitude;
 
-
+		return 1;
 	}
 	else
-		platform_sleep();
+		return 0;
+}
 
+#ifdef __ESP32__
+void tracking_update_thread()
+{
+	TickType_t interval = 10/portTICK_PERIOD_MS;
+	TickType_t now = xTaskGetTickCount();
+	while (1)
+	{
+		tracking_update();
+		vTaskDelayUntil(&now, interval);
+	}
+}
+#endif
+
+void main_idle()
+{
+#ifdef __EFR32__
+	// EFR32 dosen't support threads, so this is called while waiting at a
+	// terminal prompt
+	if (tracking_update() != 1)
+		platform_sleep();
+#else
+	platform_sleep();
+#endif
 }
 
 #ifdef __ESP32__
@@ -2052,6 +2082,9 @@ int main()
 	// Chip errata
 #ifdef __EFR32__
 	CHIP_Init();
+#endif
+#ifdef __ESP32__
+	vTaskPrioritySet(NULL, 5);
 #endif
 
 	// Initialize efr32 features
@@ -2157,6 +2190,14 @@ int main()
 	status();
 	print("\r\n");
 
+#ifdef __ESP32__
+	xTaskCreate(tracking_update_thread,
+		"tracking_thread",
+		32768,
+		NULL,
+		0,
+		NULL);
+#endif
 	for (;;)
 	{
 		char *name = "console";
