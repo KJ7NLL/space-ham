@@ -48,6 +48,10 @@
 #define BUTTON_BIT_1_GPIO      21
 #define BUTTON_BIT_2_GPIO      22
 
+// These definetions are defined in main.c
+extern char *astro_tracked_name;
+extern astro_body_t astro_tracked_body;
+
 lv_indev_t *indev_keypad;
 lv_indev_drv_t indev_drv;
 lv_disp_t *disp;
@@ -199,7 +203,26 @@ void ev_label_scroll_cb(lv_event_t * e)
 	}
 }
 
-void menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
+void ev_track_planet_cb(lv_event_t *e)
+{
+	astro_body_t *planet = lv_event_get_user_data(e);
+
+	astro_tracked_name = (char*)Astronomy_BodyName(*planet);
+	astro_tracked_body = *planet;
+}
+
+void ev_track_star_cb(lv_event_t *e)
+{
+	star_t *star = lv_event_get_user_data(e);
+	printf("working: %s\r\n", star->name);
+
+	Astronomy_DefineStar(BODY_STAR1,
+		stars->ra, star->dec, star->dist_ly);
+	astro_tracked_name = star->name;
+	astro_tracked_body = BODY_STAR1;
+}
+
+lv_obj_t *menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
 	lv_style_t *style, char *menu_name)
 {
 	lv_obj_t *cont;
@@ -228,10 +251,14 @@ void menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_
 
 	if (sub_page != NULL)
 		lv_menu_set_load_page_event(menu, cont, sub_page);
+
+	return cont;
 }
 
 void lvgl_menu()
 {
+	lv_obj_t *cont;
+
 	static const astro_body_t body[] = {
 		BODY_SUN, BODY_MOON, BODY_MERCURY, BODY_VENUS, BODY_EARTH, BODY_MARS,
 		BODY_JUPITER, BODY_SATURN, BODY_URANUS, BODY_NEPTUNE, BODY_PLUTO,
@@ -302,16 +329,19 @@ void lvgl_menu()
 
 		menu_item(group, menu, sub_page_sat, NULL, &style, "ISS");
 
+
 		int i;
 
 		for (i = 0; i < num_bodies; i++)
 		{
-			menu_item(group, menu, sub_page_planet, NULL, &style, Astronomy_BodyName(body[i]));
+			cont = menu_item(group, menu, sub_page_planet, NULL, &style, Astronomy_BodyName(body[i]));
+			lv_obj_add_event_cb(cont, ev_track_planet_cb, LV_EVENT_PRESSED, &body[i]);
 		}
 
 		for (i = 0; i < 5; i++)
 		{
-			menu_item(group, menu, sub_page_star, NULL, &style, stars[i].name);
+			cont = menu_item(group, menu, sub_page_star, NULL, &style, stars[i].name);
+			lv_obj_add_event_cb(cont, ev_track_star_cb, LV_EVENT_PRESSED, &stars[i]);
 		}
 
 		menu_item(group, menu, main_page, sub_page_sat, &style, "Satellite");
