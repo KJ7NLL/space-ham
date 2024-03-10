@@ -28,7 +28,7 @@
 #include "serial.h"
 #include "systick.h"
 
-#include "fatfs-efr32.h"
+#include "fatfs-util.h"
 #include "rotor.h"
 
 

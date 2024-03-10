@@ -26,7 +26,7 @@
 #include "platform.h"
 
 #include "ff.h"
-#include "fatfs-efr32.h"
+#include "fatfs-util.h"
 
 #include "pwm.h"
 #include "linklist.h"

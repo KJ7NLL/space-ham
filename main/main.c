@@ -29,7 +29,7 @@
 #include "platform.h"
 
 #include "ff.h"
-#include "fatfs-efr32.h"
+#include "fatfs-util.h"
 
 #include "astronomy.h"
 
@@ -69,7 +69,13 @@ void dispatch(int argc, char **args, struct linklist *history);
 int idle_counts = 0;
 void main_idle();
 
-FATFS fatfs;           /* Filesystem object */
+#ifdef __EFR32__
+FATFS _fatfs, *fatfs = &_fatfs;           /* Filesystem object */
+#endif
+
+#ifdef __ESP32__
+FATFS *fatfs = NULL;           /* Filesystem object */
+#endif
 
 struct flash_entry 
 	flash_rotors = { .name = "rotors", .ptr = rotors, .len = sizeof(rotors) }, 
@@ -1334,7 +1340,7 @@ void fat(int argc, char **args)
 	}
 	else if (match(args[1], "mount"))
 	{
-		res = f_mount(&fatfs, "", 0);
+		res = f_mount(fatfs, "", 0);
 	}
 	else if (match(args[1], "umount"))
 	{
@@ -2102,9 +2108,29 @@ int main()
 	meminfo();
 
 	// Mount fatfs
-	res = f_mount(&fatfs, "", 0);
+#ifdef __ESP32__
+	//esp_vfs_fat_register("/", "", 8, &fatfs);
+	static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+
+	const esp_vfs_fat_mount_config_t mount_config = {
+		.max_files = 4,
+		.format_if_mount_failed = true,
+		.allocation_unit_size = CONFIG_WL_SECTOR_SIZE
+	};
+
+	esp_err_t err;
+
+	err = esp_vfs_fat_spiflash_mount_rw_wl("/spiflash", "fat", &mount_config, &s_wl_handle);
+
+	if (err != ESP_OK) {
+		printf("Failed to mount FATFS (%s)", esp_err_to_name(err));
+	}
+#else
+	res = f_mount(fatfs, "", 0);
+
 	if (res != FR_OK)
 		printf("Failed to mount fatfs: %s\r\n", ff_strerror(res));
+#endif
 
 	// Load user config
 	f_read_file("config.bin", &config, sizeof(config));

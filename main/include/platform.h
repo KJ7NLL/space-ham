@@ -34,6 +34,8 @@ inline static void platform_sleep()
 
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_vfs.h"
+#include "esp_vfs_fat.h"
 
 #include "driver/i2c_master.h"
 #include "driver/gpio.h"

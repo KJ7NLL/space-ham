@@ -14,7 +14,9 @@ list(APPEND MY_SOURCES
 		i2c.c
 		stars.c
 
-		lcd.c
+		fatfs-util.c
+		fatfs-xmodem.c
+
 		i2c/rtc-ds3231.c
 		i2c/ads111x.c
 		i2c/qmc5883l.c
@@ -31,9 +33,6 @@ list(APPEND MY_SOURCES
 
 		xmodem/xmodem.c
 
-		fatfs-efr32.c
-		fatfs-xmodem.c
-		fatfs/ff.c
 )
 
 list(APPEND MY_INCLUDES
@@ -41,14 +40,23 @@ list(APPEND MY_INCLUDES
        sgp4sdp4
        astronomy/source/c
        xmodem
-       fatfs
 )
 
 if (${ESP_PLATFORM})
-	idf_component_register(SRCS ${MY_SOURCES}
+	list(APPEND MY_SOURCES
+		lcd.c)
+
+	idf_component_register(REQUIRES_PRIVATE fatfs
+			SRCS ${MY_SOURCES}
 			INCLUDE_DIRS ${MY_INCLUDES})
 	add_compile_options(-fdiagnostics-color=always)
 else()
+	list(APPEND MY_SOURCES
+		fatfs-efr32.c
+		fatfs/ff.c)
+
+	list(APPEND MY_INCLUDES
+		fatfs)
 	add_library(space-ham-src)
 
 	if (DEFINED USE_EFM32_BASE)
