@@ -56,6 +56,8 @@ lv_indev_t *indev_keypad;
 lv_indev_drv_t indev_drv;
 lv_disp_t *disp;
 
+lv_obj_t *status_bar_label;
+
 void init_lcd()
 {
 	static lv_indev_drv_t indev_drv;
@@ -209,6 +211,8 @@ void ev_track_planet_cb(lv_event_t *e)
 
 	astro_tracked_name = (char*)Astronomy_BodyName(*planet);
 	astro_tracked_body = *planet;
+
+	lv_label_set_text_fmt(status_bar_label, "tracking: %s", astro_tracked_name);
 }
 
 void ev_track_star_cb(lv_event_t *e)
@@ -220,6 +224,8 @@ void ev_track_star_cb(lv_event_t *e)
 		stars->ra, star->dec, star->dist_ly);
 	astro_tracked_name = star->name;
 	astro_tracked_body = BODY_STAR1;
+
+	lv_label_set_text_fmt(status_bar_label, "%s", astro_tracked_name);
 }
 
 lv_obj_t *menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
@@ -304,8 +310,7 @@ void lvgl_menu()
 		lv_obj_center(grid);
 		lv_obj_set_grid_dsc_array(grid, col, row);
 
-		lv_obj_t *status_bar_label = lv_label_create(grid);
-		lv_label_set_text(status_bar_label, "bar");
+		status_bar_label = lv_label_create(grid);
 		lv_obj_center(status_bar_label);
 		lv_obj_add_style(status_bar_label, &no_border, LV_STATE_DEFAULT);
 
