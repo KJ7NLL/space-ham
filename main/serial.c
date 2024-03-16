@@ -77,7 +77,7 @@ char *vt102[] =
 
 void initUsart0(void)
 {
-#ifdef __EFR32__
+#if defined(__EFR32__)
 	// Default asynchronous initializer (115.2 Kbps, 8N1, no flow
 	// control)
 	USART_InitAsync_TypeDef init = USART_INITASYNC_DEFAULT;
@@ -115,6 +115,16 @@ void initUsart0(void)
 	// Enable receive data valid interrupt
 	USART_IntEnable(USART0, USART_IEN_RXDATAV);
 #else
+
+#if defined(__ESP32__)
+//	setvbuf(stdin, NULL, _IONBF, 0);
+//	ESP_ERROR_CHECK( uart_driver_install( (uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM,
+//		256, 0, 0, NULL, 0) );
+//	uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+//	uart_vfs_dev_use_nonblocking(CONFIG_ESP_CONSOLE_UART_NUM);
+//	uart_vfs_dev_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
+//	uart_vfs_dev_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
+#endif
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
 	system("stty raw -echo");
 #endif
@@ -171,7 +181,7 @@ void serial_write(void *s, int len)
 		platform_sleep();
 
 #else
-	write(1, s, len);
+	write(2, s, len);
 #endif
 }
 
