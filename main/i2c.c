@@ -17,7 +17,7 @@
 //
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
-//
+
 #include <stdio.h>
 #include <string.h>
 
@@ -363,7 +363,7 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 	i2c_device_config_t dev_cfg = {
 		.dev_addr_length = I2C_ADDR_BIT_LEN_7,
 		.device_address = slaveAddress >> 1,
-		.scl_speed_hz = 10000,
+		.scl_speed_hz = config.i2c_freq,
 	};
 
 	i2c_master_dev_handle_t dev_handle;
@@ -372,7 +372,7 @@ I2C_TransferReturn_TypeDef i2c_master_read(uint16_t slaveAddress, uint8_t target
 	{
 		ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle));
 
-		req.status = i2c_master_transmit_receive(dev_handle, &targetAddress, 1, rxBuff, numBytes, -1);
+		req.status = i2c_master_transmit_receive(dev_handle, &targetAddress, 1, rxBuff, numBytes, I2C_TIMEOUT_MS);
 		ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
 
 		lvgl_port_unlock();
@@ -414,7 +414,7 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 		i2c_device_config_t dev_cfg = {
 			.dev_addr_length = I2C_ADDR_BIT_LEN_7,
 			.device_address = slaveAddress >> 1,
-			.scl_speed_hz = 10000,
+			.scl_speed_hz = config.i2c_freq,
 		};
 
 		i2c_master_dev_handle_t dev_handle;
