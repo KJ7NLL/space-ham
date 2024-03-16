@@ -31,8 +31,8 @@
 
 #include "astronomy.h"
 #include "stars.h"
+#include "config.h"
 
-#define LCD_PIXEL_CLOCK_HZ    (400 * 1000)
 #define PIN_NUM_RST           -1
 #define LCD_HW_ADDR           0x3C
 
@@ -65,7 +65,7 @@ void init_lcd()
 
 	esp_lcd_panel_io_i2c_config_t io_config = {
 		.dev_addr = LCD_HW_ADDR,
-		.scl_speed_hz = LCD_PIXEL_CLOCK_HZ,
+		.scl_speed_hz = config.lcd_freq,
 		// According to SSD1306 datasheet
 		.control_phase_bytes = 1,
 		.lcd_cmd_bits = LCD_CMD_BITS,

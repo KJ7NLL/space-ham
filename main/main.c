@@ -43,6 +43,7 @@
 #include "systick.h"
 #include "rtcc.h"
 #include "gnss.h"
+#include "wifi.h"
 
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
@@ -91,8 +92,11 @@ config_t config = {
 	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
 	.username = "user",
 	.i2c_freq = 10000,
+	.lcd_freq = 400000,
 	.gnss_debug = false,
 	.gnss_passthrough = false,
+	.wifi_ssid = "",
+	.wifi_pass = "",
 };
 
 void initGpio(void)
@@ -1728,6 +1732,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 				"username|user  <user> # Your callsign/name\r\n"
 				"uplink         <mhz>  # Uplink frequency in MHz for doppler\r\n"
 				"downlink       <mhz>  # Downlink frequency in MHz for doppler\r\n"
+				"wifissid       <ssid> # Your wifi ssid\r\n"
+				"wifipass       <ssid> # Your wifi password\r\n"
 			);
 			return;
 		}
@@ -1746,6 +1752,12 @@ void dispatch(int argc, char **args, struct linklist *history)
 			config.downlink_mhz = atof(args[2]);
 		else if (match(args[1], "i2cfreq"))
 			config.i2c_freq = atoi(args[2]);
+		else if (match(args[1], "lcdfreq"))
+			config.lcd_freq = atoi(args[2]);
+		else if (match(args[1], "wifipass"))
+			strncpy(config.wifi_pass, args[2], sizeof(config.wifi_pass)-1);
+		else if (match(args[1], "wifissid"))
+			strncpy(config.wifi_ssid, args[2], sizeof(config.wifi_ssid)-1);
 		else
 		{
 			printf("invalid setting: %s\r\n", args[1]);
@@ -1753,6 +1765,18 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 
 		f_write_file("config.bin", &config, sizeof(config));
+	}
+
+	else if (match(args[0], "wifi"))
+	{
+		if (argc < 2)
+		{
+			printf("Usage: wifi (scan|connect)\r\n");
+			return;
+		}
+
+		if (match(args[1], "connect"))
+			wifi_connect(config.wifi_ssid, config.wifi_pass);
 	}
 
 	else if  (match(args[0], "i2c"))
@@ -2228,6 +2252,7 @@ int main()
 		NULL);
 
 	gnss_init();
+	wifi_init();
 #endif
 	for (;;)
 	{
