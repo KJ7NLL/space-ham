@@ -10,3 +10,6 @@
 [submodule "astronomy"]
 	path = main/astronomy
 	url = https://github.com/cosinekitty/astronomy.git
+[submodule "main/minmea"]
+	path = main/minmea
+	url = https://github.com/kosma/minmea.git
