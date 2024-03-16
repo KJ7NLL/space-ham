@@ -42,6 +42,7 @@
 #include "flash.h"
 #include "systick.h"
 #include "rtcc.h"
+#include "gnss.h"
 
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
@@ -89,7 +90,9 @@ config_t config = {
 	// Lat North, Lon East in rads, Alt in km 
 	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
 	.username = "user",
-	.i2c_freq = 400000
+	.i2c_freq = 10000,
+	.gnss_debug = false,
+	.gnss_passthrough = false,
 };
 
 void initGpio(void)
@@ -2154,7 +2157,7 @@ int main()
 	compass->control_reg_1_osr = QMC5883L_OVER_SAMPLE_512;
 
 	qmc5883l_config_write(compass);
-	i2c_req_add_cont((i2c_req_t *)compass);
+	//i2c_req_add_cont((i2c_req_t *)compass);
 
 	// Initialize realtime clock
 	rtcc_init(128);
@@ -2223,6 +2226,8 @@ int main()
 		NULL,
 		0,
 		NULL);
+
+	gnss_init();
 #endif
 	for (;;)
 	{

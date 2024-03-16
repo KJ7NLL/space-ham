@@ -39,6 +39,8 @@ inline static void platform_sleep()
 
 #include "driver/i2c_master.h"
 #include "driver/gpio.h"
+#include "driver/uart_vfs.h"
+#include "driver/uart.h"
 
 #define FLASH_PAGE_SIZE 65536
 #define HAVE_I2C 1

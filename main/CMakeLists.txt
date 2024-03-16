@@ -32,6 +32,7 @@ list(APPEND MY_SOURCES
 		astronomy/source/c/astronomy.c
 
 		xmodem/xmodem.c
+		minmea/minmea.c
 
 )
 
@@ -40,10 +41,12 @@ list(APPEND MY_INCLUDES
        sgp4sdp4
        astronomy/source/c
        xmodem
+       minmea
 )
 
 if (${ESP_PLATFORM})
 	list(APPEND MY_SOURCES
+		gnss.c
 		lcd.c)
 
 	idf_component_register(REQUIRES_PRIVATE fatfs

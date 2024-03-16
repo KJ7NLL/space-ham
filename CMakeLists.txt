@@ -50,6 +50,7 @@ if (DEFINED USE_ESP32)
 	add_compile_definitions(
 		ASTRONOMY_ENGINE_WHOLE_SECOND
 		__ESP32__
+		timegm=mktime
 	)
 	project(space-ham)
 else ()
