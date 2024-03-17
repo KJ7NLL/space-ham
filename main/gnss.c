@@ -97,6 +97,7 @@ void gnss_parse(char *line)
 			if (minmea_parse_rmc(&frame, line))
 			{
 				if (config.gnss_debug == true)
+				{
 					printf(INDENT_SPACES
 					       "$xxRMC: raw coordinates and speed: (%ld/%ld,%ld/%ld) %ld/%ld\n",
 					       frame.latitude.value,
@@ -106,23 +107,22 @@ void gnss_parse(char *line)
 					       frame.speed.value,
 					       frame.speed.scale);
 
-				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxRMC fixed-point coordinates and speed scaled to three decimal places: (%ld,%ld) %ld\n",
 					       minmea_rescale(&frame.latitude,
 							      1000),
-					       minmea_rescale
-					       (&frame.longitude, 1000),
+					       minmea_rescale(&frame.longitude, 1000),
 					       minmea_rescale(&frame.speed,
 							      1000));
-				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxRMC floating point degree coordinates and speed: (%f,%f) %f\n",
-					       minmea_tocoord
-					       (&frame.latitude),
-					       minmea_tocoord
-					       (&frame.longitude),
+					       minmea_tocoord(&frame.latitude),
+					       minmea_tocoord(&frame.longitude),
 					       minmea_tofloat(&frame.speed));
+				}
+
+				config.observer.lat = Radians(minmea_tocoord(&frame.latitude));
+				config.observer.lon = Radians(minmea_tocoord(&frame.longitude));
 			}
 			else
 			{
@@ -160,42 +160,32 @@ void gnss_parse(char *line)
 			if (minmea_parse_gst(&frame, line))
 			{
 				if (config.gnss_debug == true)
+				{
 					printf(INDENT_SPACES
 					       "$xxGST: raw latitude,longitude and altitude error deviation: (%ld/%ld,%ld/%ld,%ld/%ld)\n",
-					       frame.
-					       latitude_error_deviation.value,
-					       frame.
-					       latitude_error_deviation.scale,
+					       frame.latitude_error_deviation.value,
+					       frame.latitude_error_deviation.scale,
 					       frame.longitude_error_deviation.value,
 					       frame.longitude_error_deviation.scale,
-					       frame.
-					       altitude_error_deviation.value,
-					       frame.
-					       altitude_error_deviation.scale);
+					       frame.altitude_error_deviation.value,
+					       frame.altitude_error_deviation.scale);
 
-				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxGST fixed point latitude,longitude and altitude error deviation"
 					       " scaled to one decimal place: (%ld,%ld,%ld)\n",
-					       minmea_rescale
-					       (&frame.latitude_error_deviation,
+					       minmea_rescale(&frame.latitude_error_deviation,
 						10),
-					       minmea_rescale
-					       (&frame.longitude_error_deviation,
+					       minmea_rescale(&frame.longitude_error_deviation,
 						10),
-					       minmea_rescale
-					       (&frame.altitude_error_deviation,
+					       minmea_rescale(&frame.altitude_error_deviation,
 						10));
 
-				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxGST floating point degree latitude, longitude and altitude error deviation: (%f,%f,%f)",
-					       minmea_tofloat
-					       (&frame.latitude_error_deviation),
-					       minmea_tofloat
-					       (&frame.longitude_error_deviation),
-					       minmea_tofloat
-					       (&frame.altitude_error_deviation));
+					       minmea_tofloat(&frame.latitude_error_deviation),
+					       minmea_tofloat(&frame.longitude_error_deviation),
+					       minmea_tofloat(&frame.altitude_error_deviation));
+				}
 			}
 			else
 			{
@@ -228,8 +218,7 @@ void gnss_parse(char *line)
 						printf(INDENT_SPACES
 						       "$xxGSV: sat nr %d, elevation: %d, azimuth: %d, snr: %d dbm\n",
 						       frame.sats[i].nr,
-						       frame.
-						       sats[i].elevation,
+						       frame.sats[i].elevation,
 						       frame.sats[i].azimuth,
 						       frame.sats[i].snr);
 			}
@@ -251,23 +240,19 @@ void gnss_parse(char *line)
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxVTG: true track degrees = %f\n",
-					       minmea_tofloat
-					       (&frame.true_track_degrees));
+					       minmea_tofloat(&frame.true_track_degrees));
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "        magnetic track degrees = %f\n",
-					       minmea_tofloat
-					       (&frame.magnetic_track_degrees));
+					       minmea_tofloat(&frame.magnetic_track_degrees));
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "        speed knots = %f\n",
-					       minmea_tofloat
-					       (&frame.speed_knots));
+					       minmea_tofloat(&frame.speed_knots));
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "        speed kph = %f\n",
-					       minmea_tofloat
-					       (&frame.speed_kph));
+					       minmea_tofloat(&frame.speed_kph));
 			}
 			else
 			{
