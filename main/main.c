@@ -44,6 +44,7 @@
 #include "rtcc.h"
 #include "gnss.h"
 #include "wifi.h"
+#include "time_sync.h"
 
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
@@ -1978,6 +1979,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 			else
 				ds3231_write_time(&rtc);
 		}
+		else if (argc >= 2 && match(args[1], "sync"))
+		{
+			fetch_and_store_time_in_nvs(NULL);
+		}
 		else
 		{
 			printf("usage: date (read|set|scale)\r\n"
@@ -2253,6 +2258,8 @@ int main()
 
 	gnss_init();
 	wifi_init();
+	wifi_connect(config.wifi_ssid, config.wifi_pass);
+	sntp_init_timer();
 #endif
 	for (;;)
 	{
