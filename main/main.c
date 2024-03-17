@@ -45,6 +45,7 @@
 #include "gnss.h"
 #include "wifi.h"
 #include "time_sync.h"
+#include "http_get.h"
 
 #include "i2c.h"
 #include "i2c/rtc-ds3231.h"
@@ -71,6 +72,7 @@ astro_body_t astro_tracked_body = BODY_INVALID;
 void dispatch(int argc, char **args, struct linklist *history);
 int idle_counts = 0;
 void main_idle();
+void meminfo();
 
 #ifdef __EFR32__
 FATFS _fatfs, *fatfs = &_fatfs;           /* Filesystem object */
@@ -1400,9 +1402,13 @@ void fat(int argc, char **args)
 
 		printf("sent %d bytes\r\n", bw);
 	}
+	else if (argc >= 4 && match(args[1], "http_get"))
+	{
+		http_get(args[2], args[3]);
+	}
 	else
 	{
-		printf("usage: fat (mkfs|mount|rx <file>|cat <file>|load <file>|find|umount\r\n");
+		printf("Usage: fat (mkfs|mount|rx <file>|cat <file>|load <file>|find|umount|http_get <file> <url>\r\n");
 
 		return;
 	}

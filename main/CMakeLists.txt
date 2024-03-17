@@ -49,7 +49,9 @@ if (${ESP_PLATFORM})
 	list(APPEND MY_SOURCES
 		gnss.c
 		lcd.c
-		time_sync.c)
+		time_sync.c
+		http_get.c
+		)
 
 	idf_component_register(REQUIRES_PRIVATE fatfs
 			SRCS ${MY_SOURCES}
