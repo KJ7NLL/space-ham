@@ -96,6 +96,11 @@ void gnss_parse(char *line)
 
 			if (minmea_parse_rmc(&frame, line))
 			{
+				if (!isnan(minmea_tocoord(&frame.latitude)))
+					config.observer.lat = Radians(minmea_tocoord(&frame.latitude));
+				if (!isnan(minmea_tocoord(&frame.longitude)))
+					config.observer.lon = Radians(minmea_tocoord(&frame.longitude));
+
 				if (config.gnss_debug == true)
 				{
 					printf(INDENT_SPACES
@@ -120,9 +125,6 @@ void gnss_parse(char *line)
 					       minmea_tocoord(&frame.longitude),
 					       minmea_tofloat(&frame.speed));
 				}
-
-				config.observer.lat = Radians(minmea_tocoord(&frame.latitude));
-				config.observer.lon = Radians(minmea_tocoord(&frame.longitude));
 			}
 			else
 			{
@@ -139,6 +141,9 @@ void gnss_parse(char *line)
 
 			if (minmea_parse_gga(&frame, line))
 			{
+				if (!isnan(minmea_tocoord(&frame.altitude)))
+					config.observer.alt = minmea_tocoord(&frame.altitude);
+
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxGGA: fix quality: %d\n",
