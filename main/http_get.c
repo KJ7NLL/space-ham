@@ -9,6 +9,7 @@
 */
 
 #include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -16,6 +17,9 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+
+#include "ff.h"
+#include "fatfs-util.h"
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -66,7 +70,7 @@ void http_parse_url(char *url, char **server, char **path, char **port)
 		*port = "80";
 }
 
-int http_get(char *file, const char *orig_url)
+int http_get(char *file_name, const char *orig_url)
 {
 	const struct addrinfo hints = {
 		.ai_family = AF_INET,
@@ -75,8 +79,8 @@ int http_get(char *file, const char *orig_url)
 
 	struct addrinfo *res;
 	struct in_addr *addr;
-	int s, r;
-	char recv_buf[64];
+	int s;
+	char recv_buf[128];
 
 	char *request = NULL;
 	char *server = NULL;
@@ -85,6 +89,10 @@ int http_get(char *file, const char *orig_url)
 	char *url;
 	int ret = 0;
 
+	FIL fil;              /* File object */
+	FRESULT f_res = FR_OK;  /* API result code */
+	UINT bw;          /* Bytes written */
+
 	int url_len = strlen(orig_url);
 
 	url = malloc(url_len + 1);
@@ -92,7 +100,8 @@ int http_get(char *file, const char *orig_url)
 	{
 		ESP_LOGE(TAG, "... failed to allocate URL memory");
 
-		return -1;
+		ret = -1;
+		goto out;
 	}
 		
 	strcpy(url, orig_url);
@@ -179,20 +188,46 @@ int http_get(char *file, const char *orig_url)
 	}
 	ESP_LOGI(TAG, "... set socket receiving timeout success");
 
-	/*
-	   Read HTTP response 
-	 */
-	do
-	{
-		bzero(recv_buf, sizeof(recv_buf));
-		r = read(s, recv_buf, sizeof(recv_buf) - 1);
-		for (int i = 0; i < r; i++)
-		{
-			putchar(recv_buf[i]);
-		}
-	} while (r > 0);
+	FILE *fp = fdopen(s, "r");
 
-	ESP_LOGI(TAG, "... done reading from socket. Last read return=%d errno=%d.", r, errno);
+	if (fp == NULL)
+	{
+		ESP_LOGE(TAG, "... failed to open socket as a FILE handle");
+
+		ret = -1;
+		goto out_req;
+	}
+
+	f_res = f_open(&fil, file_name, FA_CREATE_ALWAYS | FA_WRITE);
+	if (f_res != FR_OK)
+	{
+		ESP_LOGE(TAG, "... failed to open %s: %s", file_name, ff_strerror(f_res));
+
+		ret = -1;
+		goto out_req;
+	}
+
+	bool header_done = false;
+
+	while (fgets(recv_buf, sizeof(recv_buf)-1, fp) != NULL)
+	{
+		if (!header_done && strcmp(recv_buf, "\r\n") == 0)
+		{
+			header_done = true;
+
+			continue;
+		}
+
+		if (header_done == true)
+		{
+			f_write(&fil, recv_buf, strlen(recv_buf), &bw);
+		}
+		else
+			printf("%s", recv_buf);
+	}
+
+	f_close(&fil);
+
 out_req:
 	free(request);
 
@@ -205,5 +240,6 @@ out_res:
 out_url:
 	free(url);
 
+out:
 	return ret;
 }
