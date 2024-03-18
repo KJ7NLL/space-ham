@@ -28,6 +28,8 @@
 #include "sat.h"
 #include "config.h"
 
+#include "ff.h"
+#include "fatfs-util.h"
 
 // Global sat state structure. We want a pointer in case we wish to support
 // tracking multiple satellites. 
@@ -285,6 +287,49 @@ int sat_tle_line(tle_t *tle, int line, char *tle_set, char *buf)
 	}
 
 	return line;
+}
+
+void sat_tle_to_bin()
+{
+	FRESULT res = FR_OK;  /* API result code */
+	FIL in, out;              /* File object */
+	UINT bw;          /* Bytes written */
+
+	static tle_t tle;
+
+	char buf[128], tle_set[139];
+
+	int i;
+
+	res = f_open(&in, "tle.txt", FA_READ);
+	if (res != FR_OK)
+	{
+		printf("tle.txt: error %d: %s\r\n", res, ff_strerror(res));
+		return;
+	}
+
+	res = f_open(&out, "tle.bin", FA_CREATE_ALWAYS | FA_WRITE);
+	if (res != FR_OK)
+	{
+		printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
+		f_close(&in);
+		return;
+	}
+
+	memset(&tle, 0, sizeof(tle));
+	i = 0;
+	while (res == FR_OK && f_gets(buf, 80, &in))
+	{
+		i = sat_tle_line(&tle, i, tle_set, buf);
+		if (i == 0)
+		{
+			res = f_write(&out, &tle, sizeof(tle), &bw);
+			memset(&tle, 0, sizeof(tle));
+		}
+	}
+
+	f_close(&in);
+	f_close(&out);
 }
 
 void sat_reset()

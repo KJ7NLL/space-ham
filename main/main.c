@@ -1184,36 +1184,11 @@ void sat(int argc, char **args)
 		int br = xmodem_rx("tle.txt");
 
 		printf("Receved %d bytes\r\n", br);
-		
-		res = f_open(&in, "tle.txt", FA_READ);
-		if (res != FR_OK)
-		{
-			printf("tle.txt: error %d: %s\r\n", res, ff_strerror(res));
-			return;
-		}
-
-		res = f_open(&out, "tle.bin", FA_CREATE_ALWAYS | FA_WRITE);
-		if (res != FR_OK)
-		{
-			printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
-			f_close(&in);
-			return;
-		}
-		
-		memset(&tle, 0, sizeof(tle));
-		i = 0;
-		while (res == FR_OK && f_gets(buf, 80, &in))
-		{
-			i = sat_tle_line(&tle, i, tle_set, buf);
-			if (i == 0)
-			{
-				res = f_write(&out, &tle, sizeof(tle), &bw);
-				memset(&tle, 0, sizeof(tle));
-			}
-		}
-
-		f_close(&in);
-		f_close(&out);
+		sat_tle_to_bin();
+	}
+	else if (match(args[1], "tle_to_bin"))
+	{
+		sat_tle_to_bin();
 	}
 	else if (match(args[1], "reset"))
 	{
@@ -1382,12 +1357,10 @@ void fat(int argc, char **args)
 		do
 		{
 			res = f_read(&fil, buf, sizeof(buf)-1, &br);
-//			printf("br: %d\r\n", br);
 			serial_write(buf, br);
 		}
 		while (br > 0);
 
-		printf("\r\n");
 		res = f_close(&fil);
 	}
 	else if (argc >= 3 && match(args[1], "rx"))
@@ -2115,8 +2088,6 @@ int app_main()
 int main()
 #endif
 {
-	FRESULT res;
-
 	struct rotor *theta = &rotors[0], *phi = &rotors[1], *focus = &rotors[3]; // not a typo
 	struct linklist history = {.head = NULL, .tail = NULL};
 	char buf[128], *args[MAX_ARGS];
@@ -2164,6 +2135,8 @@ int main()
 		printf("Failed to mount FATFS (%s)", esp_err_to_name(err));
 	}
 #else
+	FRESULT res;
+
 	res = f_mount(fatfs, "", 0);
 
 	if (res != FR_OK)
