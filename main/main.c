@@ -51,6 +51,7 @@
 #include "i2c/rtc-ds3231.h"
 #include "i2c/ads111x.h"
 #include "i2c/qmc5883l.h"
+#include "i2c/mmc5603nj.h"
 #include "lcd.h"
 
 #include "sat.h"
@@ -1136,8 +1137,8 @@ void cmd_prefix(int argc, char **args, struct linklist *history)
 void sat(int argc, char **args)
 {
 	FRESULT res = FR_OK;  /* API result code */
-	FIL in, out;              /* File object */
-	UINT br, bw;          /* Bytes written */
+	FIL in;              /* File object */
+	UINT br;          /* Bytes written */
 
 	static tle_t tle;
 
@@ -1866,6 +1867,31 @@ void dispatch(int argc, char **args, struct linklist *history)
 					       mag->min_y, mag->max_y,
 					       mag->min_z, mag->max_z);
 				}
+				else if (match(req->name, "mmc5603nj"))
+				{
+					printf("  x=%6d y=%6d z=%6d (raw)\r\n",
+						mmc5603nj_measure_req_raw((mmc5603nj_t*)req, MMC5603NJ_DATA_X),
+						mmc5603nj_measure_req_raw((mmc5603nj_t*)req, MMC5603NJ_DATA_Y),
+						mmc5603nj_measure_req_raw((mmc5603nj_t*)req, MMC5603NJ_DATA_Z)
+						);
+					printf("  x=%6.3f y=%6.3f z=%6.3f (calibrated -1 to 1)\r\n",
+						mmc5603nj_measure_req((mmc5603nj_t*)req, MMC5603NJ_DATA_X),
+						mmc5603nj_measure_req((mmc5603nj_t*)req, MMC5603NJ_DATA_Y),
+						mmc5603nj_measure_req((mmc5603nj_t*)req, MMC5603NJ_DATA_Z)
+						);
+					printf("  xy=%8.3f xz=%8.3f yz=%8.3f (deg)\r\n",
+						mmc5603nj_measure_req_plane((mmc5603nj_t*)req, MMC5603NJ_PLANE_XY),
+						mmc5603nj_measure_req_plane((mmc5603nj_t*)req, MMC5603NJ_PLANE_XZ),
+						mmc5603nj_measure_req_plane((mmc5603nj_t*)req, MMC5603NJ_PLANE_YZ)
+						);
+					mmc5603nj_t *mag = (mmc5603nj_t*)req;
+					printf("  x cal range: %6d - %6d\r\n"
+					       "  y cal range: %6d - %6d\r\n"
+					       "  z cal range: %6d - %6d\r\n",
+					       (int)mag->min_x, (int)mag->max_x,
+					       (int)mag->min_y, (int)mag->max_y,
+					       (int)mag->min_z, (int)mag->max_z);
+				}
 
 				node = node->next;
 			}
@@ -2153,7 +2179,7 @@ int main()
 #ifdef HAVE_I2C
 	initI2C();
 
-	qmc5883l_t *compass = qmc5883l_measure_req_alloc(0x0d);
+/*	qmc5883l_t *compass = qmc5883l_measure_req_alloc(0x0d);
 
 	// Reset the compass device by putting it in standby first, otherwise
 	// it will not accept the new config.
@@ -2166,6 +2192,22 @@ int main()
 
 	qmc5883l_config_write(compass);
 	//i2c_req_add_cont((i2c_req_t *)compass);
+*/
+	mmc5603nj_t *mag = mmc5603nj_measure_req_alloc(0x30);
+	if (mag == NULL)
+	{
+		printf("Error: failed to allocate mag\r\n");
+	}
+	mag->control_reg_odr = 250;
+	mag->control_reg_0_auto_sr_en = 1;
+	mag->control_reg_0_cmm_freq_en = 1;
+	mag->control_reg_1_bw = MMC5603NJ_BW_150HZ;
+	mag->control_reg_2_prd_set = MMC5603NJ_PRD_SET_500;
+	mag->control_reg_2_en_prd_set = 1;
+	mag->control_reg_2_cmm_en = 1;
+	mag->invert_z = true;
+	mmc5603nj_config_write(mag);
+	i2c_req_add_cont((i2c_req_t *)mag);
 
 	// Initialize realtime clock
 	rtcc_init(128);
