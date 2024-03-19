@@ -52,6 +52,7 @@
 #include "i2c/ads111x.h"
 #include "i2c/qmc5883l.h"
 #include "i2c/mmc5603nj.h"
+#include "i2c/mxc4005xc.h"
 #include "lcd.h"
 
 #include "sat.h"
@@ -1884,6 +1885,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 						mmc5603nj_measure_req_plane((mmc5603nj_t*)req, MMC5603NJ_PLANE_XZ),
 						mmc5603nj_measure_req_plane((mmc5603nj_t*)req, MMC5603NJ_PLANE_YZ)
 						);
+
 					mmc5603nj_t *mag = (mmc5603nj_t*)req;
 					printf("  x cal range: %6d - %6d\r\n"
 					       "  y cal range: %6d - %6d\r\n"
@@ -1891,6 +1893,24 @@ void dispatch(int argc, char **args, struct linklist *history)
 					       (int)mag->min_x, (int)mag->max_x,
 					       (int)mag->min_y, (int)mag->max_y,
 					       (int)mag->min_z, (int)mag->max_z);
+				}
+				else if (match(req->name, "mxc4005xc"))
+				{
+					printf("  x=%6d y=%6d z=%6d (raw)\r\n",
+						mxc4005xc_measure_req_raw((mxc4005xc_t*)req, MXC4005XC_DATA_X),
+						mxc4005xc_measure_req_raw((mxc4005xc_t*)req, MXC4005XC_DATA_Y),
+						mxc4005xc_measure_req_raw((mxc4005xc_t*)req, MXC4005XC_DATA_Z)
+						);
+					printf("  x=%6.3f y=%6.3f z=%6.3f (calibrated -1 to 1)\r\n",
+						mxc4005xc_measure_req((mxc4005xc_t*)req, MXC4005XC_DATA_X),
+						mxc4005xc_measure_req((mxc4005xc_t*)req, MXC4005XC_DATA_Y),
+						mxc4005xc_measure_req((mxc4005xc_t*)req, MXC4005XC_DATA_Z)
+						);
+					printf("  xy=%8.3f xz=%8.3f yz=%8.3f (deg)\r\n",
+						mxc4005xc_measure_req_plane((mxc4005xc_t*)req, MXC4005XC_PLANE_XY),
+						mxc4005xc_measure_req_plane((mxc4005xc_t*)req, MXC4005XC_PLANE_XZ),
+						mxc4005xc_measure_req_plane((mxc4005xc_t*)req, MXC4005XC_PLANE_YZ)
+						);
 				}
 
 				node = node->next;
@@ -2193,6 +2213,7 @@ int main()
 	qmc5883l_config_write(compass);
 	//i2c_req_add_cont((i2c_req_t *)compass);
 */
+	// Initialize compass
 	mmc5603nj_t *mag = mmc5603nj_measure_req_alloc(0x30);
 	if (mag == NULL)
 	{
@@ -2208,6 +2229,11 @@ int main()
 	mag->invert_z = true;
 	mmc5603nj_config_write(mag);
 	i2c_req_add_cont((i2c_req_t *)mag);
+
+	// Initialize accelerometer
+	mxc4005xc_t *acc = mxc4005xc_measure_req_alloc(0x15);
+	acc->invert_z = true;
+	i2c_req_add_cont((i2c_req_t *)acc);
 
 	// Initialize realtime clock
 	rtcc_init(128);

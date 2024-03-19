@@ -23,6 +23,7 @@ list(APPEND MY_SOURCES
 		i2c/qmc5883l.c
 		i2c/drv8830.c
 		i2c/mmc5603nj.c
+		i2c/mxc4005xc.c
 
 		sgp4sdp4/sgp4sdp4.c
 		sgp4sdp4/sgp_in.c
