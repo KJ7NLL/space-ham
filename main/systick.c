@@ -50,10 +50,13 @@ void SysTick_Handler(void)
 			continue;
 
 		// Safety: keep the target in range of cal1.deg and cal2.deg:
-		if (rotor->target < rotor_cal_min(rotor)->deg)
-			rotor->target = rotor_cal_min(rotor)->deg;
-		else if (rotor->target > rotor_cal_max(rotor)->deg)
-			rotor->target = rotor_cal_max(rotor)->deg;
+		if (rotor_cal_valid(rotor))
+		{
+			if (rotor->target < rotor_cal_min(rotor)->deg)
+				rotor->target = rotor_cal_min(rotor)->deg;
+			else if (rotor->target > rotor_cal_max(rotor)->deg)
+				rotor->target = rotor_cal_max(rotor)->deg;
+		}
 
 		float rpos = rotor_pos(rotor);
 		if (isnan(rpos))
@@ -75,7 +78,7 @@ void SysTick_Handler(void)
 		if (fabs(rtarget - rpos) < 90)
 			rotor->target_absolute = 0;
 
-		if (!rotor->target_absolute)
+		if (rotor_cal_valid(rotor) && !rotor->target_absolute)
 		{
 			// Try to reach the closest degree angle.  For example, if at 360
 			// and the rotor target is set to 630=360+270, then move to 270 instead.

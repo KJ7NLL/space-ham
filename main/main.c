@@ -246,7 +246,7 @@ void status()
 	
 	for (i = 0; i < NUM_ROTORS; i++)
 	{
-		if (rotor_valid(&rotors[i]))
+		if (rotor_valid(&rotors[i]) && rotor_cal_valid(&rotors[i]))
 		{
 			printf("%-8s cal: [%7.2f, %7.2f] deg: [%4.2f, %4.2f] volts, %8.4f mV/deg\r\n",
 				rotors[i].motor.name,
@@ -1015,7 +1015,7 @@ void mv(int argc, char **args)
 			break;
 	}
 
-	if (deg < rotor_cal_min(r)->deg || deg > rotor_cal_max(r)->deg)
+	if (rotor_cal_valid(r) && (deg < rotor_cal_min(r)->deg || deg > rotor_cal_max(r)->deg))
 	{
 		printf("Cannot move rotor outside of calibrated range: %.2f !< %.2f !< %.2f\r\n",
 			rotor_cal_min(r)->deg, deg, rotor_cal_max(r)->deg);
@@ -2227,6 +2227,7 @@ int main()
 	mag->control_reg_2_en_prd_set = 1;
 	mag->control_reg_2_cmm_en = 1;
 	mag->invert_z = true;
+	mag->invert_y = true;
 	mmc5603nj_config_write(mag);
 	i2c_req_add_cont((i2c_req_t *)mag);
 

@@ -32,6 +32,8 @@
 enum {
 	ADC_TYPE_INTERNAL,
 	ADC_TYPE_I2C_ADS111X,
+	ADC_TYPE_I2C_MMC5603NJ,
+	ADC_TYPE_I2C_MXC4005XC,
 };
 
 enum {
@@ -209,7 +211,7 @@ static inline int motor_online(struct motor *m)
 
 static inline int rotor_valid(struct rotor *r)
 {
-	return r != NULL && motor_valid(&r->motor) && r->cal_count >= 2;
+	return r != NULL && motor_valid(&r->motor);
 }
 
 static inline int rotor_online(struct rotor *r)
@@ -222,6 +224,8 @@ static inline int rotor_online(struct rotor *r)
 // return NULL.
 static inline struct rotor_cal *rotor_cal_min(struct rotor *r)
 {
+	if (r == NULL)
+		return NULL;
 	if (r->cal_count == 0)
 		return NULL;
 
@@ -230,8 +234,16 @@ static inline struct rotor_cal *rotor_cal_min(struct rotor *r)
 
 static inline struct rotor_cal *rotor_cal_max(struct rotor *r)
 {
+	if (r == NULL)
+		return NULL;
 	if (r->cal_count == 0)
 		return NULL;
 
 	return &r->cal[r->cal_count - 1];
+}
+
+static inline int rotor_cal_valid(struct rotor *r)
+{
+	return r->cal_count >= 2 &&
+		rotor_cal_min(r) != NULL && rotor_cal_max(r) != NULL;
 }

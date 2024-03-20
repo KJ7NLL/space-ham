@@ -37,6 +37,8 @@
 #include "i2c.h"
 #include "i2c/ads111x.h"
 #include "i2c/drv8830.h"
+#include "i2c/mxc4005xc.h"
+#include "i2c/mmc5603nj.h"
 #include "rtcc.h"
 
 #define ROTOR_CAL_MAGIC   0x458FD1E9
@@ -166,7 +168,22 @@ float rotor_pos(struct rotor *r)
 	int i;
 	int ascending;
 
-	if (!rotor_valid(r))
+	if (r->adc_type == ADC_TYPE_I2C_MXC4005XC)
+	{
+		mxc4005xc_t *acc = (mxc4005xc_t*)i2c_req_get_cont(r->adc_addr);
+
+		return mxc4005xc_measure_req_plane(acc, r->adc_channel);
+	}
+
+	if (r->adc_type == ADC_TYPE_I2C_MMC5603NJ)
+	{
+		mxc4005xc_t *mag = (mmc5603nj_t*)i2c_req_get_cont(r->adc_addr);
+
+		return mmc5603nj_measure_req_plane(mag, r->adc_channel);
+	}
+
+	// Voltage-based position calibration is required below this line
+	if (!rotor_valid(r) || !rotor_cal_valid(r))
 		return NAN;
 
 	if (rotor_cal_min(r)->v < rotor_cal_max(r)->v)
