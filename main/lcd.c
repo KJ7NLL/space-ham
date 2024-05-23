@@ -31,7 +31,10 @@
 
 #include "astronomy.h"
 #include "stars.h"
+#include "sat.h"
 #include "config.h"
+
+#include "fatfs-util.h"
 
 #define PIN_NUM_RST           -1
 #define LCD_HW_ADDR           0x3C
@@ -93,7 +96,8 @@ void init_lcd()
 	ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
 	ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
-	const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+	lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+	lvgl_cfg.task_stack = 8192;
 
 	lvgl_port_init(&lvgl_cfg);
 
@@ -218,7 +222,6 @@ void ev_track_planet_cb(lv_event_t *e)
 void ev_track_star_cb(lv_event_t *e)
 {
 	star_t *star = lv_event_get_user_data(e);
-	printf("working: %s\r\n", star->name);
 
 	Astronomy_DefineStar(BODY_STAR1,
 		stars->ra, star->dec, star->dist_ly);
@@ -226,6 +229,47 @@ void ev_track_star_cb(lv_event_t *e)
 	astro_tracked_body = BODY_STAR1;
 
 	lv_label_set_text_fmt(status_bar_label, "%s", astro_tracked_name);
+}
+
+void ev_track_sat_cb(lv_event_t *e)
+{
+	int sat_idx = (int)lv_event_get_user_data(e);
+
+	// API result code
+	FRESULT res = FR_OK;
+	// File object
+	FIL in;
+	// Bytes read
+	UINT br;
+
+	tle_t tle_tmp;
+
+	res = f_open(&in, "tle.bin", FA_READ);
+	if (res != FR_OK)
+	{
+		printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
+		f_close(&in);
+		return;
+	}
+
+	res = f_lseek(&in, sizeof(tle_tmp) * sat_idx);
+	if (res != FR_OK)
+	{
+		printf("tle.bin: seek error %d: %s\r\n", res, ff_strerror(res));
+		f_close(&in);
+		return;
+	}
+
+	res = f_read(&in, &tle_tmp, sizeof(tle_tmp), &br);
+	if (res != FR_OK)
+	{
+		printf("tle.bin: read error %d: %s\r\n", res, ff_strerror(res));
+		f_close(&in);
+		return;
+	}
+
+	sat_init(&tle_tmp);
+	lv_label_set_text_fmt(status_bar_label, "tracking: %s", tle_tmp.sat_name);
 }
 
 lv_obj_t *menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
@@ -332,10 +376,38 @@ void lvgl_menu()
 		lv_obj_t *sub_page_planet = lv_menu_page_create(menu, NULL);
 		lv_obj_t *sub_page_star = lv_menu_page_create(menu, NULL);
 
-		menu_item(group, menu, sub_page_sat, NULL, &style, "ISS");
+		// API result code
+		FRESULT res = FR_OK;
+		// File object
+		FIL in;
+		// Bytes read
+		UINT br;
 
+		tle_t tle_tmp;
 
 		int i;
+
+		res = f_open(&in, "tle.bin", FA_READ);
+		if (res != FR_OK)
+		{
+			printf("tle.bin: error %d: %s\r\n", res, ff_strerror(res));
+			f_close(&in);
+			return;
+		}
+
+		i = 0;
+
+		do
+		{
+			res = f_read(&in, &tle_tmp, sizeof(tle_tmp), &br);
+			if (br < sizeof(tle_tmp))
+				break;
+
+			cont = menu_item(group, menu, sub_page_sat, NULL, &style, tle_tmp.sat_name);
+			lv_obj_add_event_cb(cont, ev_track_sat_cb, LV_EVENT_PRESSED, (void*)i);
+			i++;
+		} while (res == FR_OK);
+
 
 		for (i = 0; i < num_bodies; i++)
 		{
