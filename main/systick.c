@@ -30,8 +30,7 @@
 static volatile int _systick_bypass = 0;
 static volatile int ticks_per_sec = 1000;
 
-#ifdef __EFR32__
-void SysTick_Handler(void)
+void pid_update()
 {
 	struct motor *motor;
 	struct rotor *rotor;
@@ -133,9 +132,29 @@ void SysTick_Handler(void)
 	}
 }
 
+#ifdef __EFR32__
+void SysTick_Handler()
+{
+	pid_update();
+}
+
 int systick_update()
 {
 	return SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / ticks_per_sec);
+}
+#endif
+
+#ifdef __ESP32__
+void pid_update_task(void *arg)
+{
+	TickType_t interval = 10/portTICK_PERIOD_MS;
+	TickType_t now = xTaskGetTickCount();
+
+	while (1)
+	{
+		pid_update();
+		vTaskDelayUntil(&now, interval);
+	}
 }
 #endif
 
@@ -145,6 +164,7 @@ int systick_init(int tps)
 	ticks_per_sec = tps;
 	return systick_update();
 #else
+	xTaskCreate(pid_update_task, "pid_thread", 4096, NULL, 10, NULL);
 	return 0;
 #endif
 }
