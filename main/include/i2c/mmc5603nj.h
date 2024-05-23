@@ -53,9 +53,12 @@ typedef struct mmc5603nj
 	uint8_t control_reg_2_hpower:1;
 
 	int8_t  x_idx, y_idx, z_idx; 
-	uint16_t min_x, max_x;
-	uint16_t min_y, max_y;
-	uint16_t min_z, max_z;
+
+	struct {
+		uint16_t min_x, max_x;
+		uint16_t min_y, max_y;
+		uint16_t min_z, max_z;
+	} cal;
 
 	uint16_t x[MMC5603NJ_SAMPLE_AVG], y[MMC5603NJ_SAMPLE_AVG], z[MMC5603NJ_SAMPLE_AVG];
 	bool swap_xy;
@@ -64,6 +67,7 @@ typedef struct mmc5603nj
 	bool invert_y;
 	bool invert_x;
 	bool invert_z;
+	bool calibrate;
 } mmc5603nj_t;
 
 enum {
@@ -99,4 +103,5 @@ float mmc5603nj_measure_req(mmc5603nj_t *mag, uint8_t data_reg);
 float mmc5603nj_measure_req_plane(mmc5603nj_t *mag, uint8_t plane);
 mmc5603nj_t *mmc5603nj_measure_req_alloc(int devaddr);
 void mmc5603nj_measure_req_free(mmc5603nj_t *req);
-
+FRESULT mmc5603nj_cal_save(mmc5603nj_t *mag, char *filename);
+FRESULT mmc5603nj_cal_load(mmc5603nj_t *mag, char *filename);

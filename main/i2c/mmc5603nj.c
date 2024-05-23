@@ -23,19 +23,24 @@
 #include <string.h>
 #include <math.h>
 
+#include "ff.h"
+#include "fatfs-util.h"
+
 #include "i2c.h"
 #include "i2c/mmc5603nj.h"
+
+#include "config.h"
 
 void mmc5603nj_init(mmc5603nj_t *mag)
 {
 	// Initializes max value to the smallest possible value to
 	// ensure that the mins and maxes are changed to proper values
-	mag->min_x = 65535;
-	mag->max_x = 0;
-	mag->min_y = 65535;
-	mag->max_y = 0;
-	mag->min_z = 65535;
-	mag->max_z = 0;
+	mag->cal.min_x = 65535;
+	mag->cal.max_x = 0;
+	mag->cal.min_y = 65535;
+	mag->cal.max_y = 0;
+	mag->cal.min_z = 65535;
+	mag->cal.max_z = 0;
 }
 
 void mmc5603nj_config_write(mmc5603nj_t *mag)
@@ -110,20 +115,20 @@ float mmc5603nj_measure_req(mmc5603nj_t *mag, uint8_t data_reg)
 	if (data_reg == MMC5603NJ_DATA_X)
 	{
 		value = mmc5603nj_measure_req_avg(mag->x);
-		min = mag->min_x;
-		max = mag->max_x;
+		min = mag->cal.min_x;
+		max = mag->cal.max_x;
 	}
 	else if (data_reg == MMC5603NJ_DATA_Y)
 	{
 		value = mmc5603nj_measure_req_avg(mag->y);
-		min = mag->min_y;
-		max = mag->max_y;
+		min = mag->cal.min_y;
+		max = mag->cal.max_y;
 	}
 	else if (data_reg == MMC5603NJ_DATA_Z)
 	{
 		value = mmc5603nj_measure_req_avg(mag->z);
-		min = mag->min_z;
-		max = mag->max_z;
+		min = mag->cal.min_z;
+		max = mag->cal.max_z;
 	}
 	else
 		return NAN;
@@ -201,6 +206,7 @@ void mmc5603nj_calibration_callback(mmc5603nj_t *mag)
 {
 	uint16_t *xp, *yp, *zp;
 	uint16_t x, y, z;
+	uint16_t xa, ya, za;
 	mag->x_idx = (mag->x_idx + 1) % MMC5603NJ_SAMPLE_AVG;
 	mag->y_idx = (mag->y_idx + 1) % MMC5603NJ_SAMPLE_AVG;
 	mag->z_idx = (mag->z_idx + 1) % MMC5603NJ_SAMPLE_AVG;
@@ -213,37 +219,47 @@ void mmc5603nj_calibration_callback(mmc5603nj_t *mag)
 	y = mmc5603nj_measure_req_raw(mag, MMC5603NJ_DATA_Y);
 	z = mmc5603nj_measure_req_raw(mag, MMC5603NJ_DATA_Z);
 
+
 	if (x != 0 && x != 65535)
 	{
 		*xp = x;
 
-		if (*xp > mag->max_x)
-			mag->max_x = *xp;
+		if (mag->calibrate)
+			xa = mmc5603nj_measure_req_avg(mag->x);
 
-		if (*xp < mag->min_x)
-			mag->min_x = *xp;
+		if (mag->calibrate && xa > mag->cal.max_x)
+			mag->cal.max_x = xa;
+
+		if (mag->calibrate && xa < mag->cal.min_x)
+			mag->cal.min_x = xa;
 	}
 
 	if (y != 0 && y != 65535)
 	{
 		*yp = y;
 
-		if (*yp > mag->max_y)
-			mag->max_y = *yp;
+		if (mag->calibrate)
+			ya = mmc5603nj_measure_req_avg(mag->y);
 
-		if (*yp < mag->min_y)
-			mag->min_y = *yp;
+		if (mag->calibrate && ya > mag->cal.max_y)
+			mag->cal.max_y = ya;
+
+		if (mag->calibrate && ya < mag->cal.min_y)
+			mag->cal.min_y = ya;
 	}
 
 	if (z != 0 && z != 65535)
 	{
 		*zp = z;
 
-		if (*zp > mag->max_z)
-			mag->max_z = *zp;
+		if (mag->calibrate)
+			za = mmc5603nj_measure_req_avg(mag->z);
 
-		if (*zp < mag->min_z)
-			mag->min_z = *zp;
+		if (mag->calibrate && za > mag->cal.max_z)
+			mag->cal.max_z = za;
+
+		if (mag->calibrate && za < mag->cal.min_z)
+			mag->cal.min_z = za;
 	}
 }
 
@@ -277,4 +293,14 @@ void mmc5603nj_measure_req_free(mmc5603nj_t *mag)
 	free(mag->req.data);
 	free(mag->req.result);
 	free(mag);
+}
+
+FRESULT mmc5603nj_cal_save(mmc5603nj_t *mag, char *filename)
+{
+	return f_write_file(filename, &mag->cal, sizeof(mag->cal));
+}
+
+FRESULT mmc5603nj_cal_load(mmc5603nj_t *mag, char *filename)
+{
+	return f_read_file(filename, &mag->cal, sizeof(mag->cal));
 }
