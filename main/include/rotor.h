@@ -83,6 +83,9 @@ struct motor
 				uint16_t motor_addr;
 				uint8_t motor_channel;
 			} __attribute__((packed));
+
+			// Invert the motor direction
+			bool invert;
 		};
 
 		char pad[80];
@@ -156,6 +159,8 @@ struct rotor
 		// `one_dir_motion`.
 		float one_dir_motion;
 	} pid;
+
+	float mag_dec;
 
 	int error_count;
 	int error_count_max;

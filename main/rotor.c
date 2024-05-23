@@ -158,8 +158,7 @@ float rotor_get_voltage(struct rotor *r)
 	return v;
 }
 
-// Return the degree position of the motor based on the voltage and calibrated values
-float rotor_pos(struct rotor *r)
+float rotor_pos_adc(struct rotor *r)
 {
 	struct rotor_cal *cal_min = NULL, *cal_max = NULL;
 
@@ -167,20 +166,6 @@ float rotor_pos(struct rotor *r)
 
 	int i;
 	int ascending;
-
-	if (r->adc_type == ADC_TYPE_I2C_MXC4005XC)
-	{
-		mxc4005xc_t *acc = (mxc4005xc_t*)i2c_req_get_cont(r->adc_addr);
-
-		return mxc4005xc_measure_req_plane(acc, r->adc_channel);
-	}
-
-	if (r->adc_type == ADC_TYPE_I2C_MMC5603NJ)
-	{
-		mxc4005xc_t *mag = (mmc5603nj_t*)i2c_req_get_cont(r->adc_addr);
-
-		return mmc5603nj_measure_req_plane(mag, r->adc_channel);
-	}
 
 	// Voltage-based position calibration is required below this line
 	if (!rotor_valid(r) || !rotor_cal_valid(r))
@@ -242,8 +227,32 @@ float rotor_pos(struct rotor *r)
 		v_frac = 0;
 
 	float pos = cal_min->deg + v_frac * (cal_max->deg - cal_min->deg);
+	return pos;
+}
 
-	return pos - r->offset;
+// Return the degree position of the motor based on the voltage and calibrated values
+float rotor_pos(struct rotor *r)
+{
+	float pos;
+
+	if (r->adc_type == ADC_TYPE_I2C_MXC4005XC)
+	{
+		mxc4005xc_t *acc = (mxc4005xc_t*)i2c_req_get_cont(r->adc_addr);
+
+		pos = mxc4005xc_measure_req_plane(acc, r->adc_channel);
+	}
+	else if (r->adc_type == ADC_TYPE_I2C_MMC5603NJ)
+	{
+		mxc4005xc_t *mag = (mmc5603nj_t*)i2c_req_get_cont(r->adc_addr);
+
+		pos = mmc5603nj_measure_req_plane(mag, r->adc_channel);
+	}
+	else if (r->adc_type == ADC_TYPE_I2C_ADS111X || r->adc_type == ADC_TYPE_INTERNAL)
+	{
+		pos = rotor_pos_adc(r);
+	}
+
+	return pos - (r->offset - r->mag_dec);
 }
 
 void motor_init(struct motor *m)
@@ -272,6 +281,9 @@ void motor_speed(struct motor *m, float speed)
 {
 	float duty_cycle, aspeed;
 	float dir;
+
+	if (m->invert)
+		speed = -speed;
 
 	if (speed > 1)
 		speed = 1;
@@ -430,6 +442,7 @@ void rotor_detail(struct rotor *r)
 		"  adc_vref:              %3u\r\n"
 		"  position:              %13.9f       deg\r\n"
 		"  offset:                %13.9f       deg\r\n"
+		"  mag_dec:               %13.9f       deg\r\n"
 		"  target:                %13.9f       deg\r\n"
 		"  target_enabled:        %3d\r\n"
 		"  ramp_time:             %13.9f\r\n"
@@ -472,6 +485,7 @@ void rotor_detail(struct rotor *r)
 			r->adc_vref,
 			rotor_pos(r),
 			r->offset,
+			r->mag_dec,
 			r->target,
 			r->target_enabled,
 			r->ramp_time,
