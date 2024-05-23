@@ -104,6 +104,8 @@ config_t config = {
 	.wifi_pass = "",
 };
 
+mmc5603nj_t *mag;
+
 void initGpio(void)
 {
 #ifdef __EFR32__
@@ -191,6 +193,7 @@ void help()
 		"config (latitude|longitude|altitude|username) <value>           # User configuration\r\n"
 		"motor <motor_name> (speed|online|offline|...)                   # Motor commands\r\n"
 		"rotor <rotor_name> (cal|detail|pid|target|ramptime|adc)         # Rotor commands\r\n"
+		"calmag <sec>                                                    # Calibrate magentometer\r\n"
 		"pc <command_prefix>                                             # prefix a command\r\n"
 		"flash (save|load)                                               # Save to flash\r\n"
 		"mv <motor_name> <([+-]deg|n|e|s|w)>                             # Moves antenna\r\n"
@@ -231,7 +234,7 @@ void status()
 	print_tm(&rtc);
 	printf("Uptime: %0.2f hours - ", (float)(now-boot_time)/3600.0);
 
-	printf("Your lat/long: %f N %f E; altitude: %f - ",
+	printf("Your lat/long: %4.1f N %4.1f E; altitude: %f - ",
 		Degrees(config.observer.lat), Degrees(config.observer.lon),
 		config.observer.alt);
 
@@ -334,6 +337,7 @@ void motor(int argc, char **args)
 			"port <0|a|b|c|d>      # Set the efr32 port for the motor, 0 is unconfigured\r\n"
 			"pin1 <0-6>            # Set the efr32 pin for clockwise PWM\r\n"
 			"pin2 <0-6>            # Set the efr32 pin for counter-clockwise PWM\r\n"
+			"invert <0|1>          # Invert the motor direction\r\n"
 			);
 		return;
 	}
@@ -531,6 +535,19 @@ void motor(int argc, char **args)
 		if (motor_valid(m))
 			motor_init(m);
 	}
+	else if (match(args[2], "invert"))
+	{
+		if (argc < 4)
+		{
+			print("usage: motor <motor_name> invert <0|1>\r\n");
+			return;
+		}
+		if (match(args[3], "0"))
+			m->invert = false;
+		else if (match(args[3], "1"))
+			m->invert = true;
+	}
+
 	else 
 		printf("Unkown or invalid motor sub-command: %s\r\n", args[2]);
 }
@@ -707,7 +724,7 @@ void rotor(int argc, char **args)
 
 	if (argc < 3)
 	{
-		print("Usage: rotor <rotor_name> (cal ...|detail|pid ...|target (on|off)|ramptime <sec>|stat [n])\r\n"
+		print("Usage: rotor <rotor_name> (cal ...|detail|pid ...|target (on|off)|ramptime <sec>|stat [n]|magdec)\r\n"
 			"cal                     # Calibrate degree to ADC mappings\r\n"
 			"detail                  # Show detailed rotor info\r\n"
 			"adc (type|addr|channel) # ADC settings\r\n"
@@ -716,6 +733,8 @@ void rotor(int argc, char **args)
 			"ramptime <sec>          # Set min time to full speed\r\n"
 			"static   <deg>          # static dwell: stop rotor within <deg> degrees of target\r\n"
 			"dynamic  <deg>          # dynamic dwell: do not backtrack within <deg> while tracking\r\n"
+			"magdec   <deg>          # adjust the theta rotor for magnetic declination offset\r\n"
+
 			"stat [n]                # Show rotor status, optionally n times\r\n"
 			"\r\n"
 			"Run a subcommand without arguments for more detail\r\n"
@@ -936,6 +955,10 @@ void rotor(int argc, char **args)
 
 		r->pid.one_dir_motion = atof(args[3]);
 	}
+	else if (argc <= 4 && match(args[2], "magdec"))
+	{
+		r->mag_dec = atof(args[3]);
+	}
 
 	else
 		printf("unexpected argument: %s\r\n", args[2]);
@@ -1141,7 +1164,7 @@ void sat(int argc, char **args)
 	FIL in;              /* File object */
 	UINT br;          /* Bytes written */
 
-	static tle_t tle;
+	tle_t tle;
 
 	char buf[128], tle_set[139];
 
@@ -1604,6 +1627,24 @@ void meminfo()
 	printf("sizeof(rotors): %d bytes\r\n", (int)sizeof(rotors));
 }
 
+void cal_mag(int sec)
+{
+	mmc5603nj_init(mag);
+	int target = rotors[0].target_enabled;
+
+	rotors[0].target_enabled = 0;
+	motor_speed(motors[0], 1);
+	sleep(1);
+	status();
+	printf("calibrating theta\r\n");
+	mag->calibrate = true;
+	sleep(sec);
+	mag->calibrate = false;
+	motor_speed(motors[0], 0);
+	rotors[0].target_enabled = target;
+	mmc5603nj_cal_save(mag, "mag_cal.bin");
+}
+
 void dispatch(int argc, char **args, struct linklist *history)
 {
 	int i, c;
@@ -1716,6 +1757,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 				"downlink       <mhz>  # Downlink frequency in MHz for doppler\r\n"
 				"wifissid       <ssid> # Your wifi ssid\r\n"
 				"wifipass       <ssid> # Your wifi password\r\n"
+				"mag_dec        <deg>  # Your magnetic declination\r\n"
 			);
 			return;
 		}
@@ -1890,9 +1932,9 @@ void dispatch(int argc, char **args, struct linklist *history)
 					printf("  x cal range: %6d - %6d\r\n"
 					       "  y cal range: %6d - %6d\r\n"
 					       "  z cal range: %6d - %6d\r\n",
-					       (int)mag->min_x, (int)mag->max_x,
-					       (int)mag->min_y, (int)mag->max_y,
-					       (int)mag->min_z, (int)mag->max_z);
+					       (int)mag->cal.min_x, (int)mag->cal.max_x,
+					       (int)mag->cal.min_y, (int)mag->cal.max_y,
+					       (int)mag->cal.min_z, (int)mag->cal.max_z);
 				}
 				else if (match(req->name, "mxc4005xc"))
 				{
@@ -2038,6 +2080,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 			gpio_get_level(22),
 			(gpio_get_level(20) << 0) | (gpio_get_level(21) << 1) | (gpio_get_level(22) << 2)
 			);
+	else if (argc >= 2 && match(args[0], "calmag"))
+		cal_mag(atoi(args[1]));
 
 	// This must be the last else if:
 	else if (!match(args[0], ""))
@@ -2214,7 +2258,7 @@ int main()
 	//i2c_req_add_cont((i2c_req_t *)compass);
 */
 	// Initialize compass
-	mmc5603nj_t *mag = mmc5603nj_measure_req_alloc(0x30);
+	mag = mmc5603nj_measure_req_alloc(0x30);
 	if (mag == NULL)
 	{
 		printf("Error: failed to allocate mag\r\n");
@@ -2284,6 +2328,9 @@ int main()
 		}
 	}
 
+	if (mmc5603nj_cal_load(mag, "mag_cal.bin") != FR_OK)
+		cal_mag(28);
+
 	// Initalize systick after reading flash so that it does not change.
 	// This must happen after rotors are initalized because systick moves
 	// the rotor target.
@@ -2303,7 +2350,6 @@ int main()
 		NULL,
 		0,
 		NULL);
-
 	gnss_init();
 	wifi_init();
 	wifi_connect(config.wifi_ssid, config.wifi_pass);
