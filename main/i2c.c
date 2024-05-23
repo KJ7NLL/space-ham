@@ -87,7 +87,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 				req->status = i2cTransferDone;
 			else
 			{
-				ESP_ERROR_CHECK(e);
+				printf("i2c err: %s\r\n", esp_err_to_name(e));
 				req->status = i2cTransferError;
 			}
 		}
@@ -440,7 +440,8 @@ I2C_TransferReturn_TypeDef i2c_master_write(uint16_t slaveAddress, uint8_t targe
 	else
 		req.status = -1;
 #endif
-	printf("write result: %d (count=%d)\r\n", req.status, count);
+	// Enable this for debug
+	//printf("write result: %d (count=%d)\r\n", req.status, count);
 
 	return req.status;
 }
