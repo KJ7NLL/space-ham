@@ -142,7 +142,11 @@ void gnss_parse(char *line)
 			if (minmea_parse_gga(&frame, line))
 			{
 				if (!isnan(minmea_tocoord(&frame.altitude)))
-					config.observer.alt = minmea_tocoord(&frame.altitude);
+				{
+					// config.observer expects kilometers,
+					// but frame.altitude gives meters
+					config.observer.alt = minmea_tofloat(&frame.altitude)/1000;
+				}
 
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
