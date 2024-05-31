@@ -33,6 +33,7 @@
 #include "stars.h"
 #include "sat.h"
 #include "config.h"
+#include "main.h"
 
 #include "fatfs-util.h"
 
@@ -272,6 +273,23 @@ void ev_track_sat_cb(lv_event_t *e)
 	lv_label_set_text_fmt(status_bar_label, "tracking: %s", tle_tmp.sat_name);
 }
 
+void ev_cal_mag_cb(lv_event_t *e)
+{
+	lv_label_set_text(status_bar_label, "calibrating...");
+	lv_refr_now(NULL);
+
+	// Unlock I2C bus to allow for calibration
+	lvgl_port_unlock();
+
+	cal_mag(10);
+
+	// put it back the way we found it
+	lvgl_port_lock(0);
+
+
+	lv_label_set_text(status_bar_label, "");
+}
+
 lv_obj_t *menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
 	lv_style_t *style, char *menu_name)
 {
@@ -375,6 +393,7 @@ void lvgl_menu()
 		lv_obj_t *sub_page_sat = lv_menu_page_create(menu, NULL);
 		lv_obj_t *sub_page_planet = lv_menu_page_create(menu, NULL);
 		lv_obj_t *sub_page_star = lv_menu_page_create(menu, NULL);
+		lv_obj_t *sub_page_config = lv_menu_page_create(menu, NULL);
 
 		// API result code
 		FRESULT res = FR_OK;
@@ -424,6 +443,12 @@ void lvgl_menu()
 		menu_item(group, menu, main_page, sub_page_sat, &style, "Satellite");
 		menu_item(group, menu, main_page, sub_page_planet, &style, "Planet");
 		menu_item(group, menu, main_page, sub_page_star, &style, "Star");
+
+		// Add config menu
+		cont = menu_item(group, menu, sub_page_config, NULL, &style, "calibrate");
+		lv_obj_add_event_cb(cont, ev_cal_mag_cb, LV_EVENT_PRESSED, NULL);
+
+		menu_item(group, menu, main_page, sub_page_config, &style, "Config");
 
 		// MUST BE LAST MENU LINE
 		lv_menu_set_page(menu, main_page);
