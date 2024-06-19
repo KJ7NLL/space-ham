@@ -91,19 +91,6 @@ struct flash_entry
 		NULL
 	};
 
-config_t config = {
-	// Observer's geodetic co-ordinates.
-	// Lat North, Lon East in rads, Alt in km 
-	.observer = {45.0*3.141592654/180, -122.0*3.141592654/180, 0.0762, 0.0}, 
-	.username = "user",
-	.i2c_freq = 10000,
-	.lcd_freq = 400000,
-	.gnss_debug = false,
-	.gnss_passthrough = false,
-	.wifi_ssid = "",
-	.wifi_pass = "",
-};
-
 mmc5603nj_t *mag;
 
 void initGpio(void)
@@ -1794,7 +1781,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 			return;
 		}
 
-		f_write_file("config.bin", &config, sizeof(config));
+		config_save();
 	}
 
 	else if (match(args[0], "wifi"))
@@ -2240,7 +2227,7 @@ int main()
 #endif
 
 	// Load user config
-	f_read_file("config.bin", &config, sizeof(config));
+	config_load();
 
 #ifdef HAVE_IADC
 	initIADC();

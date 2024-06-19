@@ -102,6 +102,15 @@ void gnss_parse(char *line)
 				if (!isnan(minmea_tocoord(&frame.longitude)))
 					config.observer.lon = Radians(minmea_tocoord(&frame.longitude));
 
+				// Update saved poition every 11.1 kilometers or every .1 kilometers of altitude
+				if (Degrees(fabs(config_saved.observer.lat - config.observer.lat)) > 0.1 ||
+					Degrees(fabs(config_saved.observer.lon - config.observer.lon)) > 0.1 ||
+					fabs(config_saved.observer.alt - config.observer.alt) > 0.1)
+				{
+					config_save();
+					printf("GNSS saved updated position\r\n");
+				}
+
 				if (config.gnss_debug == true)
 				{
 					printf(INDENT_SPACES

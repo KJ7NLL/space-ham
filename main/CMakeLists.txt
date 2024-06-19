@@ -14,6 +14,7 @@ list(APPEND MY_SOURCES
 		i2c.c
 		stars.c
 		wifi.c
+		config.c
 
 		fatfs-util.c
 		fatfs-xmodem.c
