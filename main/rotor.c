@@ -275,6 +275,8 @@ void motor_init(struct motor *m)
 	}
 
 	timer_init_pwm(m->timer, 0, m->port, m->pin1, m->pwm_Hz, m->duty_cycle_at_init);
+
+	motor_speed(m, 0);
 }
 
 void motor_speed(struct motor *m, float speed)
@@ -398,7 +400,11 @@ void motor_detail(struct motor *m)
 		"  duty_cycle_min:      %.1f%%\r\n"
 		"  duty_cycle_max:      %.1f%%\r\n"
 		"  duty_cycle_limit:    %.1f%%\r\n"
-		"  speed:               %.1f%%\r\n",
+		"  speed:               %.1f%%\r\n"
+		"  type:                %d\r\n"
+		"  bus:                 %d\r\n"
+		"  addr:                %02x\r\n"
+		"  channel:             %d\r\n",
 			m->name,
 			port,
 			m->pin1,
@@ -409,7 +415,11 @@ void motor_detail(struct motor *m)
 			m->duty_cycle_min * 100,
 			m->duty_cycle_max * 100,
 			m->duty_cycle_limit * 100,
-			m->speed * 100
+			m->speed * 100,
+			m->motor_type,
+			m->motor_bus,
+			m->motor_addr,
+			m->motor_channel
 			);
 }
 

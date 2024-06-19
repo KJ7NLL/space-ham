@@ -1633,7 +1633,7 @@ void cal_mag(int sec)
 	int target = rotors[0].target_enabled;
 
 	rotors[0].target_enabled = 0;
-	motor_speed(motors[0], 1);
+	motor_speed(motors[0], 0.5);
 	sleep(1);
 	status();
 	printf("calibrating theta\r\n");
@@ -2316,6 +2316,33 @@ int main()
 	phi->motor.motor_type = MOTOR_TYPE_DRV8830;
 #endif
 
+#ifdef __ESP32__
+
+	// Load calibrations from FAT
+	rotor_cal_load();
+
+	// Disable rotors until the ESP32 is initilized
+	for (i = 0; i < NUM_ROTORS; i++)
+	{
+		rotors[i].target_enabled = 0;
+		if (motor_valid(&rotors[i].motor))
+		{
+			motor_init(&rotors[i].motor);
+		}
+	}
+
+	xTaskCreate(tracking_update_thread,
+		"tracking_thread",
+		32768,
+		NULL,
+		0,
+		NULL);
+	gnss_init();
+	wifi_init();
+	wifi_connect(config.wifi_ssid, config.wifi_pass);
+	sntp_init_timer();
+#endif
+
 	// Load calibrations from FAT
 	rotor_cal_load();
 
@@ -2343,18 +2370,6 @@ int main()
 	status();
 	print("\r\n");
 
-#ifdef __ESP32__
-	xTaskCreate(tracking_update_thread,
-		"tracking_thread",
-		32768,
-		NULL,
-		0,
-		NULL);
-	gnss_init();
-	wifi_init();
-	wifi_connect(config.wifi_ssid, config.wifi_pass);
-	sntp_init_timer();
-#endif
 	for (;;)
 	{
 		char *name = "console";
