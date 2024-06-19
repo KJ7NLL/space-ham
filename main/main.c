@@ -1749,15 +1749,17 @@ void dispatch(int argc, char **args, struct linklist *history)
 		if (argc < 3)
 		{
 			print("usage: config (latitude|longitude|altitude|username) <value>\r\n"
-				"latitude|lat   <deg>  # North latitude in degrees (-deg for south)\r\n"
-				"longitude|long <deg>  # East longitude in degrees (-deg for west)\r\n"
-				"altitude|alt   <km>   # Altitude in kilometers\r\n"
-				"username|user  <user> # Your callsign/name\r\n"
-				"uplink         <mhz>  # Uplink frequency in MHz for doppler\r\n"
-				"downlink       <mhz>  # Downlink frequency in MHz for doppler\r\n"
-				"wifissid       <ssid> # Your wifi ssid\r\n"
-				"wifipass       <ssid> # Your wifi password\r\n"
-				"mag_dec        <deg>  # Your magnetic declination\r\n"
+				"latitude|lat    <deg>  # North latitude in degrees (-deg for south)\r\n"
+				"longitude|long  <deg>  # East longitude in degrees (-deg for west)\r\n"
+				"altitude|alt    <km>   # Altitude in kilometers\r\n"
+				"username|user   <user> # Your callsign/name\r\n"
+				"uplink          <mhz>  # Uplink frequency in MHz for doppler\r\n"
+				"downlink        <mhz>  # Downlink frequency in MHz for doppler\r\n"
+				"wifissid        <ssid> # Your wifi ssid\r\n"
+				"wifipass        <ssid> # Your wifi password\r\n"
+				"mag_dec         <deg>  # Your magnetic declination\r\n"
+				"gnssdebug       <1|0>  # Turns on debug for GNSS\r\n"
+				"gnsspassthrough <1|0>  # Prints GNSS output to screen\r\n"
 			);
 			return;
 		}
@@ -1782,6 +1784,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 			strncpy(config.wifi_pass, args[2], sizeof(config.wifi_pass)-1);
 		else if (match(args[1], "wifissid"))
 			strncpy(config.wifi_ssid, args[2], sizeof(config.wifi_ssid)-1);
+		else if (match(args[1], "gnssdebug"))
+			config.gnss_debug = atoi(args[2]);
+		else if (match(args[1], "gnsspassthrough"))
+			config.gnss_passthrough = atoi(args[2]);
 		else
 		{
 			printf("invalid setting: %s\r\n", args[1]);

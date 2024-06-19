@@ -121,6 +121,12 @@ uint64_t rtcc_get_sec()
 void rtcc_set_sec(time_t sec)
 {
 	rtcc_set(sec*(uint64_t)ticks_per_sec);
+
+#ifdef __ESP32__
+	struct timeval now = {0};
+	now.tv_sec = sec;
+	settimeofday(&now, NULL);
+#endif
 }
 
 void rtcc_delay_ticks(uint64_t delay, void (*idle)())

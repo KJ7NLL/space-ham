@@ -19,6 +19,7 @@
 //    https://www.kj7nll.radio/
 
 #include <stdio.h>
+#include <time.h>
 
 #include "platform.h"
 
@@ -278,6 +279,16 @@ void gnss_parse(char *line)
 
 			if (minmea_parse_zda(&frame, line))
 			{
+				struct tm tm;
+				minmea_getdatetime(&tm, &frame.date, &frame.time);
+
+				if (frame.date.year >= 2024)
+				{
+					struct timeval now = {0};
+					now.tv_sec = mktime(&tm);
+					settimeofday(&now, NULL);
+				}
+
 				if (config.gnss_debug == true)
 					printf(INDENT_SPACES
 					       "$xxZDA: %d:%d:%d %02d.%02d.%d UTC%+03d:%02d\n",
