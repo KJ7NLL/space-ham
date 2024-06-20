@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
+#include <stdio.h>
+
 #include "platform.h"
 #include "config.h"
 
@@ -50,4 +52,31 @@ FRESULT config_load()
 	config_saved = config;
 
 	return ret;
+}
+
+void config_detail()
+{
+	printf(
+		"  observer.lat        %0.6f degrees\r\n"
+		"  observer.lon        %0.6f degrees\r\n"
+		"  observer.alt        %0.6f km\r\n"
+		"  username            %s\r\n"
+		"  i2cfreq             %6d Hz\r\n"
+		"  lcdfreq             %6d Hz\r\n"
+		"  gnssdebug           %d\r\n"
+		"  gnsspassthrough     %d\r\n"
+		"  wifissid            %s\r\n"
+		"  wifipass            %s\r\n",
+		Degrees(config.observer.lat),
+		Degrees(config.observer.lon),
+		config.observer.alt,
+		config.username,
+		config.i2c_freq,
+		config.lcd_freq,
+		config.gnss_debug,
+		config.gnss_passthrough,
+		config.wifi_ssid,
+		config.wifi_pass
+		);
+
 }

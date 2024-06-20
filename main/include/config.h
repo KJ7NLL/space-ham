@@ -41,3 +41,5 @@ extern config_t config_saved;
 
 FRESULT config_load();
 FRESULT config_save();
+
+void config_detail();

@@ -1747,7 +1747,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 				"mag_dec         <deg>  # Your magnetic declination\r\n"
 				"gnssdebug       <1|0>  # Turns on debug for GNSS\r\n"
 				"gnsspassthrough <1|0>  # Prints GNSS output to screen\r\n"
+				"\r\n"
+				"Current Settings\r\n"
 			);
+			config_detail();
 			return;
 		}
 
