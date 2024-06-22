@@ -422,11 +422,18 @@ void lvgl_menu()
 			if (br < sizeof(tle_tmp))
 				break;
 
-			cont = menu_item(group, menu, sub_page_sat, NULL, &style, tle_tmp.sat_name);
-			lv_obj_add_event_cb(cont, ev_track_sat_cb, LV_EVENT_PRESSED, (void*)i);
-			i++;
-		} while (res == FR_OK);
+			if (strcasestr(tle_tmp.sat_name, "oresat")
+				|| strcasestr(tle_tmp.sat_name, "iss")
+				|| strcasestr(tle_tmp.sat_name, "zarya")
+				   )
+			{
+				cont = menu_item(group, menu, sub_page_sat, NULL, &style, tle_tmp.sat_name);
+				lv_obj_add_event_cb(cont, ev_track_sat_cb, LV_EVENT_PRESSED, (void*)i);
+				i++;
+			}
+		} while (res == FR_OK && i < 10);
 
+		f_close(&in);
 
 		for (i = 0; i < num_bodies; i++)
 		{
