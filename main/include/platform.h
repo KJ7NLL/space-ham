@@ -33,6 +33,7 @@ inline static void platform_sleep()
 #include "sdkconfig.h"
 
 #include "esp_err.h"
+#include "esp_check.h"
 #include "esp_log.h"
 #include "esp_vfs.h"
 #include "esp_vfs_fat.h"
@@ -44,6 +45,9 @@ inline static void platform_sleep()
 
 #define FLASH_PAGE_SIZE 65536
 #define HAVE_I2C 1
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
+#define STRINGIFY_HELPER(x) #x
+#define MY_ESP_RETURN_ON_ERROR(x) ESP_RETURN_ON_ERROR(x, __FILE__ ":" STRINGIFY(__LINE__), "")
 
 typedef void* TIMER_TypeDef;
 typedef int I2C_TransferReturn_TypeDef;

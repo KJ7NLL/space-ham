@@ -62,7 +62,7 @@ lv_disp_t *disp;
 
 lv_obj_t *status_bar_label;
 
-void init_lcd()
+esp_err_t init_lcd()
 {
 	static lv_indev_drv_t indev_drv;
 	esp_lcd_panel_io_handle_t io_handle = NULL;
@@ -76,7 +76,7 @@ void init_lcd()
 		.lcd_param_bits = LCD_CMD_BITS,
 		.dc_bit_offset = 6,
 	};
-	ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c
+	MY_ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c
 			(i2c_get_bus_handle(), &io_config, &io_handle));
 
 	esp_lcd_panel_handle_t panel_handle = NULL;
@@ -89,18 +89,18 @@ void init_lcd()
 		.height = LCD_V_RES,
 	};
 
-	panel_config.vendor_config = &ssd1306_config;
-	ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306
-			(io_handle, &panel_config, &panel_handle));
-
-	ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
-	ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
-	ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
-
 	lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
 	lvgl_cfg.task_stack = 8192;
 
 	lvgl_port_init(&lvgl_cfg);
+
+	panel_config.vendor_config = &ssd1306_config;
+	MY_ESP_RETURN_ON_ERROR(esp_lcd_new_panel_ssd1306
+			(io_handle, &panel_config, &panel_handle));
+
+	MY_ESP_RETURN_ON_ERROR(esp_lcd_panel_reset(panel_handle));
+	MY_ESP_RETURN_ON_ERROR(esp_lcd_panel_init(panel_handle));
+	MY_ESP_RETURN_ON_ERROR(esp_lcd_panel_disp_on_off(panel_handle, true));
 
 	const lvgl_port_display_cfg_t disp_cfg = {
 		.io_handle = io_handle,
@@ -129,6 +129,8 @@ void init_lcd()
 	indev_keypad = lv_indev_drv_register(&indev_drv);
 
 	lvgl_menu();
+
+	return ESP_OK;
 }
 
 button_status_enum_t get_button_status()

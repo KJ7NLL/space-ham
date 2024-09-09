@@ -35,7 +35,7 @@ typedef enum {
 	BUTTON_DOWN_LEFT = 7,
 } button_status_enum_t;
 
-void init_lcd();
+esp_err_t init_lcd();
 void lvgl_menu();
 button_status_enum_t get_button_status();
 static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
