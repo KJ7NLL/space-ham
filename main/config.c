@@ -34,6 +34,8 @@ config_t config = {
 	.gnss_passthrough = false,
 	.wifi_ssid = "",
 	.wifi_pass = "",
+	.wifi_auto = false,
+	.manual = true,
 };
 
 config_t config_saved = {0};
@@ -56,27 +58,33 @@ FRESULT config_load()
 
 void config_detail()
 {
-	printf(
-		"  observer.lat        %0.6f degrees\r\n"
-		"  observer.lon        %0.6f degrees\r\n"
-		"  observer.alt        %0.6f km\r\n"
-		"  username            %s\r\n"
-		"  i2cfreq             %6d Hz\r\n"
-		"  lcdfreq             %6d Hz\r\n"
-		"  gnssdebug           %d\r\n"
-		"  gnsspassthrough     %d\r\n"
-		"  wifissid            %s\r\n"
-		"  wifipass            %s\r\n",
-		Degrees(config.observer.lat),
-		Degrees(config.observer.lon),
-		config.observer.alt,
-		config.username,
-		config.i2c_freq,
-		config.lcd_freq,
-		config.gnss_debug,
-		config.gnss_passthrough,
-		config.wifi_ssid,
-		config.wifi_pass
-		);
-
+		printf("latitude:         %0.6f Degrees\r\n"
+			"longitude:       %0.6f Degrees\r\n"
+			"altitude:        %0.6f km\r\n"
+			"username:        %s\r\n"
+			"uplink:          %f\r\n"
+			"downlink:        %f\r\n"
+			"i2cfreq:         %6d Hz\r\n"
+			"lcdfreq:         %6d Hz\r\n"
+			"wifipass:        %s\r\n"
+			"wifissid:        %s\r\n"
+			"wifiauto:        %d\r\n"
+			"manual:          %d\r\n"
+			"GNSSdebug:       %d\r\n"
+			"GNSSpassthrough: %d\r\n",
+			Degrees(config.observer.lat),
+			Degrees(config.observer.lon),
+			config.observer.alt,
+			config.username,
+			config.uplink_mhz,
+			config.downlink_mhz,
+			config.i2c_freq,
+			config.lcd_freq,
+			config.wifi_pass,
+			config.wifi_ssid,
+			config.wifi_auto,
+			config.manual,
+			config.gnss_debug,
+			config.gnss_passthrough
+			);
 }
