@@ -34,6 +34,8 @@ typedef struct
 	int gnss_passthrough;
 	char wifi_ssid[33];
 	char wifi_pass[64];
+	bool wifi_auto;
+	bool manual;
 } config_t;
 
 extern config_t config;
