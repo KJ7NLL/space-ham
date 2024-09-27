@@ -27,6 +27,8 @@ typedef enum {
 	BUTTON_DOWN,
 	BUTTON_LEFT,
 	BUTTON_OK,
+	BUTTON_6,
+	BUTTON_7,
 
 	// Button combinations for secret things, :)
 	BUTTON_LEFT_RIGHT = 6,

@@ -150,6 +150,20 @@ float rotor_get_voltage(struct rotor *r)
 				v = NAN;
 		}
 	}
+	else if (r->adc_type == ADC_TYPE_I2C_MXC4005XC)
+	{
+		i2c_req_t *req = i2c_req_get_cont(r->adc_addr);
+
+		if (req == NULL)
+			return NAN;
+
+		mxc4005xc_t *acc = (mxc4005xc_t*)req;
+
+		acc->invert_x = r->adc_vref & 0x01;
+		acc->invert_y = r->adc_vref & 0x02;
+		acc->invert_z = r->adc_vref & 0x04;
+		v = mxc4005xc_measure_req_plane(acc, r->adc_channel);
+	}
 	else
 	{
 		return NAN;
@@ -235,16 +249,23 @@ float rotor_pos(struct rotor *r)
 {
 	float pos;
 
+	i2c_req_t *req = i2c_req_get_cont(r->adc_addr);
+
+	if (req == NULL)
+		return NAN;
+
 	if (r->adc_type == ADC_TYPE_I2C_MXC4005XC)
 	{
-		mxc4005xc_t *acc = (mxc4005xc_t*)i2c_req_get_cont(r->adc_addr);
-
-		pos = mxc4005xc_measure_req_plane(acc, r->adc_channel);
+		// Accelerometer is not really a voltage, but allows us to calibrate:
+		pos = rotor_pos_adc(r);
 	}
 	else if (r->adc_type == ADC_TYPE_I2C_MMC5603NJ)
 	{
-		mxc4005xc_t *mag = (mmc5603nj_t*)i2c_req_get_cont(r->adc_addr);
+		mmc5603nj_t *mag = (mmc5603nj_t*)req;
 
+		mag->invert_x = r->adc_vref & 0x01;
+		mag->invert_y = r->adc_vref & 0x02;
+		mag->invert_z = r->adc_vref & 0x04;
 		pos = mmc5603nj_measure_req_plane(mag, r->adc_channel);
 	}
 	else if (r->adc_type == ADC_TYPE_I2C_ADS111X || r->adc_type == ADC_TYPE_INTERNAL)

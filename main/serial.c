@@ -124,6 +124,25 @@ void initUsart0(void)
 //	uart_vfs_dev_use_nonblocking(CONFIG_ESP_CONSOLE_UART_NUM);
 //	uart_vfs_dev_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
 //	uart_vfs_dev_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
+/*
+	// Set UART parameters
+	uart_config_t uart_config = {
+		// .baud_rate = 115200, // Set the desired baud rate
+		.baud_rate = 57600,	// Set the desired baud rate
+		.data_bits = UART_DATA_8_BITS,	// 8 data bits
+		.parity = UART_PARITY_EVEN,	// Even parity
+		.stop_bits = UART_STOP_BITS_2,	// 2 stop bits
+		.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,	// Flow control disabled
+		// .source_clk = UART_SCLK_APB, // Use APB clock
+
+	};
+
+	    // Install UART driver
+	uart_driver_install(UART_NUM_0, 2048, 0, 0, NULL, 0);
+
+	    // Apply configuration to the UART port
+	uart_param_config(UART_NUM_0, &uart_config);
+*/
 #endif
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
 	system("stty raw -echo");

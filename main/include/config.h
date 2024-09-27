@@ -36,6 +36,8 @@ typedef struct
 	char wifi_pass[64];
 	bool wifi_auto;
 	bool manual;
+	bool gnss_pos;
+	bool gnss_time;
 } config_t;
 
 extern config_t config;

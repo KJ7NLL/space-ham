@@ -26,6 +26,7 @@
 #include "platform.h"
 
 #include "rotor.h"
+#include "config.h"
 
 static volatile int _systick_bypass = 0;
 static volatile int ticks_per_sec = 1000;
@@ -39,6 +40,9 @@ void pid_update()
 	// Bypass non-systick code.  Really this should be moved to an RTC IRQ
 	// and let systick be turned off completely.
 	if (_systick_bypass)
+		return;
+
+	if (config.manual)
 		return;
 
 	for (i = 0; i < NUM_ROTORS; i++)

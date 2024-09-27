@@ -56,7 +56,7 @@ void gnss_init()
 	ESP_ERROR_CHECK(uart_param_config(GNSS_UART_PORT_NUM, &uart_config));
 	ESP_ERROR_CHECK(uart_set_pin(GNSS_UART_PORT_NUM, GNSS_TXD, GNSS_RXD, GNSS_RTS, GNSS_CTS));
 
-	xTaskCreate(gnss_print, "gnss", 3072, NULL, 1, NULL);
+	xTaskCreate(gnss_print, "gnss", 8192, NULL, 1, NULL);
 }
 
 void gnss_print(void *arg)
@@ -95,7 +95,7 @@ void gnss_parse(char *line)
 		{
 			struct minmea_sentence_rmc frame;
 
-			if (minmea_parse_rmc(&frame, line))
+			if (config.gnss_pos && minmea_parse_rmc(&frame, line))
 			{
 				if (!isnan(minmea_tocoord(&frame.latitude)))
 					config.observer.lat = Radians(minmea_tocoord(&frame.latitude));
@@ -286,7 +286,7 @@ void gnss_parse(char *line)
 		{
 			struct minmea_sentence_zda frame;
 
-			if (minmea_parse_zda(&frame, line))
+			if (config.gnss_time && minmea_parse_zda(&frame, line))
 			{
 				struct tm tm;
 				minmea_getdatetime(&tm, &frame.date, &frame.time);

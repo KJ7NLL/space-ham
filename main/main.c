@@ -289,6 +289,8 @@ void status()
 	//	rotor_detail(&rotors[i]);
 	}
 
+	printf("buttons: %u\r\n", get_button_status());
+
 	// print satellite status
 	sat_status();
 	if (astro_tracked_name != NULL)
@@ -349,7 +351,7 @@ void motor(int argc, char **args)
 			return;
 		}
 
-		if (argc >= 3 && args[3][0] == '<')
+		if (argc >= 4 && args[3][0] == '<')
 			motor_speed(m, -1);
 		else
 			motor_speed(m, 1);
@@ -1086,12 +1088,12 @@ void watch(int argc, char **args, struct linklist *history)
 		rtcc_delay_sec(1, main_idle);
 
 		c = serial_read_char();
-		if (c == -1)
+		if (c & 0x80)
 		{
 			print("\x1b[H");
 		}
 	}
-	while (c == -1);
+	while (c & 0x80);
 }
 
 void cmd_prefix(int argc, char **args, struct linklist *history)
@@ -1330,20 +1332,20 @@ void fat(int argc, char **args)
 
 	char buf[128];
 
-	if (match(args[1], "mkfs"))
+	if (match(argc >= 2 && args[1], "mkfs"))
 	{
 		res = f_mkfs("", &mkfs, work, sizeof work);
 		printf("res: %d\r\n", res);
 	}
-	else if (match(args[1], "mount"))
+	else if (argc >= 2 && match(args[1], "mount"))
 	{
 		res = f_mount(fatfs, "", 0);
 	}
-	else if (match(args[1], "umount"))
+	else if (argc >= 2 && match(args[1], "umount"))
 	{
 		res = f_mount(NULL, "", 0);
 	}
-	else if (match(args[1], "find"))
+	else if (argc >= 2 && match(args[1], "find"))
 	{
 		buf[0] = 0;
 		res = scan_files(buf);
@@ -1566,6 +1568,68 @@ void astro(int argc, char **args)
 	else
 		printf("unkown sub-command: %s\r\n", args[1]);
 }
+#ifdef __ESP32__
+void manual_motor_control_thread()
+{
+	struct rotor *rotor;
+	uint32_t prev_key = 0;
+
+	for (;;)
+	{
+		float az_speed = rotors[0].motor.speed,
+			el_speed = rotors[1].motor.speed;
+
+		// Get whether the a key is pressed and save the pressed key
+		uint32_t act_key = get_button_status();
+		//printf("actkey: %ld\r\n", act_key); // Uncomment for debug
+
+
+		if (prev_key == BUTTON_6 && act_key == 0)
+		{
+			config.manual = !config.manual;
+			printf("MANUAL MODE: %s\r\n", config.manual ? "ENABLED" : "DISABLED");
+			motor_speed(&rotors[0].motor, 0);
+			motor_speed(&rotors[1].motor, 0);
+		}
+
+		switch (act_key)
+		{
+			case BUTTON_UP:
+				el_speed = 1;
+				break;
+
+			case BUTTON_DOWN:
+				el_speed = -1;
+				break;
+
+			case BUTTON_LEFT:
+				az_speed = -1;
+				break;
+
+			case BUTTON_RIGHT:
+				az_speed = 1;
+				break;
+
+			case BUTTON_7:
+				break;
+
+			default:
+				az_speed = 0;
+				el_speed = 0;
+		}
+
+		if (config.manual)
+		{
+			motor_speed(&rotors[0].motor, az_speed);
+			motor_speed(&rotors[1].motor, el_speed);
+		}
+
+		prev_key = act_key;
+
+		vTaskDelay(100/portTICK_PERIOD_MS);
+	}
+}
+#endif
 
 void meminfo()
 {
@@ -1620,7 +1684,7 @@ void cal_mag(int sec)
 	int target = rotors[0].target_enabled;
 
 	rotors[0].target_enabled = 0;
-	motor_speed(motors[0], 0.5);
+	motor_speed(motors[0], 1);
 	sleep(1);
 	status();
 	printf("calibrating theta\r\n");
@@ -1724,8 +1788,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 
 	else if (match(args[0], "reset") || match(args[0], "reboot"))
 	{
-#ifdef __EFR32__
+#if defined(__EFR32__)
 		NVIC_SystemReset();
+#elif defined(__ESP32__)
+		esp_restart();
 #else
 		system("stty cooked echo");
 		exit(0);
@@ -1774,10 +1840,18 @@ void dispatch(int argc, char **args, struct linklist *history)
 			strncpy(config.wifi_pass, args[2], sizeof(config.wifi_pass)-1);
 		else if (match(args[1], "wifissid"))
 			strncpy(config.wifi_ssid, args[2], sizeof(config.wifi_ssid)-1);
+		else if (match(args[1], "wifiauto"))
+			config.wifi_auto = atoi(args[2]);
+		else if (match(args[1], "manual"))
+			config.manual = atoi(args[2]);
 		else if (match(args[1], "gnssdebug"))
 			config.gnss_debug = atoi(args[2]);
 		else if (match(args[1], "gnsspassthrough"))
 			config.gnss_passthrough = atoi(args[2]);
+		else if (match(args[1], "gnsstime"))
+			config.gnss_time = atoi(args[2]);
+		else if (match(args[1], "gnsspos"))
+			config.gnss_pos = atoi(args[2]);
 		else
 		{
 			printf("invalid setting: %s\r\n", args[1]);
@@ -2259,21 +2333,21 @@ int main()
 	{
 		printf("Error: failed to allocate mag\r\n");
 	}
-	mag->control_reg_odr = 250;
+	mag->control_reg_odr =  75;
 	mag->control_reg_0_auto_sr_en = 1;
 	mag->control_reg_0_cmm_freq_en = 1;
-	mag->control_reg_1_bw = MMC5603NJ_BW_150HZ;
+	mag->control_reg_1_bw = MMC5603NJ_BW_75HZ;
 	mag->control_reg_2_prd_set = MMC5603NJ_PRD_SET_500;
 	mag->control_reg_2_en_prd_set = 1;
 	mag->control_reg_2_cmm_en = 1;
-	mag->invert_z = true;
-	mag->invert_y = true;
+	//mag->invert_z = true; // DST tracker physical orientation
+	//mag->invert_y = true; // DST tracker physical orientation
 	mmc5603nj_config_write(mag);
 	i2c_req_add_cont((i2c_req_t *)mag);
 
 	// Initialize accelerometer
 	mxc4005xc_t *acc = mxc4005xc_measure_req_alloc(0x15);
-	acc->invert_z = true;
+	//acc->invert_z = true; // DST tracker physical orientation
 	i2c_req_add_cont((i2c_req_t *)acc);
 
 	// Initialize realtime clock
@@ -2333,10 +2407,21 @@ int main()
 		NULL,
 		0,
 		NULL);
+
+	xTaskCreate(manual_motor_control_thread,
+		"manual_motor_thread",
+		3000,
+		NULL,
+		10,
+		NULL);
+
 	gnss_init();
 	wifi_init();
-	wifi_connect(config.wifi_ssid, config.wifi_pass);
-	sntp_init_timer();
+	if (config.wifi_auto)
+	{
+		wifi_connect(config.wifi_ssid, config.wifi_pass);
+		sntp_init_timer();
+	}
 #endif
 
 	// Load calibrations from FAT
