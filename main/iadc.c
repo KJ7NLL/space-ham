@@ -143,8 +143,9 @@ void IADC_IRQHandler(void)
 		result = IADC_pullScanFifoResult(IADC0);
 
 		if (i < NUM_ROTORS &&
-			(!rotor_online(&rotors[i]) ||
-				rotors[i].adc_type != ADC_TYPE_INTERNAL))
+			(!motor_online(&rotors[i].motor) ||
+				rotors[i].adc_type != ADC_TYPE_INTERNAL ||
+				rotors[i].adc_channel != i))
 		{
 			i++;
 			continue;
