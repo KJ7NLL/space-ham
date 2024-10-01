@@ -406,7 +406,7 @@ void lvgl_menu()
 
 		tle_t tle_tmp;
 
-		int i;
+		int i, count;
 
 		res = f_open(&in, "tle.bin", FA_READ);
 		if (res != FR_OK)
@@ -417,6 +417,7 @@ void lvgl_menu()
 		}
 
 		i = 0;
+		count = 0;
 
 		do
 		{
@@ -431,9 +432,11 @@ void lvgl_menu()
 			{
 				cont = menu_item(group, menu, sub_page_sat, NULL, &style, tle_tmp.sat_name);
 				lv_obj_add_event_cb(cont, ev_track_sat_cb, LV_EVENT_PRESSED, (void*)i);
-				i++;
+				count++;
 			}
-		} while (res == FR_OK && i < 10);
+
+			i++;
+		} while (res == FR_OK && count < 10);
 
 		f_close(&in);
 
