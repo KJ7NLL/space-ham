@@ -1332,7 +1332,7 @@ void fat(int argc, char **args)
 
 	char buf[128];
 
-	if (match(argc >= 2 && args[1], "mkfs"))
+	if (argc >= 2 && match(args[1], "mkfs"))
 	{
 		res = f_mkfs("", &mkfs, work, sizeof work);
 		printf("res: %d\r\n", res);
@@ -1391,7 +1391,10 @@ void fat(int argc, char **args)
 	}
 	else if (argc >= 4 && match(args[1], "http_get"))
 	{
-		http_get(args[2], args[3]);
+		if (!is_wifi_up())
+			printf("Wifi is not connected. Connect using `wifi connect`\r\n");
+		else
+			http_get(args[2], args[3]);
 	}
 	else
 	{
@@ -1870,7 +1873,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 		}
 
 		if (match(args[1], "connect"))
+		{
 			wifi_connect(config.wifi_ssid, config.wifi_pass);
+			sntp_init_timer();
+		}
 	}
 
 	else if  (match(args[0], "i2c"))

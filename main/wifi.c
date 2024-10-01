@@ -187,3 +187,10 @@ void wifi_init()
 
 	ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
 }
+
+int is_wifi_up()
+{
+	wifi_ap_record_t ap_info;
+	return (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
+}
+

@@ -20,3 +20,4 @@
 
 void wifi_init();
 void wifi_connect(char *ssid, char *pass);
+int is_wifi_up();
