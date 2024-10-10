@@ -283,7 +283,7 @@ void ev_cal_mag_cb(lv_event_t *e)
 	// Unlock I2C bus to allow for calibration
 	lvgl_port_unlock();
 
-	cal_mag(10);
+	cal_mag(60);
 
 	// put it back the way we found it
 	lvgl_port_lock(0);
