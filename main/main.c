@@ -992,6 +992,9 @@ void mv(int argc, char **args)
 	if (!r->target_enabled)
 		printf("Warning: Applied, but rotor target is disabled. Use `rotor %s target on`\r\n", r->motor.name);
 
+	if (config.manual)
+		printf("Warning: Applied, but MANUAL MODE ENABLED. Use `config manual 0`\r\n");
+
 	switch (tolower(args[2][0]))
 	{
 		case '+':
@@ -2409,7 +2412,7 @@ int main()
 
 	xTaskCreate(tracking_update_thread,
 		"tracking_thread",
-		32768,
+		22768,
 		NULL,
 		0,
 		NULL);
@@ -2423,7 +2426,7 @@ int main()
 
 	gnss_init();
 	wifi_init();
-	if (config.wifi_auto)
+	if (config.wifi_auto && get_button_status() != BUTTON_OK)
 	{
 		wifi_connect(config.wifi_ssid, config.wifi_pass);
 		sntp_init_timer();
