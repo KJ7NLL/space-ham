@@ -87,7 +87,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 				req->status = i2cTransferDone;
 			else
 			{
-				printf("i2c err: %s\r\n", esp_err_to_name(e));
+				printf("*** i2c err on %s: %s\r\n", req->name, esp_err_to_name(e));
 				req->status = i2cTransferError;
 			}
 		}
@@ -227,6 +227,9 @@ void initI2C()
 		.glitch_ignore_cnt = 7,
 		.flags.enable_internal_pullup = true,
 	};
+
+	gpio_set_drive_capability(I2C_SDA, GPIO_DRIVE_CAP_3);
+	gpio_set_drive_capability(I2C_SCL, GPIO_DRIVE_CAP_3);
 
 	ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &i2c_bus_handle));
 
