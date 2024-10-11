@@ -2490,7 +2490,11 @@ int main()
 		10,
 		NULL);
 
-	gnss_init();
+	if (config.gnss_debug || config.gnss_passthrough || config.gnss_pos || config.gnss_time)
+		gnss_init();
+	else
+		printf("*** gnss is disabled, use `config` to enable gnss features.\r\n");
+
 	wifi_init();
 	if (config.wifi_auto && get_button_status() != BUTTON_OK)
 	{
