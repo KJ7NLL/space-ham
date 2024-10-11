@@ -411,13 +411,14 @@ int esc_key(char **keys, void (*idle)())
 
 int input(char *buf, int len, struct linklist *history, void (*idle)())
 {
-	struct llnode *hist = history->head;
+	struct llnode *hist = NULL;
 
-	char c;
+	char c = 0;
 
 	int end = 0, pos = 0, key;
 	
-	c = 0;
+	if (history != NULL)
+		hist = history->head;
 
 	buf[0] = 0;
 	while (end < len && c != '\r' && c != '\n')
@@ -577,7 +578,8 @@ int input(char *buf, int len, struct linklist *history, void (*idle)())
 
 	buf[end] = 0;
 	
-	if (end > 0 && (history->head == NULL || !match(buf, history->head->s)))
+	if (end > 0 && history != NULL &&
+		(history->head == NULL || !match(buf, history->head->s)))
 	{
 		hist = add_head_node_str(history, buf);
 		if (hist == NULL)
