@@ -38,6 +38,7 @@ typedef struct
 	bool manual;
 	bool gnss_pos;
 	bool gnss_time;
+	char startscript[128];
 } config_t;
 
 extern config_t config;

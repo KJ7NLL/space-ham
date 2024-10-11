@@ -62,16 +62,19 @@ void config_detail()
 			"longitude:       %0.6f Degrees\r\n"
 			"altitude:        %0.6f km\r\n"
 			"username:        %s\r\n"
-			"uplink:          %f\r\n"
-			"downlink:        %f\r\n"
+			"uplink:          %f Hz\r\n"
+			"downlink:        %f Hz\r\n"
 			"i2cfreq:         %6d Hz\r\n"
 			"lcdfreq:         %6d Hz\r\n"
 			"wifipass:        %s\r\n"
 			"wifissid:        %s\r\n"
 			"wifiauto:        %d\r\n"
 			"manual:          %d\r\n"
-			"GNSSdebug:       %d\r\n"
-			"GNSSpassthrough: %d\r\n",
+			"gnssdebug:       %d\r\n"
+			"gnsspassthrough: %d\r\n"
+			"gnsspos:         %d\r\n"
+			"gnsstime:        %d\r\n"
+			"startscript:     %s\r\n",
 			Degrees(config.observer.lat),
 			Degrees(config.observer.lon),
 			config.observer.alt,
@@ -85,6 +88,9 @@ void config_detail()
 			config.wifi_auto,
 			config.manual,
 			config.gnss_debug,
-			config.gnss_passthrough
+			config.gnss_passthrough,
+			config.gnss_pos,
+			config.gnss_time,
+			config.startscript
 			);
 }

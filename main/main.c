@@ -72,6 +72,8 @@ char *astro_tracked_name = NULL;
 astro_body_t astro_tracked_body = BODY_INVALID;
 
 void dispatch(int argc, char **args, struct linklist *history);
+void vi(char *filename);
+void run_script(const char *filename);
 int idle_counts = 0;
 void main_idle();
 void meminfo();
@@ -201,6 +203,9 @@ void help()
 
 void dump_history(struct linklist *history)
 {
+	if (history == NULL)
+		return;
+
 	struct llnode *temp = history->tail;
 	while (temp != NULL)
 	{
@@ -1399,9 +1404,17 @@ void fat(int argc, char **args)
 		else
 			http_get(args[2], args[3]);
 	}
+	else if (argc >= 3 && match(args[1], "vi"))
+	{
+		vi(args[2]);
+	}
+	else if (argc >= 3 && match(args[1], "run"))
+	{
+		run_script(args[2]);
+	}
 	else
 	{
-		printf("Usage: fat (mkfs|mount|rx <file>|cat <file>|load <file>|find|umount|http_get <file> <url>\r\n");
+		printf("Usage: fat (mkfs|mount|rx <file>|cat <file>|load <file>|find|umount|http_get <file> <url>|vi <file>|run <file>\r\n");
 
 		return;
 	}
@@ -1819,6 +1832,10 @@ void dispatch(int argc, char **args, struct linklist *history)
 				"mag_dec         <deg>  # Your magnetic declination\r\n"
 				"gnssdebug       <1|0>  # Turns on debug for GNSS\r\n"
 				"gnsspassthrough <1|0>  # Prints GNSS output to screen\r\n"
+				"gnsstime        <1|0>  # Update time from GNSS\r\n"
+				"gnsspos         <1|0>  # Update position from GNSS\r\n"
+				"startscript     <file> # `fat run <file>` at startup\r\n"
+
 				"\r\n"
 				"Current Settings\r\n"
 			);
@@ -1858,6 +1875,8 @@ void dispatch(int argc, char **args, struct linklist *history)
 			config.gnss_time = atoi(args[2]);
 		else if (match(args[1], "gnsspos"))
 			config.gnss_pos = atoi(args[2]);
+		else if (match(args[1], "startscript"))
+			strncpy(config.startscript, args[2], sizeof(config.startscript)-1);
 		else
 		{
 			printf("invalid setting: %s\r\n", args[1]);
@@ -2226,6 +2245,53 @@ int tracking_update()
 		return 0;
 }
 
+void run(const char *format, ...)
+{
+	char buf[128], *args[MAX_ARGS];
+	va_list vargs;
+
+	va_start(vargs, format);
+	vsnprintf(buf, sizeof(buf), format, vargs);
+	va_end(vargs);
+
+	int argc = parse_args(buf, args, MAX_ARGS);
+	dispatch(argc, args, NULL);
+}
+
+void run_script(const char *filename)
+{
+	FIL file;		// File object
+	FRESULT res;		// Result code
+	char line[256];		// Buffer to store each line
+	UINT br;		// Bytes read
+
+	// Open the file in read mode
+	res = f_open(&file, filename, FA_READ);
+	if (res != FR_OK)
+	{
+		printf("Error opening file %s: %d\n", filename, res);
+		return;
+	}
+
+	// Read each line from the file
+	while (f_gets(line, sizeof(line), &file))
+	{
+		// Remove trailing newline character if present
+		char *newline = strchr(line, '\n');
+
+		if (newline)
+			*newline = '\0';
+
+		printf("+ %s\r\n", line);
+		run("%s", line);
+	}
+
+	// Close the file
+	f_close(&file);
+}
+
+
+
 #ifdef __ESP32__
 void tracking_update_thread()
 {
@@ -2459,6 +2525,9 @@ int main()
 
 	status();
 	print("\r\n");
+
+	if (get_button_status() != BUTTON_OK && strlen(config.startscript))
+		run("fat run %s", config.startscript);
 
 	for (;;)
 	{
