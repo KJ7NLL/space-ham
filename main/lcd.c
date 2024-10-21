@@ -62,6 +62,18 @@ lv_disp_t *disp;
 
 lv_obj_t *status_bar_label;
 
+void set_status_bar_label(char *name)
+{
+	int scr_width = lv_obj_get_width(lv_scr_act());
+
+	lv_label_set_text_fmt(status_bar_label, "Tracking: %s", name);
+	int label_width = lv_obj_get_width(status_bar_label);
+	printf("status_bar_label %d\r\n", label_width);
+
+	lv_label_set_long_mode(status_bar_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+	lv_obj_set_style_anim_speed(status_bar_label, 25, LV_PART_MAIN);
+}
+
 esp_err_t init_lcd()
 {
 	static lv_indev_drv_t indev_drv;
@@ -219,7 +231,7 @@ void ev_track_planet_cb(lv_event_t *e)
 	astro_tracked_name = (char*)Astronomy_BodyName(*planet);
 	astro_tracked_body = *planet;
 
-	lv_label_set_text_fmt(status_bar_label, "tracking: %s", astro_tracked_name);
+	set_status_bar_label(astro_tracked_name);
 }
 
 void ev_track_star_cb(lv_event_t *e)
@@ -231,7 +243,7 @@ void ev_track_star_cb(lv_event_t *e)
 	astro_tracked_name = star->name;
 	astro_tracked_body = BODY_STAR1;
 
-	lv_label_set_text_fmt(status_bar_label, "%s", astro_tracked_name);
+	set_status_bar_label(astro_tracked_name);
 }
 
 void ev_track_sat_cb(lv_event_t *e)
@@ -272,7 +284,8 @@ void ev_track_sat_cb(lv_event_t *e)
 	}
 
 	sat_init(&tle_tmp);
-	lv_label_set_text_fmt(status_bar_label, "tracking: %s", tle_tmp.sat_name);
+
+	set_status_bar_label(tle_tmp.sat_name);
 }
 
 void ev_cal_mag_cb(lv_event_t *e)
@@ -287,7 +300,6 @@ void ev_cal_mag_cb(lv_event_t *e)
 
 	// put it back the way we found it
 	lvgl_port_lock(0);
-
 
 	lv_label_set_text(status_bar_label, "");
 }
@@ -365,7 +377,7 @@ void lvgl_menu()
 		lv_obj_add_style(scr, &no_border, LV_STATE_DEFAULT);
 
 		static lv_coord_t col[] = {LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
-		static lv_coord_t row[] = {8, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
+		static lv_coord_t row[] = {9, LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
 
 		lv_obj_t *grid = lv_obj_create(scr);
 		lv_obj_add_style(grid, &no_border, LV_STATE_DEFAULT);
@@ -377,6 +389,11 @@ void lvgl_menu()
 		status_bar_label = lv_label_create(grid);
 		lv_obj_center(status_bar_label);
 		lv_obj_add_style(status_bar_label, &no_border, LV_STATE_DEFAULT);
+
+		lv_label_set_long_mode(status_bar_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
+		lv_obj_set_style_anim_speed(status_bar_label, 40, LV_PART_MAIN);
+
+		lv_label_set_text(status_bar_label, "Desktop Satellite Tracker"); // Initilized status label
 
 		lv_obj_add_style(status_bar_label, &no_border, LV_STATE_DEFAULT);
 		lv_obj_set_grid_cell(status_bar_label, LV_GRID_ALIGN_STRETCH, 0, 1,

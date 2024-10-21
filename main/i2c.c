@@ -228,8 +228,8 @@ void initI2C()
 		.flags.enable_internal_pullup = true,
 	};
 
-	gpio_set_drive_capability(I2C_SDA, GPIO_DRIVE_CAP_3);
-	gpio_set_drive_capability(I2C_SCL, GPIO_DRIVE_CAP_3);
+	//gpio_set_drive_capability(I2C_SDA, GPIO_DRIVE_CAP_3);
+	//gpio_set_drive_capability(I2C_SCL, GPIO_DRIVE_CAP_3);
 
 	ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_mst_config, &i2c_bus_handle));
 
