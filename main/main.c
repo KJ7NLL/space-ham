@@ -1700,18 +1700,32 @@ void meminfo()
 void cal_mag(int sec)
 {
 	mmc5603nj_init(mag);
-	int target = rotors[0].target_enabled;
+	int target_theta = rotors[0].target_enabled;
+	int target_phi = rotors[0].target_enabled;
 
+	// Disable phi during calibration
+	rotors[1].target_enabled = 0;
+	motor_speed(motors[1], 0);
+	sleep(1); // Wait for it to take effect
+
+	// Disable theta's target
 	rotors[0].target_enabled = 0;
+
+	// Do the calibration
 	motor_speed(motors[0], 1);
 	sleep(1);
 	status();
 	printf("calibrating theta\r\n");
-	mag->calibrate = true;
+	mag->calibrate = true; // Enable magnetometer calibration
 	sleep(sec);
-	mag->calibrate = false;
+	mag->calibrate = false; // Disable magnetometer calibration
 	motor_speed(motors[0], 0);
-	rotors[0].target_enabled = target;
+
+	// Set the targets back to their origional state
+	rotors[0].target_enabled = target_theta;
+	rotors[1].target_enabled = target_phi;
+
+	// Save the calibration
 	mmc5603nj_cal_save(mag, "mag_cal.bin");
 }
 
@@ -2412,7 +2426,7 @@ int main()
 	mag->control_reg_0_auto_sr_en = 1;
 	mag->control_reg_0_cmm_freq_en = 1;
 	mag->control_reg_1_bw = MMC5603NJ_BW_75HZ;
-	mag->control_reg_2_prd_set = MMC5603NJ_PRD_SET_500;
+	mag->control_reg_2_prd_set = MMC5603NJ_PRD_SET_1;
 	mag->control_reg_2_en_prd_set = 1;
 	mag->control_reg_2_cmm_en = 1;
 	//mag->invert_z = true; // DST tracker physical orientation

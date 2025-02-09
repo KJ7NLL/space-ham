@@ -18,7 +18,7 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
-#define MXC4005XC_SAMPLE_AVG 128
+#define MXC4005XC_SAMPLE_AVG 32
 
 // This structure is cast-compatible with i2c_req_t.
 typedef struct mxc4005xc

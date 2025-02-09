@@ -18,7 +18,7 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
-#define MMC5603NJ_SAMPLE_AVG 128
+#define MMC5603NJ_SAMPLE_AVG 32
 
 // This structure is cast-compatible with i2c_req_t.
 typedef struct mmc5603nj

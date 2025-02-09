@@ -71,7 +71,7 @@ void set_status_bar_label(char *name)
 	printf("status_bar_label %d\r\n", label_width);
 
 	lv_label_set_long_mode(status_bar_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-	lv_obj_set_style_anim_speed(status_bar_label, 25, LV_PART_MAIN);
+	lv_obj_set_style_anim_speed(status_bar_label, 30, LV_PART_MAIN);
 }
 
 esp_err_t init_lcd()
@@ -205,6 +205,13 @@ static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
         data->key = last_key;
 }
 
+void stop_track()
+{
+	sat_reset();
+	astro_tracked_name = NULL;
+	astro_tracked_body = BODY_INVALID;
+}
+
 void ev_label_scroll_cb(lv_event_t * e)
 {
 	//star_t *star = lv_event_get_user_data(e);
@@ -215,7 +222,7 @@ void ev_label_scroll_cb(lv_event_t * e)
 	if (code == LV_EVENT_FOCUSED)
 	{
 		lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-		lv_obj_set_style_anim_speed(label, 25, LV_PART_MAIN);
+		lv_obj_set_style_anim_speed(label, 30, LV_PART_MAIN);
 		lv_obj_set_width(label, 128);
 	}
 	else if (code == LV_EVENT_DEFOCUSED)
@@ -226,6 +233,8 @@ void ev_label_scroll_cb(lv_event_t * e)
 
 void ev_track_planet_cb(lv_event_t *e)
 {
+	stop_track(); // Stop the current track to start a new one
+
 	astro_body_t *planet = lv_event_get_user_data(e);
 
 	astro_tracked_name = (char*)Astronomy_BodyName(*planet);
@@ -236,6 +245,8 @@ void ev_track_planet_cb(lv_event_t *e)
 
 void ev_track_star_cb(lv_event_t *e)
 {
+	stop_track(); // Stop the current track to start a new one
+
 	star_t *star = lv_event_get_user_data(e);
 
 	Astronomy_DefineStar(BODY_STAR1,
@@ -248,6 +259,8 @@ void ev_track_star_cb(lv_event_t *e)
 
 void ev_track_sat_cb(lv_event_t *e)
 {
+	stop_track(); // Stop the current track to start a new one
+
 	int sat_idx = (int)lv_event_get_user_data(e);
 
 	// API result code
@@ -296,12 +309,23 @@ void ev_cal_mag_cb(lv_event_t *e)
 	// Unlock I2C bus to allow for calibration
 	lvgl_port_unlock();
 
-	cal_mag(60);
+	cal_mag(40);
 
 	// put it back the way we found it
 	lvgl_port_lock(0);
 
 	lv_label_set_text(status_bar_label, "");
+}
+
+void ev_stop_track_cb(lv_event_t *e)
+{
+	lvgl_port_unlock(); // Unlock I2C bus to allow for calibration
+
+	stop_track();
+
+	lvgl_port_lock(0); // Put it back the way we found it
+
+	lv_label_set_text(status_bar_label, "Nothing tracked");
 }
 
 lv_obj_t *menu_item(lv_group_t *group, lv_obj_t *menu, lv_obj_t *page, lv_obj_t *sub_page,
@@ -391,7 +415,7 @@ void lvgl_menu()
 		lv_obj_add_style(status_bar_label, &no_border, LV_STATE_DEFAULT);
 
 		lv_label_set_long_mode(status_bar_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-		lv_obj_set_style_anim_speed(status_bar_label, 40, LV_PART_MAIN);
+		lv_obj_set_style_anim_speed(status_bar_label, 30, LV_PART_MAIN);
 
 		lv_label_set_text(status_bar_label, "Desktop Satellite Tracker"); // Initilized status label
 
@@ -442,15 +466,15 @@ void lvgl_menu()
 			if (br < sizeof(tle_tmp))
 				break;
 
-			if (strcasestr(tle_tmp.sat_name, "oresat")
-				|| strcasestr(tle_tmp.sat_name, "iss")
-				|| strcasestr(tle_tmp.sat_name, "zarya")
-				   )
-			{
+			//if (strcasestr(tle_tmp.sat_name, "oresat")
+			//	|| strcasestr(tle_tmp.sat_name, "iss")
+			//	|| strcasestr(tle_tmp.sat_name, "zarya")
+			//	   )
+			//{
 				cont = menu_item(group, menu, sub_page_sat, NULL, &style, tle_tmp.sat_name);
 				lv_obj_add_event_cb(cont, ev_track_sat_cb, LV_EVENT_PRESSED, (void*)i);
 				count++;
-			}
+			//}
 
 			i++;
 		} while (res == FR_OK && count < 10);
@@ -472,6 +496,9 @@ void lvgl_menu()
 		menu_item(group, menu, main_page, sub_page_sat, &style, "Satellite");
 		menu_item(group, menu, main_page, sub_page_planet, &style, "Planet");
 		menu_item(group, menu, main_page, sub_page_star, &style, "Star");
+
+		cont = menu_item(group, menu, main_page, NULL, &style, "Stop tracking");
+		lv_obj_add_event_cb(cont, ev_stop_track_cb, LV_EVENT_PRESSED, NULL);
 
 		// Add config menu
 		cont = menu_item(group, menu, sub_page_config, NULL, &style, "calibrate");
