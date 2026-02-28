@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
+#ifdef __ESP32__
+
 #include "lvgl.h"
 
 typedef enum {
@@ -41,3 +43,5 @@ esp_err_t init_lcd();
 void lvgl_menu();
 button_status_enum_t get_button_status();
 static void keypad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
+
+#endif /* __ESP32__ */

@@ -23,12 +23,14 @@
 
 #include "platform.h"
 
+#ifdef __ESP32__
 // Only Espressif's LVGL port includes I2C locking, so use their lock to make
 // i2c thread safe:
 #include "esp_lvgl_port.h"
+#include "lcd.h"
+#endif
 
 #include "i2c.h"
-#include "lcd.h"
 #include "serial.h"
 #include "linklist.h"
 #include "rtcc.h"
@@ -51,10 +53,12 @@ I2C_TransferSeq_TypeDef i2c0_transfer;
 i2c_master_bus_handle_t i2c_bus_handle;
 #endif
 
+#ifdef __ESP32__
 i2c_master_bus_handle_t i2c_get_bus_handle()
 {
 	return i2c_bus_handle;
 }
+#endif
 
 // This only works with I2C0. Refactor if you need I2C1
 i2c_req_t *i2c_handle_req(i2c_req_t *req)

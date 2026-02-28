@@ -87,5 +87,5 @@ else()
 	# Add project headers
 	target_include_directories(space-ham-src PUBLIC ${MY_INCLUDES})
 
-	target_link_libraries(space-ham-src m)
+	target_link_libraries(space-ham-src m pthread)
 endif()

@@ -21,6 +21,7 @@
 #define _GNU_SOURCE
 
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -80,10 +81,10 @@ void meminfo();
 
 #ifdef __EFR32__
 FATFS _fatfs, *fatfs = &_fatfs;           /* Filesystem object */
-#endif
-
-#ifdef __ESP32__
+#elif defined(__ESP32__)
 FATFS *fatfs = NULL;           /* Filesystem object */
+#else
+FATFS _fatfs, *fatfs = &_fatfs;           /* Filesystem object */
 #endif
 
 struct flash_entry 
@@ -294,7 +295,9 @@ void status()
 	//	rotor_detail(&rotors[i]);
 	}
 
+#ifdef __ESP32__
 	printf("buttons: %u\r\n", get_button_status());
+#endif
 
 	// print satellite status
 	sat_status();
@@ -2179,6 +2182,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 		print_tm(&rtc);
 	}
 
+#ifdef __ESP32__
 	else if (match(args[0], "iodump"))
 		gpio_dump_io_configuration(stdout, (1 << GPIO_PIN_COUNT)-1);
 
@@ -2192,6 +2196,7 @@ void dispatch(int argc, char **args, struct linklist *history)
 			gpio_get_level(22),
 			(gpio_get_level(20) << 0) | (gpio_get_level(21) << 1) | (gpio_get_level(22) << 2)
 			);
+#endif
 	else if (argc >= 2 && match(args[0], "calmag"))
 		cal_mag(atoi(args[1]));
 
@@ -2529,8 +2534,10 @@ int main()
 		}
 	}
 
+#ifdef HAVE_I2C
 	if (mmc5603nj_cal_load(mag, "mag_cal.bin") != FR_OK)
 		cal_mag(28);
+#endif
 
 	// Initalize systick after reading flash so that it does not change.
 	// This must happen after rotors are initalized because systick moves
@@ -2544,8 +2551,13 @@ int main()
 	status();
 	print("\r\n");
 
+#ifdef __ESP32__
 	if (get_button_status() != BUTTON_OK && strlen(config.startscript))
 		run("fat run %s", config.startscript);
+#else
+	if (strlen(config.startscript))
+		run("fat run %s", config.startscript);
+#endif
 
 	for (;;)
 	{

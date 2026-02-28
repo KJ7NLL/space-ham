@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 
+#include <stdbool.h>
+
 #include "ff.h"
 #include "fatfs-util.h"
 
