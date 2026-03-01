@@ -91,7 +91,12 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 				req->status = i2cTransferDone;
 			else
 			{
-				printf("*** i2c err on %s: %s\r\n", req->name, esp_err_to_name(e));
+				// Suppress repeated errors after I2C_ERR_LOG_MAX consecutive
+				// failures; log resumes if the device recovers (burst resets on success)
+				if (req->burst_err_count < I2C_ERR_LOG_MAX)
+				{
+					printf("*** i2c err on %s: %s\r\n", req->name, esp_err_to_name(e));
+				}
 				req->status = i2cTransferError;
 			}
 		}
@@ -134,6 +139,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	{
 		req->complete_time = rtcc_get_sec();
 		req->sample_count++;
+		req->burst_err_count = 0;
 		req->valid = 1;
 		if (req->result != NULL && req->result != req->data)
 			memcpy(req->result, req->data, req->n_bytes);
@@ -144,6 +150,7 @@ i2c_req_t *i2c_handle_req(i2c_req_t *req)
 	else if (req->complete && req->status != i2cTransferInProgress)
 	{
 		req->err_count++;
+		req->burst_err_count++;
 	}
 
 	return req;
