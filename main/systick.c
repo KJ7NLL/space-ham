@@ -23,6 +23,11 @@
 #include <time.h>
 #include <math.h>
 
+#if !defined(__EFR32__) && !defined(__ESP32__)
+#include <pthread.h>
+#include <unistd.h>
+#endif
+
 #include "platform.h"
 
 #include "rotor.h"
@@ -162,13 +167,29 @@ void pid_update_task(void *arg)
 }
 #endif
 
+#if !defined(__EFR32__) && !defined(__ESP32__)
+static void *linux_pid_update_thread(void *arg)
+{
+	while (1)
+	{
+		pid_update();
+		usleep(10000);
+	}
+	return NULL;
+}
+#endif
+
 int systick_init(int tps)
 {
 #ifdef __EFR32__
 	ticks_per_sec = tps;
 	return systick_update();
-#else
+#elif defined(__ESP32__)
 	xTaskCreate(pid_update_task, "pid_thread", 4096, NULL, 10, NULL);
+	return 0;
+#else
+	pthread_t tid;
+	pthread_create(&tid, NULL, linux_pid_update_thread, NULL);
 	return 0;
 #endif
 }

@@ -119,4 +119,6 @@ const volatile struct linklist *i2c_req_cont_list();
 
 void dump_req(i2c_req_t *req, char *msg);
 
+#ifdef __ESP32__
 i2c_master_bus_handle_t i2c_get_bus_handle();
+#endif

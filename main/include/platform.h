@@ -59,12 +59,22 @@ inline static void platform_sleep()
 
 #else
 
+#include <stdbool.h>
+#include <stddef.h>
+#include <sys/select.h>
+
 #define FLASH_PAGE_SIZE 4096
 typedef void* TIMER_TypeDef;
 typedef int I2C_TransferReturn_TypeDef;
+typedef int esp_err_t;
 
 inline static void platform_sleep()
 {
+	struct timeval tv = {0, 10000};
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(0, &fds);
+	select(1, &fds, NULL, NULL, &tv);
 }
 
 #endif

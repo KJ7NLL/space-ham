@@ -22,6 +22,8 @@
 
 #include "platform.h"
 
+#ifdef __ESP32__
+
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -193,4 +195,18 @@ int is_wifi_up()
 	wifi_ap_record_t ap_info;
 	return (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK);
 }
+
+#else /* !__ESP32__: Linux stubs */
+
+#include "time_sync.h"
+#include "http_get.h"
+
+void wifi_init() {}
+void wifi_connect(char *ssid, char *pass) {}
+int is_wifi_up() { return 0; }
+void sntp_init_timer() {}
+esp_err_t fetch_and_store_time_in_nvs(void *args) { return 0; }
+int http_get(char *file, const char *orig_url) { return -1; }
+
+#endif /* __ESP32__ */
 

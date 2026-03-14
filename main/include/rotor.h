@@ -18,6 +18,8 @@
 //  The official website and doumentation for space-ham is available here:
 //    https://www.kj7nll.radio/
 //
+#include <stdbool.h>
+
 #include "pid.h"
 
 // The efr32mg21 supports 4 timers. Timers 0 and 1 work on any port, 

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "platform.h"
 #include "ff.h"
@@ -111,7 +112,7 @@ static char *yank_buffer = NULL;           // Yank buffer for 'y' and 'p' comman
 static int yank_len = 0;                   // Length of yanked text
 static LastCommand last_command = {0, 0};  // Last command for '.'
 
-static int serial_read_char();
+int serial_read_char();
 static int get_current_time_ms();
 static int read_key();
 static void clear_screen();
@@ -142,7 +143,13 @@ static int is_known_prefix(const char *seq) {
 
 // Function to get current time in milliseconds
 static int get_current_time_ms() {
+#ifdef __ESP32__
     return xTaskGetTickCount() * portTICK_PERIOD_MS;
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+#endif
 }
 
 // Function to read a key with escape sequence processing
@@ -503,7 +510,7 @@ void vi(char *filename) {
         int key = read_key();
 
         if (key == KEY_NONE) {
-            vTaskDelay(100 / portTICK_PERIOD_MS);  // Add 100ms delay if no input is provided
+            platform_sleep();
             continue;
         }
 
