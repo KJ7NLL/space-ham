@@ -48,6 +48,7 @@ enum {
 #endif
 
 #define I2C_TXBUFFER_SIZE 32
+#define I2C_ERR_LOG_MAX 5
 
 typedef volatile struct i2c_req_t
 {
@@ -97,7 +98,7 @@ typedef volatile struct i2c_req_t
 
 	uint64_t complete_time;
 
-	int sample_count, err_count;
+	int sample_count, err_count, burst_err_count;
 } i2c_req_t;
 
 void initI2C();
